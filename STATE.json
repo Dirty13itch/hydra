@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-12-12T02:34:19.145626Z",
+  "generated_at": "2025-12-12T02:50:24.126946Z",
   "version": "1.0",
   "cluster": {
     "prometheus_targets": {
@@ -17,7 +17,7 @@
         "research",
         "maintenance"
       ],
-      "timestamp": "2025-12-12T02:34:22.015246"
+      "timestamp": "2025-12-12T02:50:27.025676"
     },
     "qdrant_collections": 4
   },
@@ -30,8 +30,13 @@
   },
   "containers": [
     {
+      "name": "hydra-control-plane-ui",
+      "status": "Up 5 minutes",
+      "health": "running"
+    },
+    {
       "name": "hydra-crewai",
-      "status": "Up 13 minutes (unhealthy)",
+      "status": "Up 29 minutes (unhealthy)",
       "health": "unhealthy"
     },
     {
@@ -45,18 +50,13 @@
       "health": "unhealthy"
     },
     {
-      "name": "hydra-control-plane-ui",
-      "status": "Up 3 hours",
-      "health": "running"
-    },
-    {
       "name": "hydra-promtail",
-      "status": "Up 7 hours",
+      "status": "Up 8 hours",
       "health": "running"
     },
     {
       "name": "letta-proxy",
-      "status": "Up 3 hours (unhealthy)",
+      "status": "Up 4 hours (unhealthy)",
       "health": "unhealthy"
     },
     {
@@ -301,8 +301,8 @@
     }
   ],
   "metrics": {
-    "cpu_avg": 1.97,
-    "memory_used_pct": 13.26,
+    "cpu_avg": 2.0,
+    "memory_used_pct": 11.7,
     "disk_used_pct": 13.13
   },
   "models": [
