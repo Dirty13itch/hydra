@@ -1,0 +1,298 @@
+groups:
+  - name: node_alerts
+    rules:
+      - alert: NodeDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been down for more than 2 minutes."
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(node) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.node }}"
+          description: "CPU usage is above 80% for more than 5 minutes."
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/",fstype!="rootfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="rootfs"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space on {{ $labels.node }}"
+          description: "Disk space is below 10% on {{ $labels.mountpoint }}."
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.node }}"
+          description: "Memory usage is above 90% for more than 5 minutes."
+
+      - alert: HighLoadAverage
+        expr: node_load15 > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High load average on {{ $labels.node }}"
+          description: "15-minute load average is {{ $value }}."
+
+  - name: gpu_alerts
+    rules:
+      # Temperature alerts using DCGM metrics
+      - alert: GPUTemperatureHigh
+        expr: DCGM_FI_DEV_GPU_TEMP > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High GPU temperature on {{ $labels.node }}"
+          description: "GPU {{ $labels.gpu }} temperature is {{ $value }}C."
+
+      - alert: GPUTemperatureCritical
+        expr: DCGM_FI_DEV_GPU_TEMP > 90
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical GPU temperature on {{ $labels.node }}"
+          description: "GPU {{ $labels.gpu }} temperature is {{ $value }}C - THROTTLING IMMINENT."
+
+      # Memory temperature alert
+      - alert: GPUMemoryTempHigh
+        expr: DCGM_FI_DEV_MEMORY_TEMP > 90
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High GPU memory temperature on {{ $labels.node }}"
+          description: "GPU {{ $labels.gpu }} memory temperature is {{ $value }}C."
+
+      # VRAM memory alerts (DCGM reports in MiB)
+      - alert: GPUMemoryHigh
+        expr: (DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE)) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High GPU VRAM usage on {{ $labels.node }}"
+          description: "GPU {{ $labels.gpu }} VRAM usage is above 90% - model loading may fail."
+
+      - alert: GPUMemoryCritical
+        expr: (DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE)) * 100 > 98
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical GPU VRAM on {{ $labels.node }}"
+          description: "GPU {{ $labels.gpu }} VRAM is above 98% full - OOM imminent!"
+
+      - alert: GPUMemoryExhausted
+        expr: DCGM_FI_DEV_FB_FREE < 500
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "GPU VRAM exhausted on {{ $labels.node }}"
+          description: "GPU {{ $labels.gpu }} has less than 500MB VRAM free - inference will fail."
+
+      # Power alerts (DCGM reports in watts)
+      - alert: GPUPowerHigh
+        expr: DCGM_FI_DEV_POWER_USAGE > 400
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High GPU power draw on {{ $labels.node }}"
+          description: "GPU {{ $labels.gpu }} drawing {{ $value }}W."
+
+      # Utilization alerts
+      - alert: GPUUtilizationStuck
+        expr: DCGM_FI_DEV_GPU_UTIL == 100
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU stuck at 100% utilization"
+          description: "GPU {{ $labels.gpu }} on {{ $labels.node }} at 100% for 30m - possible hang."
+
+      - alert: GPUUnderutilized
+        expr: DCGM_FI_DEV_GPU_UTIL < 5 and DCGM_FI_DEV_FB_USED > 1000
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "GPU idle with model loaded"
+          description: "GPU {{ $labels.gpu }} using VRAM but less than 5% compute - consider unloading."
+
+      # XID Errors - GPU hardware/driver failures
+      - alert: GPUXIDError
+        expr: increase(DCGM_FI_DEV_XID_ERRORS[5m]) > 0
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: "GPU XID Error detected on {{ $labels.node }}"
+          description: "GPU {{ $labels.gpu }} reported XID errors - check dmesg for details."
+
+      # Row remapping failures (hardware degradation)
+      - alert: GPURowRemapFailure
+        expr: DCGM_FI_DEV_ROW_REMAP_FAILURE > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GPU row remapping failure on {{ $labels.node }}"
+          description: "GPU {{ $labels.gpu }} has row remapping failures - hardware issue."
+
+  - name: inference_alerts
+    rules:
+      - alert: TabbyAPIDown
+        expr: up{job="tabbyapi"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "TabbyAPI inference service is down"
+          description: "TabbyAPI on hydra-ai has been unreachable for 2 minutes."
+
+      - alert: OllamaDown
+        expr: up{job="ollama"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ollama service is down"
+          description: "Ollama on hydra-compute has been unreachable for 2 minutes."
+
+      - alert: LiteLLMDown
+        expr: up{job="litellm"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LiteLLM proxy is down"
+          description: "LiteLLM unified gateway has been unreachable for 2 minutes."
+
+      - alert: DCGMExporterDown
+        expr: up{job="dcgm"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DCGM exporter is down on {{ $labels.node }}"
+          description: "GPU metrics unavailable - DCGM exporter unreachable."
+
+  - name: service_alerts
+    rules:
+      - alert: MCPDown
+        expr: up{job="hydra-mcp"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Hydra MCP control plane is down"
+          description: "MCP API server has been unreachable for 2 minutes."
+
+      - alert: LokiDown
+        expr: up{job="loki"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Loki logging service is down"
+          description: "Loki has been unreachable for more than 2 minutes."
+
+      - alert: QdrantDown
+        expr: up{job="qdrant"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Qdrant vector database is down"
+          description: "Qdrant has been unreachable for more than 2 minutes."
+
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Grafana is down"
+          description: "Grafana dashboard has been unreachable for 2 minutes."
+
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager is down"
+          description: "Alertmanager has been unreachable for 2 minutes - alerts not being sent!"
+
+      - alert: PrometheusTargetMissing
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus target {{ $labels.job }} is missing"
+          description: "Target {{ $labels.instance }} has been down for 5 minutes."
+
+  - name: storage_alerts
+    rules:
+      - alert: ArraySpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint=~"/mnt/user.*"} / node_filesystem_size_bytes{mountpoint=~"/mnt/user.*"}) * 100 < 5
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Unraid array space critically low"
+          description: "Array space is below 5% on {{ $labels.mountpoint }}."
+
+      - alert: NFSMountStale
+        expr: node_filesystem_readonly{mountpoint=~"/mnt/models.*"} == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "NFS mount is stale/readonly"
+          description: "NFS mount {{ $labels.mountpoint }} is readonly - likely stale."
+
+      - alert: DockerDiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/var/lib/docker"} / node_filesystem_size_bytes{mountpoint="/var/lib/docker"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Docker disk space low"
+          description: "Docker storage is below 10% - containers may fail to start."
+
+  - name: network_alerts
+    rules:
+      - alert: HighNetworkReceiveErrors
+        expr: rate(node_network_receive_errs_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High network receive errors on {{ $labels.node }}"
+          description: "Interface {{ $labels.device }} receiving errors."
+
+      - alert: HighNetworkTransmitErrors
+        expr: rate(node_network_transmit_errs_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High network transmit errors on {{ $labels.node }}"
+          description: "Interface {{ $labels.device }} transmitting errors."

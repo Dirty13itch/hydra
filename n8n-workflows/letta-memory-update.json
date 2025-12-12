@@ -1,0 +1,256 @@
+{
+  "name": "Letta Memory Update",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "letta-memory",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "letta-memory-webhook"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule (Every 6 Hours)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [260, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.source }}",
+              "rightValue": "alertmanager",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-source",
+      "name": "Check Source",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Alertmanager webhook payload\nconst alerts = $input.first().json.alerts || [];\nconst processedAlerts = [];\n\nfor (const alert of alerts) {\n  const alertText = `[ALERT ${alert.status.toUpperCase()}] ${alert.labels.alertname}\\n` +\n    `Severity: ${alert.labels.severity || 'unknown'}\\n` +\n    `Instance: ${alert.labels.instance || 'unknown'}\\n` +\n    `Summary: ${alert.annotations?.summary || 'No summary'}\\n` +\n    `Time: ${alert.startsAt}\\n` +\n    `---`;\n  \n  processedAlerts.push({\n    text: alertText,\n    alertname: alert.labels.alertname,\n    severity: alert.labels.severity,\n    status: alert.status\n  });\n}\n\nreturn processedAlerts;"
+      },
+      "id": "process-alerts",
+      "name": "Process Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process manual/custom memory update\nconst input = $input.first().json;\n\nlet text = '';\nif (input.text) {\n  text = input.text;\n} else if (input.event) {\n  text = `[HYDRA EVENT] ${input.event}\\nDetails: ${JSON.stringify(input.details || {})}\\nTime: ${new Date().toISOString()}`;\n} else {\n  text = `[HYDRA UPDATE] ${JSON.stringify(input)}\\nTime: ${new Date().toISOString()}`;\n}\n\nreturn [{ text }];"
+      },
+      "id": "process-custom",
+      "name": "Process Custom Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Scheduled memory consolidation - fetch cluster status and log\nconst timestamp = new Date().toISOString();\n\nreturn [{\n  text: `[SCHEDULED CHECK] Hydra cluster status check at ${timestamp}\\nThis is a periodic memory consolidation entry.`,\n  type: 'scheduled'\n}];"
+      },
+      "id": "scheduled-check",
+      "name": "Scheduled Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8283/v1/agents/agent-b3fb1747-1a5b-4c94-b713-11d6403350bf/archival-memory/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.text }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "add-to-archival",
+      "name": "Add to Letta Archival",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1020, 300]
+    },
+    {
+      "parameters": {
+        "content": "### Letta Memory Update Workflow\n\nThis workflow updates the hydra-steward agent's archival memory with:\n\n1. **Alertmanager Webhooks** - Alerts are logged to agent memory\n2. **Custom Events** - Manual memory updates via webhook\n3. **Scheduled Checks** - Periodic consolidation entries\n\n**Webhook URL:** `http://192.168.1.244:5678/webhook/letta-memory`\n\n**POST Body Examples:**\n```json\n// Custom event\n{\"event\": \"Container restart\", \"details\": {\"name\": \"hydra-mcp\"}}\n\n// Direct text\n{\"text\": \"Important note about the cluster\"}\n```",
+        "height": 400,
+        "width": 340
+      },
+      "id": "sticky-note",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [20, 160]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "merge-results",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1000, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log success or failure\nconst input = $input.first();\nconst success = input.json.statusCode === 200 || input.json.id;\n\nreturn [{\n  success,\n  message: success ? 'Memory updated successfully' : 'Memory update failed',\n  response: input.json\n}];"
+      },
+      "id": "log-result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1260, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule (Every 6 Hours)": {
+      "main": [
+        [
+          {
+            "node": "Scheduled Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Source": {
+      "main": [
+        [
+          {
+            "node": "Process Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Custom Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Alerts": {
+      "main": [
+        [
+          {
+            "node": "Add to Letta Archival",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Custom Input": {
+      "main": [
+        [
+          {
+            "node": "Add to Letta Archival",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scheduled Check": {
+      "main": [
+        [
+          {
+            "node": "Add to Letta Archival",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Letta Archival": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "hydra",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "letta",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 0,
+  "versionId": "1"
+}

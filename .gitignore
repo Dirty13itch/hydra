@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+ui/node_modules/
+.next/
+ui/.next/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+__pycache__/
+
+# Environment
+.env
+.env.local
+*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temp files
+temp/
+*.tmp
+*.bak
+
+# Archives (keep the source, not the archive)
+*.tar.gz

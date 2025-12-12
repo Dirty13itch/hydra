@@ -1,0 +1,169 @@
+{
+  "name": "Hydra Container Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alertmanager",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson"
+      },
+      "id": "webhook-trigger",
+      "name": "Alertmanager Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "alertmanager"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Alertmanager payload\nconst alerts = $input.all();\nconst results = [];\n\nfor (const item of alerts) {\n  const alertData = item.json;\n  \n  // Alertmanager sends alerts in an array\n  const alertList = alertData.alerts || [alertData];\n  \n  for (const alert of alertList) {\n    const status = alert.status || 'unknown';\n    const alertname = alert.labels?.alertname || 'Unknown Alert';\n    const severity = alert.labels?.severity || 'info';\n    const instance = alert.labels?.instance || 'unknown';\n    const description = alert.annotations?.description || alert.annotations?.summary || 'No description';\n    const startsAt = alert.startsAt || new Date().toISOString();\n    \n    // Format for logging/display\n    const formattedAlert = {\n      status,\n      alertname,\n      severity,\n      instance,\n      description,\n      startsAt,\n      emoji: status === 'firing' ? (severity === 'critical' ? '🔴' : '🟡') : '✅',\n      title: `${status === 'firing' ? 'ALERT' : 'RESOLVED'}: ${alertname}`,\n      raw: alert\n    };\n    \n    results.push({ json: formattedAlert });\n  }\n}\n\nreturn results;"
+      },
+      "id": "code-parser",
+      "name": "Parse Alert Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equals",
+              "value2": "firing"
+            }
+          ]
+        }
+      },
+      "id": "if-firing",
+      "name": "Is Firing?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://hydra-mcp:8600/audit",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "={{ 'alert_' + $json.status }}"
+            },
+            {
+              "name": "target",
+              "value": "={{ $json.alertname }}"
+            },
+            {
+              "name": "details",
+              "value": "={{ $json.severity + ': ' + $json.description }}"
+            },
+            {
+              "name": "source",
+              "value": "alertmanager"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-to-mcp",
+      "name": "Log to MCP Audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://hydra-mcp:8600/audit",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "alert_resolved"
+            },
+            {
+              "name": "target",
+              "value": "={{ $json.alertname }}"
+            },
+            {
+              "name": "details",
+              "value": "={{ 'Resolved: ' + $json.description }}"
+            },
+            {
+              "name": "source",
+              "value": "alertmanager"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-resolved",
+      "name": "Log Resolved",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [910, 400]
+    }
+  ],
+  "connections": {
+    "Alertmanager Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Alert Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Alert Data": {
+      "main": [
+        [
+          {
+            "node": "Is Firing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Firing?": {
+      "main": [
+        [
+          {
+            "node": "Log to MCP Audit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Resolved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "hydra",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

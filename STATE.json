@@ -1,0 +1,333 @@
+{
+  "generated_at": "2025-12-12T02:34:19.145626Z",
+  "version": "1.0",
+  "cluster": {
+    "prometheus_targets": {
+      "up": 11,
+      "total": 11
+    },
+    "letta": {
+      "version": "0.15.1",
+      "status": "ok"
+    },
+    "crewai": {
+      "status": "ok",
+      "crews": [
+        "monitoring",
+        "research",
+        "maintenance"
+      ],
+      "timestamp": "2025-12-12T02:34:22.015246"
+    },
+    "qdrant_collections": 4
+  },
+  "services": {
+    "letta": "up",
+    "crewai": "up",
+    "qdrant": "up",
+    "litellm": "up",
+    "prometheus": "up"
+  },
+  "containers": [
+    {
+      "name": "hydra-crewai",
+      "status": "Up 13 minutes (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "hydra-n8n",
+      "status": "Up 2 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-neo4j",
+      "status": "Up 3 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "hydra-control-plane-ui",
+      "status": "Up 3 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-promtail",
+      "status": "Up 7 hours",
+      "health": "running"
+    },
+    {
+      "name": "letta-proxy",
+      "status": "Up 3 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "hydra-mcp",
+      "status": "Up 4 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "hydra-watchtower",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "hydra-prometheus",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-letta",
+      "status": "Up 3 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "hydra-alertmanager",
+      "status": "Up 4 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "letta-db",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "portainer",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-qdrant",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "sonarr",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "radarr",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "prowlarr",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "adguard",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "homepage",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "hydra-miniflux",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-grafana",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-litellm",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-loki",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-control-plane-backend",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "auditforecaster-ui",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-task-hub",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "auditforecaster-db",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "node-exporter",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "readarr",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "whisparr",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "sabnzbd",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "qbittorrent",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "lidarr",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "bazarr",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "homeassistant",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "perplexica",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "sillytavern",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "kokoro-tts",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-firecrawl-api",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-firecrawl-worker",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-firecrawl-playwright",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-firecrawl-redis",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-docling",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "hydra-searxng",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "hydra-redis",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "hydra-postgres",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "hydra-uptime-kuma",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "auditforecaster-backup",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "auditforecaster-proxy",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "auditforecaster-monitor",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "hydra-brain",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "open-webui",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    },
+    {
+      "name": "stash",
+      "status": "Up 8 hours",
+      "health": "running"
+    },
+    {
+      "name": "Plex-Media-Server",
+      "status": "Up 8 hours (unhealthy)",
+      "health": "unhealthy"
+    }
+  ],
+  "metrics": {
+    "cpu_avg": 1.97,
+    "memory_used_pct": 13.26,
+    "disk_used_pct": 13.13
+  },
+  "models": [
+    "qwen2.5-coder:7b",
+    "deepseek-r1:8b",
+    "llama3.2:3b",
+    "codellama:13b",
+    "mistral:7b-instruct",
+    "mxbai-embed-large:latest",
+    "nomic-embed-text:latest",
+    "qwen2.5:7b"
+  ],
+  "agents": {
+    "hydra-steward": {
+      "id": "agent-b3fb1747-1a5b-4c94-b713-11d6403350bf",
+      "name": "hydra-steward",
+      "created_at": "2025-12-10T23:01:32.994393Z"
+    }
+  },
+  "summary": {
+    "total_containers": 54,
+    "running_containers": 54,
+    "healthy_containers": 0,
+    "unhealthy_containers": 18,
+    "available_models": 8,
+    "status": "degraded"
+  }
+}

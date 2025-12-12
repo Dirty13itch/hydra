@@ -1,0 +1,15 @@
+services:
+  hydra-ui:
+    build: .
+    container_name: hydra-control-plane-ui
+    ports:
+      - "3200:3000"
+    environment:
+      - NEXT_PUBLIC_HYDRA_MCP_URL=http://192.168.1.244:8600
+    restart: unless-stopped
+    networks:
+      - hydra-network
+
+networks:
+  hydra-network:
+    external: true

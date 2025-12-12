@@ -1,0 +1,232 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+/* Dark mode (default) */
+:root {
+  --hydra-bg: #0a0a0f;
+  --hydra-bg-secondary: #1a1a2e;
+  --hydra-text: #e0e0e0;
+  --hydra-text-muted: #888;
+  --hydra-border: rgba(0, 255, 255, 0.3);
+  --hydra-cyan: #00ffff;
+  --hydra-magenta: #ff00ff;
+  --hydra-green: #00ff88;
+  --hydra-red: #ff3366;
+  --hydra-yellow: #ffcc00;
+  --hydra-panel-bg: rgba(26, 26, 46, 0.5);
+  --hydra-dark: #0a0a0f;
+}
+
+/* Light mode */
+.light {
+  --hydra-bg: #f5f7fa;
+  --hydra-bg-secondary: #ffffff;
+  --hydra-text: #1a1a2e;
+  --hydra-text-muted: #666;
+  --hydra-border: rgba(0, 150, 150, 0.3);
+  --hydra-cyan: #0088aa;
+  --hydra-magenta: #aa0088;
+  --hydra-green: #00aa66;
+  --hydra-red: #cc2244;
+  --hydra-yellow: #aa8800;
+  --hydra-panel-bg: rgba(255, 255, 255, 0.8);
+  --hydra-dark: #f5f7fa;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hydra-cyan) var(--hydra-dark);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--hydra-dark);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--hydra-cyan);
+  border-radius: 4px;
+}
+
+body {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--hydra-bg);
+  color: var(--hydra-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Scanline effect */
+.scanlines::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1) 0px,
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.3;
+}
+
+/* Grid background */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Neon text effects */
+.neon-cyan {
+  text-shadow: 0 0 10px var(--hydra-cyan), 0 0 20px var(--hydra-cyan);
+}
+
+.neon-magenta {
+  text-shadow: 0 0 10px var(--hydra-magenta), 0 0 20px var(--hydra-magenta);
+}
+
+.neon-green {
+  text-shadow: 0 0 10px var(--hydra-green), 0 0 20px var(--hydra-green);
+}
+
+/* Status indicators */
+.status-online {
+  @apply bg-hydra-green text-hydra-dark;
+  box-shadow: 0 0 10px var(--hydra-green);
+}
+
+.status-offline {
+  @apply bg-hydra-red text-white;
+  box-shadow: 0 0 10px var(--hydra-red);
+}
+
+.status-warning {
+  @apply bg-hydra-yellow text-hydra-dark;
+  box-shadow: 0 0 10px var(--hydra-yellow);
+}
+
+/* Terminal-style cursor */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: '_';
+  animation: blink 1s infinite;
+}
+
+/* Panel styles */
+.panel {
+  background: var(--hydra-panel-bg);
+  border: 1px solid var(--hydra-border);
+  @apply rounded-lg backdrop-blur-sm;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.panel-header {
+  border-bottom: 1px solid var(--hydra-border);
+  color: var(--hydra-cyan);
+  @apply px-4 py-2 font-bold text-sm uppercase tracking-wider;
+}
+
+/* Hide scanlines in light mode */
+.light .scanlines::before {
+  display: none;
+}
+
+/* Reduce grid background in light mode */
+.light .grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 136, 170, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 136, 170, 0.05) 1px, transparent 1px);
+}
+
+/* Mobile touch targets - ensure minimum 48px */
+@media (max-width: 768px) {
+  .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* Improve tap targets on buttons */
+  button, a {
+    touch-action: manipulation;
+  }
+
+  /* Reduce motion for mobile */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Safe area padding for notched phones */
+@supports (padding: max(0px)) {
+  .safe-padding {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better text selection on mobile */
+::selection {
+  background: var(--hydra-cyan);
+  color: var(--hydra-dark);
+}
+
+/* Loading skeleton animation */
+@keyframes skeleton-loading {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--hydra-bg-secondary) 25%,
+    var(--hydra-border) 50%,
+    var(--hydra-bg-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+/* Hide scrollbar but keep functionality on mobile */
+@media (max-width: 768px) {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "dashboard": {
+    "title": "MCP Control Plane",
+    "uid": "hydra-mcp",
+    "tags": ["hydra", "mcp", "control-plane"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Service Health",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(hydra_service_up)",
+            "legendFormat": "Services Up"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 2},
+                {"color": "green", "value": 4}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "MCP Uptime",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "hydra_mcp_uptime_seconds / 3600",
+            "legendFormat": "Hours"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "h"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Knowledge Vectors",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "hydra_knowledge_vectors_total",
+            "legendFormat": "Vectors"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Service Status",
+        "type": "table",
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 4},
+        "targets": [
+          {
+            "expr": "hydra_service_up",
+            "format": "table",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {"service": "Service", "Value": "Status"}
+            }
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Qdrant Collections",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 4},
+        "targets": [
+          {
+            "expr": "hydra_qdrant_collections_total",
+            "legendFormat": "Collections"
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 38,
+    "version": 0
+  },
+  "overwrite": true
+}

@@ -1,0 +1,12 @@
+{
+  "_comment": "Add this to your Claude Code MCP settings to enable Hydra cluster control",
+  "mcpServers": {
+    "hydra": {
+      "command": "python",
+      "args": ["C:/Users/shaun/projects/hydra/mcp/hydra_mcp_proxy.py"],
+      "env": {
+        "HYDRA_MCP_URL": "http://192.168.1.244:8600"
+      }
+    }
+  }
+}

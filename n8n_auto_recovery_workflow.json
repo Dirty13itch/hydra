@@ -1,0 +1,227 @@
+{
+  "name": "Hydra Service Auto-Recovery",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8600/services/status",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "check-services",
+      "name": "Check Service Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse services and find unhealthy ones\nconst services = $input.first().json;\nconst unhealthyServices = [];\n\n// Check each service - MCP returns format like {\"letta\": \"up\", \"crewai\": \"up\", \"litellm\": \"down\"}\nfor (const [name, status] of Object.entries(services)) {\n  // Handle both string status and object status\n  const statusStr = typeof status === 'string' ? status : (status?.status || status?.state || 'unknown');\n  \n  if (statusStr === 'down' || statusStr === 'unhealthy' || statusStr === 'error' || statusStr === 'offline') {\n    unhealthyServices.push({\n      name: name,\n      status: statusStr,\n      container: 'hydra-' + name.toLowerCase().replace(/_/g, '-')\n    });\n  }\n}\n\nreturn {\n  unhealthyCount: unhealthyServices.length,\n  unhealthyServices: unhealthyServices,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "parse-status",
+      "name": "Find Unhealthy Services",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.unhealthyCount }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "check-unhealthy",
+      "name": "Any Unhealthy?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extract container name for restart\nconst services = $('Find Unhealthy Services').first().json.unhealthyServices;\nconst items = [];\n\nfor (const svc of services) {\n  // Map service names to container names\n  let containerName = svc.container;\n  \n  // Common mappings\n  const containerMappings = {\n    'tabbyapi': 'hydra-tabbyapi',\n    'litellm': 'hydra-litellm',\n    'letta': 'hydra-letta',\n    'n8n': 'hydra-n8n',\n    'mcp': 'hydra-mcp',\n    'ui': 'hydra-control-plane-ui',\n    'prometheus': 'hydra-prometheus',\n    'grafana': 'hydra-grafana',\n    'crewai': 'hydra-crewai'\n  };\n  \n  // Apply mapping if exists\n  const lcName = svc.name.toLowerCase();\n  if (containerMappings[lcName]) {\n    containerName = containerMappings[lcName];\n  } else if (!containerName.startsWith('hydra-')) {\n    containerName = 'hydra-' + containerName;\n  }\n  \n  items.push({\n    json: {\n      serviceName: svc.name,\n      containerName: containerName,\n      previousStatus: svc.status,\n      timestamp: new Date().toISOString()\n    }\n  });\n}\n\nreturn items;"
+      },
+      "id": "prepare-restart",
+      "name": "Prepare Restart",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://192.168.1.244:8600/containers/restart?container={{ $json.containerName }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "restart-container",
+      "name": "Restart Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log the restart action\nconst container = $('Prepare Restart').item.json.containerName;\nconst service = $('Prepare Restart').item.json.serviceName;\nconst restartResult = $input.first().json;\n\nreturn {\n  action: 'auto_recovery',\n  service: service,\n  container: container,\n  result: restartResult.status || 'unknown',\n  message: restartResult.message || 'Restart attempted',\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "log-action",
+      "name": "Log Recovery Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/audit/log",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'auto_recovery', data: $json, status: 'success', category: 'automation' }) }}"
+      },
+      "id": "audit-log",
+      "name": "Add Audit Entry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1640, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "no-action",
+      "name": "All Healthy",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [980, 400]
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Check Service Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Service Status": {
+      "main": [
+        [
+          {
+            "node": "Find Unhealthy Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Unhealthy Services": {
+      "main": [
+        [
+          {
+            "node": "Any Unhealthy?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Unhealthy?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Restart",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "All Healthy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Restart": {
+      "main": [
+        [
+          {
+            "node": "Restart Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restart Container": {
+      "main": [
+        [
+          {
+            "node": "Log Recovery Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Recovery Action": {
+      "main": [
+        [
+          {
+            "node": "Add Audit Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "hydra",
+      "createdAt": "2025-12-11T00:00:00.000Z",
+      "updatedAt": "2025-12-11T00:00:00.000Z"
+    },
+    {
+      "name": "automation",
+      "createdAt": "2025-12-11T00:00:00.000Z",
+      "updatedAt": "2025-12-11T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "active": false
+}
