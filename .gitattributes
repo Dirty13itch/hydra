@@ -1,0 +1,27 @@
+# Hydra Repo Git Attributes
+# Enforce consistent line endings
+
+# Default: auto-detect
+* text=auto
+
+# Force LF for documentation and scripts
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.nix text eol=lf
+
+# PowerShell scripts - CRLF for Windows compatibility
+*.ps1 text eol=crlf
+
+# Shell scripts - LF
+*.sh text eol=lf
+
+# Binary files
+*.tar.gz binary
+*.zip binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
