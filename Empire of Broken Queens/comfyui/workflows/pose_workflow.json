@@ -1,0 +1,199 @@
+{
+  "last_node_id": 20,
+  "last_link_id": 25,
+  "nodes": [
+    {
+      "id": 4,
+      "type": "CheckpointLoaderSimple",
+      "pos": [50, 100],
+      "size": {"0": 315, "1": 98},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {"name": "MODEL", "type": "MODEL", "links": [1], "slot_index": 0},
+        {"name": "CLIP", "type": "CLIP", "links": [3, 5], "slot_index": 1},
+        {"name": "VAE", "type": "VAE", "links": [8], "slot_index": 2}
+      ],
+      "properties": {"Node name for S&R": "CheckpointLoaderSimple"},
+      "widgets_values": ["realvisxlV50_v50Bakedvae.safetensors"]
+    },
+    {
+      "id": 10,
+      "type": "LoraLoader",
+      "pos": [50, 250],
+      "size": {"0": 315, "1": 126},
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 1},
+        {"name": "clip", "type": "CLIP", "link": null}
+      ],
+      "outputs": [
+        {"name": "MODEL", "type": "MODEL", "links": [11], "slot_index": 0},
+        {"name": "CLIP", "type": "CLIP", "links": null}
+      ],
+      "properties": {"Node name for S&R": "LoraLoader"},
+      "widgets_values": ["empire/queen-lora.safetensors", 0.75, 0.75]
+    },
+    {
+      "id": 6,
+      "type": "CLIPTextEncode",
+      "pos": [400, 100],
+      "size": {"0": 422, "1": 164},
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {"name": "clip", "type": "CLIP", "link": 3}
+      ],
+      "outputs": [
+        {"name": "CONDITIONING", "type": "CONDITIONING", "links": [4], "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": ["full body photograph of (queen_name:1.2), (pose_type:1.2), (clothing_state:1.1), photorealistic, fashion photography, studio lighting, detailed body, (base_prompt:1.0), elegant, professional photography, soft shadows"],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 7,
+      "type": "CLIPTextEncode",
+      "pos": [400, 300],
+      "size": {"0": 422, "1": 164},
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {"name": "clip", "type": "CLIP", "link": 5}
+      ],
+      "outputs": [
+        {"name": "CONDITIONING", "type": "CONDITIONING", "links": [6], "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": ["deformed, ugly, bad anatomy, blurry, low quality, watermark, text, anime, cartoon, 3d render, poorly drawn, mutation, extra limbs, missing limbs, floating limbs, disconnected limbs, malformed hands, extra fingers, fused fingers, too many fingers"],
+      "color": "#322",
+      "bgcolor": "#533"
+    },
+    {
+      "id": 5,
+      "type": "EmptyLatentImage",
+      "pos": [400, 500],
+      "size": {"0": 315, "1": 106},
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "outputs": [
+        {"name": "LATENT", "type": "LATENT", "links": [2], "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "EmptyLatentImage"},
+      "widgets_values": [768, 1152, 1]
+    },
+    {
+      "id": 3,
+      "type": "KSampler",
+      "pos": [900, 200],
+      "size": {"0": 315, "1": 262},
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 11},
+        {"name": "positive", "type": "CONDITIONING", "link": 4},
+        {"name": "negative", "type": "CONDITIONING", "link": 6},
+        {"name": "latent_image", "type": "LATENT", "link": 2}
+      ],
+      "outputs": [
+        {"name": "LATENT", "type": "LATENT", "links": [7], "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "KSampler"},
+      "widgets_values": [0, "randomize", 30, 7, "dpmpp_2m_sde_gpu", "karras", 1]
+    },
+    {
+      "id": 8,
+      "type": "VAEDecode",
+      "pos": [1250, 200],
+      "size": {"0": 210, "1": 46},
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"name": "samples", "type": "LATENT", "link": 7},
+        {"name": "vae", "type": "VAE", "link": 8}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [9], "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "VAEDecode"}
+    },
+    {
+      "id": 9,
+      "type": "SaveImage",
+      "pos": [1500, 200],
+      "size": {"0": 315, "1": 270},
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 9}
+      ],
+      "properties": {},
+      "widgets_values": ["empire/queen_slug/pose/pose_type"]
+    }
+  ],
+  "links": [
+    [1, 4, 0, 10, 0, "MODEL"],
+    [2, 5, 0, 3, 3, "LATENT"],
+    [3, 4, 1, 6, 0, "CLIP"],
+    [4, 6, 0, 3, 1, "CONDITIONING"],
+    [5, 4, 1, 7, 0, "CLIP"],
+    [6, 7, 0, 3, 2, "CONDITIONING"],
+    [7, 3, 0, 8, 0, "LATENT"],
+    [8, 4, 2, 8, 1, "VAE"],
+    [9, 8, 0, 9, 0, "IMAGE"],
+    [11, 10, 0, 3, 0, "MODEL"]
+  ],
+  "groups": [
+    {
+      "title": "Empire Pose Generation",
+      "bounding": [30, 50, 1800, 700],
+      "color": "#9e6f3f",
+      "font_size": 24
+    }
+  ],
+  "config": {},
+  "extra": {
+    "empire_metadata": {
+      "workflow_type": "pose",
+      "version": "1.0",
+      "description": "Full body pose generation - 768x1152 portrait orientation",
+      "pose_types": [
+        "standing professional",
+        "standing confident",
+        "seated elegant",
+        "seated commanding",
+        "leaning seductive",
+        "kneeling submissive",
+        "lying vulnerable",
+        "arched pleasure",
+        "hands above head"
+      ],
+      "clothing_states": [
+        "business attire",
+        "evening gown",
+        "lingerie",
+        "partially undressed",
+        "topless",
+        "nude"
+      ],
+      "variables": {
+        "queen_name": "Queen's full name",
+        "queen_slug": "URL slug",
+        "pose_type": "One of the pose_types above",
+        "clothing_state": "One of the clothing_states above",
+        "base_prompt": "Queen's base prompt from DNA"
+      }
+    }
+  },
+  "version": 0.4
+}

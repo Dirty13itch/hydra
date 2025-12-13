@@ -1,0 +1,94 @@
+{
+  "tabbyapi_config": {
+    "model": "Llama-3.3-70B-Instruct-exl2-4.0bpw",
+    "temperature": 0.85,
+    "top_p": 0.95,
+    "max_tokens": 2000,
+    "stop_sequences": ["[END SCENE]", "---", "User:"]
+  },
+
+  "system_prompt_template": "You are writing dialogue for the adult visual novel 'Empire of Broken Queens.' You are generating dialogue for {queen_name}, a {nationality} {occupation}. Her voice: {voice_description}. Current corruption level: {corruption_level}%. Physical description: {physical_description}. Generate natural, emotionally resonant dialogue that builds sexual tension gradually. Include physical descriptions that emphasize her attraction profile. Write in second person narrative.",
+
+  "queens": {
+    "emilie": {
+      "name": "Emilie Ekström",
+      "codename": "Nordic Ice",
+      "nationality": "Swedish",
+      "occupation": "CEO of Nordic Innovations",
+      "voice_description": "Cold, precise Swedish accent. Uses formal English. Occasional Swedish curse words when frustrated.",
+      "physical_description": "5'10\" statuesque beauty, 34DD-25-35 hourglass, brown flowing waves, brown captivating eyes, porcelain Nordic skin with delicate freckles, high cheekbones",
+      "corruption_markers": {
+        "0-25": "distant, controlled, uses formal address, brief responses",
+        "25-50": "intrigued, more personal questions, lingering glances",
+        "50-75": "vulnerable, admits feelings, physical tension evident",
+        "75-100": "surrendered, uses endearments (älskling), emotionally open"
+      }
+    },
+    "jordan": {
+      "name": "Jordan Night",
+      "codename": "Ink Queen",
+      "nationality": "American (Brooklyn)",
+      "occupation": "Celebrity tattoo artist, owns Night Ink Studios",
+      "voice_description": "Confident Brooklyn accent. Sarcastic, witty. Uses modern slang. Cusses freely.",
+      "physical_description": "5'7\" athletic artistic beauty, 32DD-25-35 hourglass, black hair with electric blue streaks, dark mysterious eyes, olive skin, full sleeve tattoos on both arms",
+      "corruption_markers": {
+        "0-25": "dismissive, tests you, uses sarcasm as shield",
+        "25-50": "surprised by genuine connection, drops some walls",
+        "50-75": "nervous, creates art for you, admits vulnerability",
+        "75-100": "passionate confession, wants to mark you as hers"
+      }
+    },
+    "nikki": {
+      "name": "Nikki Benz",
+      "codename": "The Golden Empress",
+      "nationality": "Canadian (Ukrainian descent)",
+      "occupation": "Former adult performer, lifestyle brand mogul",
+      "voice_description": "Confident, knows her worth. Slight Eastern European accent under Canadian. Luxurious vocabulary.",
+      "physical_description": "5'6\" glamorous perfection, 36DD-25-35 hourglass, blonde luxurious waves, green feline eyes, golden tanned skin, perfect proportions",
+      "corruption_markers": {
+        "0-25": "seen it all, unimpressed, tests worthiness",
+        "25-50": "intrigued by genuine interest in her mind, opens up",
+        "50-75": "feels 'new' and clean, vulnerable about her past",
+        "75-100": "complete surrender, uses Ukrainian endearments (kokhany)"
+      }
+    }
+  },
+
+  "scene_types": {
+    "introduction": {
+      "corruption_range": [0, 15],
+      "purpose": "First meeting, establish character and attraction",
+      "required_elements": ["physical description", "first impression", "subtle tension"]
+    },
+    "first_corruption": {
+      "corruption_range": [15, 35],
+      "purpose": "The moment she realizes something is different",
+      "required_elements": ["breaking pattern", "curiosity awakened", "lingering touch"]
+    },
+    "awakening": {
+      "corruption_range": [50, 75],
+      "purpose": "She admits her feelings, can't resist anymore",
+      "required_elements": ["emotional vulnerability", "physical desire", "internal conflict"]
+    },
+    "surrender": {
+      "corruption_range": [75, 100],
+      "purpose": "Complete emotional and physical submission",
+      "required_elements": ["love confession", "total vulnerability", "blissful acceptance"]
+    },
+    "intimate": {
+      "corruption_range": [40, 100],
+      "purpose": "Explicit sexual content",
+      "required_elements": ["detailed physical descriptions", "emotional connection", "building pleasure"]
+    }
+  },
+
+  "batch_request_example": {
+    "queen": "emilie",
+    "scene_type": "first_corruption",
+    "location": "Her corner office, floor-to-ceiling windows overlooking Stockholm",
+    "context": "You've just surprised her with insight about her upcoming merger that no one else noticed",
+    "corruption_level": 25,
+    "generate_choices": true,
+    "num_responses": 3
+  }
+}

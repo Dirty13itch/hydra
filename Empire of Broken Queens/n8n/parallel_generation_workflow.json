@@ -1,0 +1,309 @@
+{
+  "name": "Empire - Parallel Generation (Dual GPU)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Generation Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "empire-generate"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse incoming generation request\nconst input = $input.first().json;\n\n// Validate required fields\nif (!input.queen_slug) {\n  throw new Error('queen_slug is required');\n}\n\nconst request = {\n  queen_slug: input.queen_slug,\n  queen_name: input.queen_name || input.queen_slug.replace(/-/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase()),\n  task_type: input.task_type || 'portrait',\n  count: Math.min(input.count || 10, 50),  // Max 50 per request\n  priority: input.priority || 'normal',\n  lora_path: input.lora_path || null,\n  lora_strength: input.lora_strength || 0.8,\n  base_prompt: input.base_prompt || null,\n  negative_prompt: input.negative_prompt || 'deformed, ugly, bad anatomy, blurry, low quality, watermark, text',\n  width: input.width || 1024,\n  height: input.height || 1024,\n  steps: input.steps || 30,\n  cfg: input.cfg || 7.0\n};\n\n// Split into two batches for parallel GPU execution\nconst halfCount = Math.ceil(request.count / 2);\n\nconst batch1 = {\n  ...request,\n  batch_id: 1,\n  gpu_index: 0,\n  count: halfCount,\n  seed_start: Math.floor(Math.random() * 999999)\n};\n\nconst batch2 = {\n  ...request,\n  batch_id: 2,\n  gpu_index: 1,\n  count: request.count - halfCount,\n  seed_start: Math.floor(Math.random() * 999999)\n};\n\nreturn [\n  { json: batch1 },\n  { json: batch2 }\n];"
+      },
+      "id": "split-for-parallel",
+      "name": "Split for Dual GPU",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "public",
+        "table": "generation_tasks",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_type": "={{ $json.task_type }}",
+            "priority": "={{ $json.priority }}",
+            "queen_slug": "={{ $json.queen_slug }}",
+            "config": "={{ JSON.stringify({ count: $json.count, lora_path: $json.lora_path, batch_id: $json.batch_id, gpu_index: $json.gpu_index }) }}",
+            "status": "queued",
+            "total_count": "={{ $json.count }}",
+            "assigned_gpu": "={{ 'gpu-' + $json.gpu_index }}",
+            "created_by": "parallel_api"
+          }
+        },
+        "options": {
+          "returnData": true
+        }
+      },
+      "id": "create-task-db",
+      "name": "Create Task in DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [720, 300],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-empire",
+          "name": "Empire PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build ComfyUI workflow for this batch\nconst batch = $input.first().json;\nconst taskId = $('Create Task in DB').first().json.id;\n\n// Base prompt template\nconst basePrompts = {\n  portrait: `professional portrait photograph of ${batch.queen_name}, photorealistic, 8k uhd, high quality, studio lighting, detailed face, sharp focus`,\n  expression: `close-up portrait of ${batch.queen_name}, expressive face, photorealistic, studio lighting`,\n  pose: `full body photograph of ${batch.queen_name}, elegant pose, photorealistic, fashion photography`,\n  explicit: `artistic photograph of ${batch.queen_name}, intimate, sensual, photorealistic, professional lighting`\n};\n\nconst prompt = batch.base_prompt || basePrompts[batch.task_type] || basePrompts.portrait;\n\n// Generate workflow for batch\nconst images = [];\nfor (let i = 0; i < batch.count; i++) {\n  images.push({\n    seed: batch.seed_start + i,\n    prompt: prompt,\n    negative_prompt: batch.negative_prompt,\n    width: batch.width,\n    height: batch.height,\n    steps: batch.steps,\n    cfg: batch.cfg,\n    filename_prefix: `empire/${batch.queen_slug}/${batch.task_type}/${taskId}_${batch.batch_id}_${i}`,\n    lora_path: batch.lora_path,\n    lora_strength: batch.lora_strength,\n    gpu_index: batch.gpu_index\n  });\n}\n\nreturn images.map(img => ({ json: { ...img, task_id: taskId, batch_id: batch.batch_id } }));"
+      },
+      "id": "build-comfy-requests",
+      "name": "Build ComfyUI Requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 2,
+        "options": {}
+      },
+      "id": "parallel-batch",
+      "name": "Process 2 at a Time",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.203:8188/prompt",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": {\n    \"3\": {\n      \"inputs\": {\n        \"seed\": {{ $json.seed }},\n        \"steps\": {{ $json.steps }},\n        \"cfg\": {{ $json.cfg }},\n        \"sampler_name\": \"dpmpp_2m_sde_gpu\",\n        \"scheduler\": \"karras\",\n        \"denoise\": 1,\n        \"model\": [\"4\", 0],\n        \"positive\": [\"6\", 0],\n        \"negative\": [\"7\", 0],\n        \"latent_image\": [\"5\", 0]\n      },\n      \"class_type\": \"KSampler\"\n    },\n    \"4\": {\n      \"inputs\": {\n        \"ckpt_name\": \"realvisxlV50_v50Bakedvae.safetensors\"\n      },\n      \"class_type\": \"CheckpointLoaderSimple\"\n    },\n    \"5\": {\n      \"inputs\": {\n        \"width\": {{ $json.width }},\n        \"height\": {{ $json.height }},\n        \"batch_size\": 1\n      },\n      \"class_type\": \"EmptyLatentImage\"\n    },\n    \"6\": {\n      \"inputs\": {\n        \"text\": \"{{ $json.prompt }}\",\n        \"clip\": [\"4\", 1]\n      },\n      \"class_type\": \"CLIPTextEncode\"\n    },\n    \"7\": {\n      \"inputs\": {\n        \"text\": \"{{ $json.negative_prompt }}\",\n        \"clip\": [\"4\", 1]\n      },\n      \"class_type\": \"CLIPTextEncode\"\n    },\n    \"8\": {\n      \"inputs\": {\n        \"samples\": [\"3\", 0],\n        \"vae\": [\"4\", 2]\n      },\n      \"class_type\": \"VAEDecode\"\n    },\n    \"9\": {\n      \"inputs\": {\n        \"filename_prefix\": \"{{ $json.filename_prefix }}\",\n        \"images\": [\"8\", 0]\n      },\n      \"class_type\": \"SaveImage\"\n    }\n  },\n  \"extra_data\": {\n    \"extra_pnginfo\": {\n      \"task_id\": \"{{ $json.task_id }}\",\n      \"batch_id\": {{ $json.batch_id }},\n      \"gpu_index\": {{ $json.gpu_index }}\n    }\n  }\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "queue-comfyui",
+      "name": "Queue to ComfyUI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "wait-for-gen",
+      "name": "Wait 30s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if more items to process\nconst processed = $('Queue to ComfyUI').all();\nconst remaining = $('Build ComfyUI Requests').all().length - processed.length;\n\nreturn [{ \n  json: { \n    processed: processed.length,\n    remaining: remaining,\n    continue: remaining > 0\n  }\n}];"
+      },
+      "id": "check-remaining",
+      "name": "Check Remaining",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1920, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate results\nconst allRequests = $('Build ComfyUI Requests').all();\nconst taskId = allRequests[0]?.json?.task_id;\n\nconst results = {\n  task_id: taskId,\n  total_queued: allRequests.length,\n  status: 'queued',\n  message: `Queued ${allRequests.length} images across 2 GPUs`\n};\n\nreturn [{ json: results }];"
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2160, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2400, 300]
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Test data for manual trigger\nreturn [{\n  json: {\n    queen_slug: 'emilie-ekstrom',\n    queen_name: 'Emilie Ekström',\n    task_type: 'portrait',\n    count: 4,\n    priority: 'high'\n  }\n}];"
+      },
+      "id": "test-data",
+      "name": "Test Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 480]
+    }
+  ],
+  "connections": {
+    "Generation Webhook": {
+      "main": [
+        [
+          {
+            "node": "Split for Dual GPU",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split for Dual GPU": {
+      "main": [
+        [
+          {
+            "node": "Create Task in DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Task in DB": {
+      "main": [
+        [
+          {
+            "node": "Build ComfyUI Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build ComfyUI Requests": {
+      "main": [
+        [
+          {
+            "node": "Process 2 at a Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process 2 at a Time": {
+      "main": [
+        [
+          {
+            "node": "Queue to ComfyUI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue to ComfyUI": {
+      "main": [
+        [
+          {
+            "node": "Wait 30s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30s": {
+      "main": [
+        [
+          {
+            "node": "Check Remaining",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Remaining": {
+      "main": [
+        [
+          {
+            "node": "Process 2 at a Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Test": {
+      "main": [
+        [
+          {
+            "node": "Test Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Data": {
+      "main": [
+        [
+          {
+            "node": "Split for Dual GPU",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "empire"
+    },
+    {
+      "name": "generation"
+    },
+    {
+      "name": "parallel"
+    }
+  ],
+  "pinData": {},
+  "versionId": "1"
+}

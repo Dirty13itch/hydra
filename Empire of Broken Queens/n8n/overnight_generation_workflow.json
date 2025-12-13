@@ -1,0 +1,563 @@
+{
+  "name": "Empire - Overnight Generation Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 22
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Start at 10 PM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:5432",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": \"SELECT key, value FROM generation_config WHERE key = 'overnight_pipeline'\"\n}"
+      },
+      "id": "get-config",
+      "name": "Get Pipeline Config",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [460, 300],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-empire",
+          "name": "Empire PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": "public",
+        "table": "queens",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "get-queens",
+      "name": "Get All Queens",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [680, 300],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-empire",
+          "name": "Empire PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": "public",
+        "table": "queen_asset_summary",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "get-asset-summary",
+      "name": "Get Asset Summary",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [680, 480],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-empire",
+          "name": "Empire PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Determine what needs to be generated\nconst queens = $('Get All Queens').all();\nconst assetSummary = $('Get Asset Summary').all();\n\n// Target counts per queen\nconst TARGETS = {\n  portrait: 50,\n  expression: 16,\n  pose: 24,\n  explicit: 32\n};\n\n// Priority by tier\nconst TIER_PRIORITY = {\n  'Alpha': 'high',\n  'Elite': 'high',\n  'Core': 'normal',\n  'Exotic': 'normal',\n  'Specialist': 'low',\n  'Legacy': 'low'\n};\n\nconst tasks = [];\n\nfor (const queen of queens) {\n  const summary = assetSummary.find(s => s.json.queen_id === queen.json.id)?.json || {};\n  const queenSlug = queen.json.name.toLowerCase().replace(/ /g, '-');\n  \n  // Check each asset type\n  for (const [assetType, target] of Object.entries(TARGETS)) {\n    const current = summary[`approved_${assetType}s`] || 0;\n    const needed = target - current;\n    \n    if (needed > 0) {\n      tasks.push({\n        queen_id: queen.json.id,\n        queen_slug: queenSlug,\n        queen_name: queen.json.name,\n        queen_tier: queen.json.tier,\n        task_type: assetType,\n        count_needed: needed,\n        count_current: current,\n        count_target: target,\n        priority: TIER_PRIORITY[queen.json.tier] || 'normal',\n        lora_path: queen.json.lora_path\n      });\n    }\n  }\n}\n\n// Sort by priority and tier\nconst priorityOrder = { 'critical': 0, 'high': 1, 'normal': 2, 'low': 3 };\ntasks.sort((a, b) => {\n  if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {\n    return priorityOrder[a.priority] - priorityOrder[b.priority];\n  }\n  return a.queen_name.localeCompare(b.queen_name);\n});\n\nreturn tasks.map(t => ({ json: t }));"
+      },
+      "id": "calculate-needs",
+      "name": "Calculate Generation Needs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 380]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-tasks",
+              "leftValue": "={{ $json.queen_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-empty",
+      "name": "Has Tasks?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1120, 380]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "public",
+        "table": "generation_tasks",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_type": "={{ $json.task_type }}",
+            "priority": "={{ $json.priority }}",
+            "queen_id": "={{ $json.queen_id }}",
+            "queen_slug": "={{ $json.queen_slug }}",
+            "config": "={{ JSON.stringify({ count: Math.min($json.count_needed, 10), lora_path: $json.lora_path }) }}",
+            "status": "queued",
+            "total_count": "={{ Math.min($json.count_needed, 10) }}",
+            "created_by": "overnight_pipeline"
+          }
+        },
+        "options": {
+          "returnData": true
+        }
+      },
+      "id": "create-tasks",
+      "name": "Create Generation Tasks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1340, 380],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-empire",
+          "name": "Empire PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "batch-tasks",
+      "name": "Process One at a Time",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1560, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.203:8188/prompt",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": {\n    \"3\": {\n      \"inputs\": {\n        \"seed\": {{ Math.floor(Math.random() * 999999999) }},\n        \"steps\": 30,\n        \"cfg\": 7,\n        \"sampler_name\": \"dpmpp_2m_sde_gpu\",\n        \"scheduler\": \"karras\",\n        \"denoise\": 1,\n        \"model\": [\"4\", 0],\n        \"positive\": [\"6\", 0],\n        \"negative\": [\"7\", 0],\n        \"latent_image\": [\"5\", 0]\n      },\n      \"class_type\": \"KSampler\"\n    },\n    \"4\": {\n      \"inputs\": {\n        \"ckpt_name\": \"realvisxlV50_v50Bakedvae.safetensors\"\n      },\n      \"class_type\": \"CheckpointLoaderSimple\"\n    },\n    \"5\": {\n      \"inputs\": {\n        \"width\": 1024,\n        \"height\": 1024,\n        \"batch_size\": 1\n      },\n      \"class_type\": \"EmptyLatentImage\"\n    },\n    \"6\": {\n      \"inputs\": {\n        \"text\": \"portrait of {{ $json.queen_name }}, photorealistic, 8k uhd, high quality\",\n        \"clip\": [\"4\", 1]\n      },\n      \"class_type\": \"CLIPTextEncode\"\n    },\n    \"7\": {\n      \"inputs\": {\n        \"text\": \"deformed, ugly, bad anatomy, blurry, low quality\",\n        \"clip\": [\"4\", 1]\n      },\n      \"class_type\": \"CLIPTextEncode\"\n    },\n    \"8\": {\n      \"inputs\": {\n        \"samples\": [\"3\", 0],\n        \"vae\": [\"4\", 2]\n      },\n      \"class_type\": \"VAEDecode\"\n    },\n    \"9\": {\n      \"inputs\": {\n        \"filename_prefix\": \"empire/{{ $json.queen_slug }}/{{ $json.task_type }}\",\n        \"images\": [\"8\", 0]\n      },\n      \"class_type\": \"SaveImage\"\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "queue-comfyui",
+      "name": "Queue to ComfyUI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 380],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "amount": 35,
+        "unit": "seconds"
+      },
+      "id": "wait-generation",
+      "name": "Wait for Generation",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2000, 380]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": "public",
+        "table": "generation_tasks",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "completed",
+            "completed_count": "={{ $json.total_count }}",
+            "completed_at": "={{ new Date().toISOString() }}"
+          }
+        },
+        "where": {
+          "values": [
+            {
+              "column": "id",
+              "value": "={{ $('Create Generation Tasks').item.json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "update-task-status",
+      "name": "Update Task Status",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [2220, 380],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-empire",
+          "name": "Empire PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-time",
+              "leftValue": "={{ new Date().getHours() }}",
+              "rightValue": 6,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-time-limit",
+      "name": "Before 6 AM?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2440, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate overnight report\nconst tasks = $('Create Generation Tasks').all();\n\nlet totalTasks = tasks.length;\nlet completedTasks = tasks.filter(t => t.json.status === 'completed').length;\nlet totalImages = tasks.reduce((sum, t) => sum + (t.json.total_count || 0), 0);\n\nconst report = {\n  title: 'Overnight Generation Report',\n  date: new Date().toISOString().split('T')[0],\n  summary: {\n    total_tasks: totalTasks,\n    completed_tasks: completedTasks,\n    total_images_generated: totalImages,\n    success_rate: totalTasks > 0 ? (completedTasks / totalTasks * 100).toFixed(1) + '%' : '0%'\n  },\n  by_queen: {},\n  by_type: {}\n};\n\n// Group by queen\nfor (const task of tasks) {\n  const queen = task.json.queen_name;\n  if (!report.by_queen[queen]) {\n    report.by_queen[queen] = { tasks: 0, images: 0 };\n  }\n  report.by_queen[queen].tasks++;\n  report.by_queen[queen].images += task.json.total_count || 0;\n  \n  // Group by type\n  const type = task.json.task_type;\n  if (!report.by_type[type]) {\n    report.by_type[type] = 0;\n  }\n  report.by_type[type] += task.json.total_count || 0;\n}\n\nreturn [{ json: report }];"
+      },
+      "id": "generate-report",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2660, 540]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "public",
+        "table": "quality_metrics",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "period_start": "={{ new Date(new Date().setHours(22,0,0,0)).toISOString() }}",
+            "period_end": "={{ new Date().toISOString() }}",
+            "granularity": "daily",
+            "total_generated": "={{ $json.summary.total_images_generated }}",
+            "rejection_breakdown": "={{ JSON.stringify($json.by_type) }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "save-metrics",
+      "name": "Save Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [2880, 540],
+      "credentials": {
+        "postgres": {
+          "id": "postgres-empire",
+          "name": "Empire PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Overnight Generation Complete\n\n**Date:** {{ $json.date }}\n\n### Summary\n- **Tasks:** {{ $json.summary.completed_tasks }}/{{ $json.summary.total_tasks }}\n- **Images Generated:** {{ $json.summary.total_images_generated }}\n- **Success Rate:** {{ $json.summary.success_rate }}\n\n### By Asset Type\n{{ Object.entries($json.by_type).map(([k,v]) => `- ${k}: ${v}`).join('\\n') }}\n\n### By Queen\n{{ Object.entries($json.by_queen).map(([k,v]) => `- ${k}: ${v.images} images`).join('\\n') }}",
+        "options": {}
+      },
+      "id": "format-notification",
+      "name": "Format Notification",
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [3100, 540]
+    },
+    {
+      "parameters": {},
+      "id": "end-pipeline",
+      "name": "Pipeline Complete",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [3320, 540]
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 480]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:5678/webhook/generation-complete",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "webhook-notify",
+      "name": "Send Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 380],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Start at 10 PM": {
+      "main": [
+        [
+          {
+            "node": "Get Pipeline Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pipeline Config": {
+      "main": [
+        [
+          {
+            "node": "Get All Queens",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Asset Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Queens": {
+      "main": [
+        [
+          {
+            "node": "Calculate Generation Needs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Asset Summary": {
+      "main": [
+        [
+          {
+            "node": "Calculate Generation Needs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Generation Needs": {
+      "main": [
+        [
+          {
+            "node": "Has Tasks?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Tasks?": {
+      "main": [
+        [
+          {
+            "node": "Create Generation Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Generation Tasks": {
+      "main": [
+        [
+          {
+            "node": "Process One at a Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process One at a Time": {
+      "main": [
+        [
+          {
+            "node": "Queue to ComfyUI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue to ComfyUI": {
+      "main": [
+        [
+          {
+            "node": "Wait for Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Generation": {
+      "main": [
+        [
+          {
+            "node": "Update Task Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Task Status": {
+      "main": [
+        [
+          {
+            "node": "Check Time Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Before 6 AM?": {
+      "main": [
+        [
+          {
+            "node": "Process One at a Time",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report": {
+      "main": [
+        [
+          {
+            "node": "Save Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Metrics": {
+      "main": [
+        [
+          {
+            "node": "Format Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Notification": {
+      "main": [
+        [
+          {
+            "node": "Send Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Pipeline Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Pipeline Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "empire",
+      "createdAt": "2025-12-12T00:00:00.000Z",
+      "updatedAt": "2025-12-12T00:00:00.000Z"
+    },
+    {
+      "name": "generation",
+      "createdAt": "2025-12-12T00:00:00.000Z",
+      "updatedAt": "2025-12-12T00:00:00.000Z"
+    },
+    {
+      "name": "overnight",
+      "createdAt": "2025-12-12T00:00:00.000Z",
+      "updatedAt": "2025-12-12T00:00:00.000Z"
+    }
+  ],
+  "pinData": {},
+  "versionId": "1"
+}

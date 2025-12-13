@@ -1,0 +1,695 @@
+group,rel,size,category,summary,has_ip,ips_join,outdated_ips_join,outdated_count,secret_flag,keywords_join
+dotclaude,dotclaude/.claude/.credentials.json,433,config,Credentials JSON (contains secrets) - DO NOT COMMIT,False,,,0,0,
+dotclaude,dotclaude/.claude/CLAUDE.md,21434,doc,"Markdown doc: HYDRA AUTONOMOUS STEWARD | sections: 🧠 IDENTITY & DIRECTIVE, HYDRA CLUSTER - Configuration v2.5, 🚨 CRITICAL RULES (READ FIRST)",True,"100.111.54.59,100.74.73.44,100.84.120.44,192.168.1.1,192.168.1.100,192.168.1.167,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250,192.168.1.251","192.168.1.100,192.168.1.251",2,1,"litellm,letta,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,tailscale,caddy,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/debug/0825c743-dcdf-48ed-bcc9-714b98ecd66a.txt,6408,log,Debug log/text (6 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/0c01615b-d9ef-48b0-8553-12a79ad35ed5.txt,166589,log,Debug log/text (163 KB),True,"192.168.1.250,192.168.1.252",192.168.1.252,1,0,
+dotclaude,dotclaude/.claude/debug/2260dc74-d9a8-46a9-a888-3bbabe95e5b6.txt,6408,log,Debug log/text (6 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/4de5fd39-654b-445f-9ff6-2a7ac2a025ae.txt,5858,log,Debug log/text (6 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/5218698c-ca65-4193-bf41-4aba9fbbad1b.txt,5864,log,Debug log/text (6 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/6dbca6d6-6253-4355-ad53-55268aa051c0.txt,287336,log,Debug log/text (281 KB),True,192.168.1.244,,0,0,hydra-mcp
+dotclaude,dotclaude/.claude/debug/6f3336fa-380e-40c4-b745-9829540187df.txt,23566,log,Debug log/text (23 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/89dc6918-b689-4c70-a679-f87a436cd996.txt,5858,log,Debug log/text (6 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/a2c5b644-74c0-4077-a570-2b56add66180.txt,8461387,log,Debug log/text (8263 KB),True,192.168.1.244,,0,0,hydra-mcp
+dotclaude,dotclaude/.claude/debug/a4b98057-f0d9-4f4b-93e1-714433dfc03a.txt,73251,log,Debug log/text (72 KB),True,192.168.1.244,,0,0,hydra-mcp
+dotclaude,dotclaude/.claude/debug/a9f9f818-f98c-4a6a-b888-56b7674ba833.txt,311802,log,Debug log/text (304 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/c1a38d9a-799c-4235-9380-4dc23f9d6e84.txt,1419026,log,Debug log/text (1386 KB),True,192.168.1.244,,0,0,hydra-mcp
+dotclaude,dotclaude/.claude/debug/ce1fe135-729b-48ba-b97c-ccb89a3b765e.txt,5864,log,Debug log/text (6 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/d4d7ec14-61d9-48a1-95b8-ea6056af58f9.txt,1035281,log,Debug log/text (1011 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/dd3c1b1f-5a99-491d-9e1b-e8fa6ee3857a.txt,5770,log,Debug log/text (6 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/e0f80bf0-9ee6-4f85-8be9-594fb23cbaaf.txt,1452,log,Debug log/text (1 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/e2a178ef-b9de-4932-8391-175207961cc9.txt,2638715,log,Debug log/text (2577 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/e8019c34-e47f-4f89-865c-2cfdf8868b73.txt,21050,log,Debug log/text (21 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/ec672d03-5002-4c75-9eef-069d6dfd47e2.txt,495513,log,Debug log/text (484 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/f30d8a8a-1111-404c-8a08-c9b44668eec4.txt,2420,log,Debug log/text (2 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/f5cc6828-c3e0-4805-b284-f1fc62e96dc4.txt,663927,log,Debug log/text (648 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/ff92b025-bdb6-4e06-9f7c-54f49d103020.txt,5864,log,Debug log/text (6 KB),False,,,0,0,
+dotclaude,dotclaude/.claude/debug/latest,69,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/6dbca6d6-6253-4355-ad53-55268aa051c0/ef0183f4e40c5cc3@v2,630,other,Other file,True,"192.168.1.224,192.168.1.244,192.168.1.250",192.168.1.224,1,0,hydra-mcp
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/08978ae8853da142@v1,11817,other,Other file,True,"0.0.0.0,192.168.1.203",,0,0,"litellm,letta,qdrant,prometheus"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/08978ae8853da142@v2,14245,other,Other file,True,"0.0.0.0,192.168.1.203",,0,0,"litellm,letta,qdrant,prometheus"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/0c880115168b1a0b@v1,2060,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/121df31869f4a212@v1,5453,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/1482367c3b3683e6@v1,7905,other,Other file,True,192.168.1.244,,0,0,"hydra-mcp,letta,alertmanager,n8n"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/18b80087505bd147@v1,10544,other,Other file,False,,,0,0,"hydra-mcp,litellm,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/1c1ce35ed3e309a2@v1,4274,other,Other file,True,"192.168.1.203,192.168.1.244",,0,0,"letta,qdrant,prometheus,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/1c1ce35ed3e309a2@v2,5340,other,Other file,True,"192.168.1.203,192.168.1.244",,0,0,"letta,qdrant,prometheus,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/1eb8c521bb1cae49@v1,1676,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/258958b77623092a@v1,9408,other,Other file,True,"192.168.1.203,192.168.1.244,192.168.1.250",,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/258958b77623092a@v2,9917,other,Other file,True,"192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/258958b77623092a@v3,27647,other,Other file,True,"192.168.1.113,192.168.1.124,192.168.1.158,192.168.1.159,192.168.1.166,192.168.1.172,192.168.1.203,192.168.1.210,192.168.1.244,192.168.1.245,192.168.1.250,192.168.1.251,192.168.1.36,192.168.1.49,192.168.1.81,192.168.1.96","192.168.1.113,192.168.1.124,192.168.1.158,192.168.1.159,192.168.1.166,192.168.1.172,192.168.1.210,192.168.1.245,192.168.1.251,192.168.1.36,192.168.1.49,192.168.1.81,192.168.1.96",13,0,"litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/258958b77623092a@v4,27902,other,Other file,True,"192.168.1.113,192.168.1.124,192.168.1.158,192.168.1.159,192.168.1.166,192.168.1.172,192.168.1.203,192.168.1.210,192.168.1.244,192.168.1.245,192.168.1.250,192.168.1.251,192.168.1.36,192.168.1.49,192.168.1.81,192.168.1.96","192.168.1.113,192.168.1.124,192.168.1.158,192.168.1.159,192.168.1.166,192.168.1.172,192.168.1.210,192.168.1.245,192.168.1.251,192.168.1.36,192.168.1.49,192.168.1.81,192.168.1.96",13,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/28758f1acb55dd5d@v1,2040,other,Other file,True,192.168.1.244,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/2a741ebb91befacf@v1,11909,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/2a741ebb91befacf@v2,12251,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/2c058679f652ad30@v1,1374,other,Other file,False,,,0,0,"litellm,letta,qdrant,prometheus"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/2ca5337429f24674@v1,12434,other,Other file,True,192.168.1.244,,0,0,"litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,open-webui"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/2ca5337429f24674@v2,12992,other,Other file,True,192.168.1.244,,0,0,"litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,open-webui"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/30622ddd05f61d0e@v1,4095,other,Other file,True,"192.168.1.0,192.168.1.203,192.168.1.244,192.168.1.250",,0,0,"hydra-mcp,letta,qdrant,prometheus,alertmanager,tabbyapi,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/30622ddd05f61d0e@v2,4258,other,Other file,True,"192.168.1.0,192.168.1.203,192.168.1.244,192.168.1.250",,0,0,"hydra-mcp,letta,qdrant,prometheus,alertmanager,tabbyapi,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/33614c87a5cf5a67@v1,312,other,Other file,True,192.168.1.244,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/33614c87a5cf5a67@v2,312,other,Other file,True,192.168.1.244,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v1,10478,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v10,12631,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v11,12980,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v12,13209,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v2,10523,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v3,10536,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v4,10268,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v5,10368,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v6,10575,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v7,11015,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v8,11285,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/37efd67cbb4804c7@v9,11817,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/382ac986a3e2393b@v1,6183,other,Other file,True,192.168.1.244,,0,0,"letta,alertmanager"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/39866b9e9ff89566@v1,181,other,Other file,True,192.168.1.244,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/3d725a69df977d0f@v1,2201,other,Other file,True,192.168.1.244,,0,0,litellm
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/3dd62d2aa7b141ca@v1,14455,other,Other file,True,192.168.1.203,,0,0,"litellm,qdrant,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/440e32c8af5a49fd@v1,2408,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/440e32c8af5a49fd@v2,3607,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/440e32c8af5a49fd@v3,5196,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/478d7a18b5ab7ab6@v2,10589,other,Other file,True,"192.168.1.203,192.168.1.244",,0,1,"hydra-mcp,letta,qdrant,prometheus,alertmanager,dcgm,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/4d904ac8c7d55482@v1,8187,other,Other file,False,,,0,1,prometheus
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/55a2d1c510c7ebc5@v1,580,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/565468ba08360a60@v1,2761,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/57803004b5d8d509@v1,6191,other,Other file,False,,,0,0,ollama
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/57803004b5d8d509@v2,9937,other,Other file,False,,,0,0,ollama
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/5e1c916255d1eb80@v1,5065,other,Other file,False,,,0,0,"hydra-mcp,alertmanager,n8n"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/5e644ed3e9f26495@v1,52840,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/5e644ed3e9f26495@v2,52893,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/60b312ef73f5cd1c@v1,7886,other,Other file,True,"192.168.1.244,192.168.1.251",192.168.1.251,1,0,"letta,alertmanager,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6533a477b3b38782@v1,325,other,Other file,True,192.168.1.244,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v1,9091,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,0,"litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v10,10941,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v11,11127,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v12,11713,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v13,12364,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v14,13537,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v15,13743,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v16,13743,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v17,14516,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v2,11526,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v3,12067,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v39,7269,other,Other file,False,,,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,n8n,redis,postgres,open-webui,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v4,12544,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v40,7269,other,Other file,False,,,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,n8n,redis,postgres,open-webui,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v5,13803,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v6,8155,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,0,"litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v7,10237,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v8,10558,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/662995432718341c@v9,10734,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/69a0744987fb2626@v1,9314,other,Other file,False,,,0,0,"litellm,prometheus"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6a5ac9fcbb1bcbd3@v1,7383,other,Other file,True,192.168.1.244,,0,0,"hydra-mcp,litellm,letta,prometheus,grafana,tabbyapi,n8n"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6a5ac9fcbb1bcbd3@v2,7521,other,Other file,True,192.168.1.244,,0,0,"hydra-mcp,litellm,letta,prometheus,grafana,tabbyapi,n8n"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6bbea3d9336ac884@v1,10950,other,Other file,False,,,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,ollama,comfyui,n8n,open-webui"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6de678c4a1f202da@v1,6432,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6de678c4a1f202da@v2,6785,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6de678c4a1f202da@v3,8364,other,Other file,False,,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6de678c4a1f202da@v4,8614,other,Other file,False,,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6de678c4a1f202da@v5,8939,other,Other file,False,,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6de678c4a1f202da@v6,9565,other,Other file,False,,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6de678c4a1f202da@v7,12524,other,Other file,False,,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6de678c4a1f202da@v8,15044,other,Other file,True,"192.168.1.244,192.168.1.250,192.168.1.251",192.168.1.251,1,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6de678c4a1f202da@v9,15158,other,Other file,True,"192.168.1.244,192.168.1.250,192.168.1.251",192.168.1.251,1,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/6e4815a89c6fffda@v1,5318,other,Other file,False,,,0,0,"prometheus,dcgm"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/748df3afc1ce43f6@v1,840,other,Other file,True,0.0.0.0,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/7619f0a8b28a8d3d@v1,6186,other,Other file,True,192.168.1.244,,0,0,alertmanager
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/7619f0a8b28a8d3d@v2,12507,other,Other file,True,192.168.1.244,,0,0,alertmanager
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/7f6fc8162d945f6f@v1,2129,other,Other file,True,192.168.1.244,,0,0,"letta,qdrant,prometheus"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/7f6fc8162d945f6f@v2,2338,other,Other file,True,192.168.1.244,,0,0,"letta,qdrant,prometheus"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/7f6fc8162d945f6f@v3,4570,other,Other file,True,192.168.1.244,,0,0,"letta,qdrant,prometheus"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/7f6fc8162d945f6f@v4,4771,other,Other file,True,192.168.1.244,,0,0,"letta,qdrant,prometheus"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/7f6fc8162d945f6f@v5,5262,other,Other file,True,192.168.1.244,,0,0,"letta,qdrant,prometheus"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/7f6fc8162d945f6f@v6,7115,other,Other file,True,"192.168.1.244,192.168.1.251",192.168.1.251,1,0,"letta,qdrant,prometheus,alertmanager,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/7f6fc8162d945f6f@v7,9139,other,Other file,True,"192.168.1.244,192.168.1.251",192.168.1.251,1,0,"letta,qdrant,prometheus,alertmanager,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/880d24e4243e1290@v1,1330,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/880d24e4243e1290@v2,8238,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/88591b86421debfe@v1,26116,other,Other file,True,"0.0.0.0,192.168.1.203",,0,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/88591b86421debfe@v2,28822,other,Other file,True,"0.0.0.0,192.168.1.203",,0,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/889ad65bed43436b@v1,3531,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/889ad65bed43436b@v2,4050,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/8a25ff69ab7f2bc3@v1,13299,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/8d868f952efd3bdd@v1,6040,other,Other file,True,192.168.1.244,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/8d868f952efd3bdd@v2,6041,other,Other file,True,192.168.1.244,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/8f34dda1673109fb@v1,562,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/92f3b4d655f4615b@v1,11758,other,Other file,True,192.168.1.244,,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/934c108f0d0c7cca@v1,88,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/963c5525a4e4caa3@v1,10338,other,Other file,False,,,0,0,"litellm,letta,prometheus,tabbyapi,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/9939b5031b30bf66@v1,7062,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/9c10d9c29633c86f@v1,1497,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/9c10d9c29633c86f@v2,2567,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/9c10d9c29633c86f@v3,4732,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/9c10d9c29633c86f@v4,6111,other,Other file,True,192.168.1.244,,0,0,"grafana,n8n"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/9c10d9c29633c86f@v5,12639,other,Other file,True,192.168.1.244,,0,0,"grafana,n8n"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/9cba6b831acd07f5@v1,4229,other,Other file,True,"192.168.1.203,192.168.1.250",,0,0,dcgm
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/9cedd31eef7af0c1@v1,3461,other,Other file,True,192.168.1.244,,0,0,"letta,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/9e7801f2399f1991@v1,364,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/a00263457769322c@v1,4465,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/a5f2af250f0ce5da@v1,217,other,Other file,True,192.168.1.244,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/a6650faf238f967b@v1,2465,other,Other file,False,,,0,0,"hydra-mcp,qdrant"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/a871a050a6f9d481@v1,10422,other,Other file,True,"0.0.0.0,192.168.1.0,192.168.1.1,192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250,192.168.1.76,192.168.3.113","192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.76",6,1,"litellm,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/a871a050a6f9d481@v2,10997,other,Other file,True,"0.0.0.0,192.168.1.0,192.168.1.1,192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250,192.168.1.76,192.168.3.113","192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.76",6,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/a9b8ae2a5caa69c6@v1,3115,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/a9f0fe2ddfff11b9@v1,5524,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/a9f0fe2ddfff11b9@v2,9581,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/aac75355aa3e9ad6@v1,233,other,Other file,True,192.168.1.244,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/ae461f2c625e34c4@v1,4350,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/ae461f2c625e34c4@v2,5338,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/b4ae5ebb8d83149a@v1,25986,other,Other file,True,"0.0.0.0,192.168.1.203",,0,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/b4ae5ebb8d83149a@v2,26022,other,Other file,True,"0.0.0.0,192.168.1.203",,0,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/b54e691cdc956d7d@v1,9620,other,Other file,True,192.168.1.244,,0,0,prometheus
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/b54e691cdc956d7d@v2,9681,other,Other file,True,192.168.1.244,,0,0,prometheus
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/b6afbe153ee59e77@v1,8828,other,Other file,False,,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/b8aed2c154b48319@v1,9013,other,Other file,True,"192.168.1.175,192.168.1.250",192.168.1.175,1,0,"tabbyapi,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/bdb3d7115e509ac5@v1,2543,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/bdb3d7115e509ac5@v2,4557,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/bdb3d7115e509ac5@v3,5432,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/bdb3d7115e509ac5@v4,5556,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/c367db0510e3a27c@v1,6767,other,Other file,False,,,0,0,prometheus
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/c367db0510e3a27c@v2,6817,other,Other file,False,,,0,0,prometheus
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/c808c30d31874d6e@v1,1621,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/c808c30d31874d6e@v2,1681,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/c9e10cf20f99391e@v1,2683,other,Other file,False,,,0,0,"letta,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/d37d459d531da5ef@v1,1389,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/d5e10126d708e84d@v1,5370,other,Other file,False,,,0,0,"prometheus,alertmanager"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/d911e8323ca34939@v1,6269,other,Other file,True,"192.168.1.175,192.168.1.250",192.168.1.175,1,0,"prometheus,tabbyapi,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dad4e9788518b88b@v1,1104,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dad4e9788518b88b@v2,3128,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dad4e9788518b88b@v3,9548,other,Other file,True,"192.168.1.244,192.168.1.250,192.168.1.251",192.168.1.251,1,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,ollama,comfyui,n8n,open-webui"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dad4e9788518b88b@v4,13351,other,Other file,True,"192.168.1.244,192.168.1.250,192.168.1.251",192.168.1.251,1,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,ollama,comfyui,n8n,open-webui"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/db2d14da1e5860cc@v1,30915,other,Other file,True,"0.0.0.0,192.168.1.203",,0,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/db2d14da1e5860cc@v2,31423,other,Other file,True,"0.0.0.0,192.168.1.203",,0,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/db7510dbe8a28284@v1,5858,other,Other file,False,,,0,1,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/db7510dbe8a28284@v2,6455,other,Other file,False,,,0,1,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/db7510dbe8a28284@v3,10166,other,Other file,False,,,0,1,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/db7510dbe8a28284@v4,13934,other,Other file,False,,,0,1,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dba7465973fdaa04@v1,13960,other,Other file,False,,,0,1,"litellm,qdrant,prometheus,dcgm,tabbyapi,ollama,comfyui,n8n,redis,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dba7465973fdaa04@v2,15877,other,Other file,False,,,0,1,"litellm,letta,qdrant,prometheus,grafana,dcgm,tabbyapi,ollama,comfyui,n8n,redis,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dba7465973fdaa04@v3,16950,other,Other file,True,192.168.1.244,,0,1,"litellm,letta,qdrant,prometheus,grafana,dcgm,tabbyapi,ollama,comfyui,n8n,redis,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dba7465973fdaa04@v4,18002,other,Other file,True,192.168.1.244,,0,1,"litellm,letta,qdrant,prometheus,grafana,dcgm,tabbyapi,ollama,comfyui,n8n,redis,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dba7465973fdaa04@v5,18546,other,Other file,True,192.168.1.244,,0,1,"litellm,letta,qdrant,prometheus,grafana,dcgm,tabbyapi,ollama,comfyui,n8n,redis,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dba7465973fdaa04@v6,19954,other,Other file,True,192.168.1.244,,0,1,"litellm,letta,qdrant,prometheus,grafana,dcgm,tabbyapi,ollama,comfyui,n8n,redis,open-webui,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dd26da751ab9fb9a@v1,1632,other,Other file,False,,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dd26da751ab9fb9a@v2,1652,other,Other file,False,,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/debd11eb037ff6b8@v1,497,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/debd11eb037ff6b8@v2,607,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/debd11eb037ff6b8@v3,716,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/dffcc1c1a59630bc@v1,3086,other,Other file,False,,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/e35ab3bd31d55a8a@v1,1118,other,Other file,True,192.168.1.244,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/e35ab3bd31d55a8a@v2,1126,other,Other file,True,192.168.1.244,,0,0,letta
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/e4a884efb6ca637f@v1,10883,other,Other file,True,"192.168.1.244,2.37.996.608",,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/ec7629c5a8d50464@v1,14331,other,Other file,True,"192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/ec7629c5a8d50464@v2,15195,other,Other file,True,"192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/ec7629c5a8d50464@v3,15972,other,Other file,True,"192.168.1.1,192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/ec7629c5a8d50464@v4,16214,other,Other file,True,"192.168.1.1,192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/ec7629c5a8d50464@v5,16956,other,Other file,True,"192.168.1.1,192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/ef2f3e9c9838bc2e@v1,7847,other,Other file,True,192.168.1.244,,0,1,"litellm,qdrant,grafana,n8n,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/ef2f3e9c9838bc2e@v2,8371,other,Other file,True,192.168.1.244,,0,1,"litellm,qdrant,grafana,n8n,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/f590b965eb80a81c@v1,1317,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/f590b965eb80a81c@v2,1339,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/f5962b966f293ff4@v1,13352,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/f5bd806768f4a4e8@v1,8252,other,Other file,True,192.168.1.244,,0,0,"letta,qdrant,prometheus,alertmanager,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/f5f580090017fd09@v1,3395,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/f5f580090017fd09@v2,2947,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/f5f580090017fd09@v3,3999,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/f730d937f1bbcabe@v1,11377,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/fabdfab9ab6fc455@v1,758,other,Other file,False,,,0,0,"hydra-mcp,alertmanager"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/fc6f4d2fc418db2f@v1,14285,other,Other file,False,,,0,0,"hydra-mcp,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/fe598d0a682d204b@v1,7296,other,Other file,True,192.168.1.244,,0,0,"letta,qdrant,prometheus,alertmanager,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/fe598d0a682d204b@v2,7255,other,Other file,True,192.168.1.244,,0,0,"letta,qdrant,prometheus,alertmanager,ollama"
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/fe7493b40111abee@v1,984,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a2c5b644-74c0-4077-a570-2b56add66180/ff5098e4001bbc8e@v1,2111,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/a9f9f818-f98c-4a6a-b888-56b7674ba833/ec7629c5a8d50464@v1,20572,other,Other file,True,"100.111.54.59,100.74.73.44,100.84.120.44,192.168.1.1,192.168.1.100,192.168.1.167,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,1,"litellm,letta,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,tailscale,caddy,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/a9f9f818-f98c-4a6a-b888-56b7674ba833/ec7629c5a8d50464@v2,21434,other,Other file,True,"100.111.54.59,100.74.73.44,100.84.120.44,192.168.1.1,192.168.1.100,192.168.1.167,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250,192.168.1.251","192.168.1.100,192.168.1.251",2,1,"litellm,letta,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,tailscale,caddy,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/0f190ee0a7ee72b2@v1,211,other,Other file,True,0.0.0.0,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/1421a90b51232017@v1,149,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/16f65da94d27e78e@v1,604,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/1952dc9e7adbb5e2@v1,92,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/1952dc9e7adbb5e2@v2,84,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/30668854c1f9f919@v2,9277,other,Other file,False,,,0,1,"litellm,comfyui,n8n,redis"
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/35407a6f0b4f189a@v1,16018,other,Other file,False,,,0,0,"litellm,prometheus,grafana,dcgm,n8n,redis"
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/35407a6f0b4f189a@v2,18920,other,Other file,False,,,0,0,"litellm,qdrant,prometheus,grafana,dcgm,n8n,searxng"
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/35407a6f0b4f189a@v3,19075,other,Other file,True,"192.168.1.203,192.168.1.250",,0,0,"litellm,qdrant,prometheus,grafana,dcgm,tabbyapi,ollama,n8n,searxng"
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/3a08804540d2e4fe@v1,544,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/435033dbd5513a07@v1,13102,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/435033dbd5513a07@v2,14269,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/44772f51c50ae358@v1,442,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/4b7a65fe9398bed0@v1,7776,other,Other file,False,,,0,0,"prometheus,dcgm"
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/683123e1d121f9f4@v1,953,other,Other file,False,,,0,0,"prometheus,dcgm"
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/7210347fe9fec694@v1,15342,other,Other file,False,,,0,1,"litellm,prometheus,grafana,dcgm,comfyui,n8n,redis"
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/93b7329b5e44a639@v1,3140,other,Other file,False,,,0,0,"litellm,qdrant,prometheus,grafana,n8n,redis,postgres,firecrawl,searxng"
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/9f8be9e5610e7d1d@v1,1023,other,Other file,True,0.0.0.0,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/a855fac244017227@v1,2648,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/aa80ab785065f136@v1,1522,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/ab632338fc1fbbc0@v1,211,other,Other file,True,0.0.0.0,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/ab632338fc1fbbc0@v2,289,other,Other file,True,0.0.0.0,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/c7cd3c38cfdb4747@v1,91,other,Other file,False,,,0,0,redis
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/e67b59e446d68fc7@v1,5771,other,Other file,False,,,0,0,"grafana,dcgm"
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/e67b59e446d68fc7@v2,5817,other,Other file,False,,,0,0,"grafana,dcgm"
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/f81b6f2f010c8083@v1,88,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/c1a38d9a-799c-4235-9380-4dc23f9d6e84/ff4b11b9c9ad4cae@v1,1093,other,Other file,False,,,0,0,"litellm,qdrant,prometheus,grafana,n8n,caddy,open-webui,searxng"
+dotclaude,dotclaude/.claude/file-history/d4d7ec14-61d9-48a1-95b8-ea6056af58f9/258958b77623092a@v1,10573,other,Other file,True,"192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern"
+dotclaude,dotclaude/.claude/file-history/d4d7ec14-61d9-48a1-95b8-ea6056af58f9/258958b77623092a@v2,11267,other,Other file,True,"192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern"
+dotclaude,dotclaude/.claude/file-history/d4d7ec14-61d9-48a1-95b8-ea6056af58f9/258958b77623092a@v3,11350,other,Other file,True,"192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern"
+dotclaude,dotclaude/.claude/file-history/d4d7ec14-61d9-48a1-95b8-ea6056af58f9/258958b77623092a@v4,11997,other,Other file,True,"192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/d4d7ec14-61d9-48a1-95b8-ea6056af58f9/258958b77623092a@v5,12011,other,Other file,True,"192.168.1.100,192.168.1.155,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250","192.168.1.100,192.168.1.155",2,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/d4d7ec14-61d9-48a1-95b8-ea6056af58f9/258958b77623092a@v6,12721,other,Other file,True,"192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/d4d7ec14-61d9-48a1-95b8-ea6056af58f9/a871a050a6f9d481@v1,7545,other,Other file,True,"192.168.1.0,192.168.1.1,192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250,192.168.1.76,192.168.3.113","192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.76",6,0,"litellm,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/d4d7ec14-61d9-48a1-95b8-ea6056af58f9/a871a050a6f9d481@v2,9659,other,Other file,True,"0.0.0.0,192.168.1.0,192.168.1.1,192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250,192.168.1.76,192.168.3.113","192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.76",6,1,"litellm,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/d4d7ec14-61d9-48a1-95b8-ea6056af58f9/a871a050a6f9d481@v3,10406,other,Other file,True,"0.0.0.0,192.168.1.0,192.168.1.1,192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250,192.168.1.76,192.168.3.113","192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.76",6,1,"litellm,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/178e53d3145ee00b@v1,6166,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/1f1f29c7eabab462@v1,11835,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/30d76bdb807490e6@v1,6214,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/37521563a95a5328@v1,478,other,Other file,True,0.0.0.0,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/48e8fc7406952194@v1,133,other,Other file,False,,,0,0,redis
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/4932c74ecfc7a017@v1,19059,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/49790bae59644e46@v1,8775,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/4f28a62c9442fa47@v1,4782,other,Other file,False,,,0,0,tabbyapi
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/5325113d590351da@v1,35758,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/5325113d590351da@v2,35577,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/60563476350455c6@v1,718,other,Other file,True,"192.168.1.203,192.168.1.244",,0,1,"qdrant,comfyui,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/60563476350455c6@v2,744,other,Other file,True,"192.168.1.203,192.168.1.244",,0,1,"qdrant,comfyui,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/7581cd895657e294@v1,650,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/7875e93fba4b8f6e@v2,10073,other,Other file,False,,,0,0,"tabbyapi,comfyui,n8n,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/7d1f715c9d43608c@v1,4066,other,Other file,True,"192.168.1.203,192.168.1.244",,0,0,"comfyui,n8n,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/7e88160d35602126@v1,5369,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/805c8d80d92acb2f@v1,19732,other,Other file,False,,,0,0,qdrant
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/93914d713069f54c@v1,8776,other,Other file,True,"192.168.1.203,192.168.1.244,192.168.1.250",,0,0,"tabbyapi,comfyui,n8n,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/9d0cb25708edd0b6@v1,5216,other,Other file,True,192.168.1.244,,0,0,"qdrant,comfyui"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/a978c415816ab100@v1,18411,other,Other file,True,"192.168.1.203,192.168.1.244",,0,0,"comfyui,n8n,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/ac5f05c0a51f1f2b@v1,25622,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/b183b616677a406f@v1,101827,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/b4902f03a63fd141@v1,3572,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/c664f063bf81ed4a@v1,5929,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/cad8ef39ca8fa15d@v1,19912,other,Other file,True,"0.0.0.0,192.168.1.203,192.168.1.244",,0,1,"qdrant,comfyui,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/cad8ef39ca8fa15d@v2,20093,other,Other file,True,"0.0.0.0,192.168.1.203,192.168.1.244",,0,1,"qdrant,comfyui,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/dc74434f5ae8ae51@v1,36531,other,Other file,True,"192.168.1.244,192.168.1.250",,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/dd68ee145dd5339a@v1,15950,other,Other file,True,192.168.1.250,,0,1,"qdrant,prometheus,grafana,ollama,comfyui,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/dd68ee145dd5339a@v2,16048,other,Other file,True,192.168.1.250,,0,1,"qdrant,prometheus,grafana,ollama,comfyui,redis,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/ddfa57ce03ea023b@v1,6343,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/e5440654d6b1f859@v1,10132,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/e5440654d6b1f859@v2,11278,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/e5440654d6b1f859@v3,11623,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/e9595f91fe85210f@v1,8091,other,Other file,False,,,0,0,"tabbyapi,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/e9595f91fe85210f@v2,8589,other,Other file,False,,,0,0,"tabbyapi,postgres"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/ec7629c5a8d50464@v1,16995,other,Other file,True,"192.168.1.1,192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/ec7629c5a8d50464@v2,18990,other,Other file,True,"100.111.54.59,100.74.73.44,100.84.120.44,192.168.1.1,192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,1,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,tailscale,caddy,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/ec7629c5a8d50464@v3,19783,other,Other file,True,"100.111.54.59,100.74.73.44,100.84.120.44,192.168.1.1,192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,1,"litellm,letta,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,tailscale,caddy,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/file-history/e2a178ef-b9de-4932-8391-175207961cc9/ee62b34df951c09d@v1,12112,other,Other file,True,192.168.1.203,,0,0,"comfyui,n8n,postgres"
+dotclaude,dotclaude/.claude/file-history/ec672d03-5002-4c75-9eef-069d6dfd47e2/e0032c2209fec447@v2,624,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/history.jsonl,358258,log,JSONL: 317 lines,True,"0.0.0.0,127.0.0.1,192.168.1.0,192.168.1.1,192.168.1.100,192.168.1.203,192.168.1.224,192.168.1.244,192.168.1.250,255.255.255.0,3.0.0.827","192.168.1.100,192.168.1.224",2,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,open-webui,firecrawl,searxng,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/plugins/installed_plugins.json,35,config,"JSON: keys=version, plugins",False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-hydra/0c01615b-d9ef-48b0-8553-12a79ad35ed5.jsonl,330797,log,JSONL: 270 lines,True,"0.0.0.0,127.0.0.1,172.17.0.1,192.168.1.1,192.168.1.104,192.168.1.167,192.168.1.205,192.168.1.244,192.168.1.250,192.168.1.255,192.168.1.50","192.168.1.104,192.168.1.255",2,0,tabbyapi
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-hydra/agent-350a9c25.jsonl,1301,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-hydra/agent-628d3223.jsonl,1432,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-hydra/agent-86da64ef.jsonl,1248,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-hydra/agent-913de02b.jsonl,1328,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-hydra/f5cc6828-c3e0-4805-b284-f1fc62e96dc4.jsonl,1981982,log,JSONL: 1017 lines,True,"0.0.0.0,1.13.1.3,10.3.9.90,11.3.3.83,11.7.3.90,12.5.8.93,12.8.4.1,127.0.0.1,192.168.1.1,192.168.1.100,192.168.1.203,192.168.1.250,9.10.2.21",192.168.1.100,1,0,tabbyapi
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-projects-hydra/6f3336fa-380e-40c4-b745-9829540187df.jsonl,36759,log,JSONL: 11 lines,True,"192.168.1.100,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,comfyui,n8n,redis,postgres,searxng,sillytavern"
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-projects-hydra/agent-5869f68e.jsonl,1323,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-projects-hydra/agent-68a869ff.jsonl,1728,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-projects-hydra/agent-d29c94a5.jsonl,1941,log,Claude transcript JSONL: 2 lines,False,,,0,0,"litellm,qdrant,prometheus,grafana,tabbyapi,redis,postgres"
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-projects-hydra/agent-f3b31629.jsonl,1506,log,Claude transcript JSONL: 2 lines,False,,,0,0,"litellm,qdrant,prometheus,grafana,n8n,redis,postgres"
+dotclaude,dotclaude/.claude/projects/C--Users-shaun-projects-hydra/d4d7ec14-61d9-48a1-95b8-ea6056af58f9.jsonl,7651630,log,JSONL: 2365 lines,True,"0.0.0.0,192.168.1.203,192.168.1.244",,0,1,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,n8n,redis,postgres,open-webui,firecrawl,searxng"
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/6dbca6d6-6253-4355-ad53-55268aa051c0.jsonl,694492,log,JSONL: 549 lines,True,"192.168.1.100,192.168.1.203,192.168.1.224,192.168.1.244","192.168.1.100,192.168.1.224",2,0,"hydra-mcp,n8n"
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/a2c5b644-74c0-4077-a570-2b56add66180.jsonl,33944347,log,JSONL: 12955 lines,True,"0.0.0.0,10.10.10.1,127.0.0.1,192.168.1.1,192.168.1.167,192.168.1.203,192.168.1.205,192.168.1.224,192.168.1.244,192.168.1.250,192.168.1.255,192.168.1.50","192.168.1.224,192.168.1.255",2,0,"litellm,qdrant,prometheus,grafana,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,open-webui,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/a2c5b644-74c0-4077-a570-2b56add66180/session-memory/summary.md,75080,doc,"Markdown doc: Session Title | sections: Current State, Core Endpoints, Container Management (NEW in v2)",True,"0.0.0.0,172.17.0.1,192.168.1.1,192.168.1.167,192.168.1.203,192.168.1.205,192.168.1.224,192.168.1.244,192.168.1.250",192.168.1.224,1,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,tailscale,open-webui,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/a4b98057-f0d9-4f4b-93e1-714433dfc03a.jsonl,193066,log,JSONL: 105 lines,True,"0.0.0.0,192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"litellm,qdrant,prometheus,grafana,tabbyapi,ollama,n8n,redis,postgres,open-webui,searxng"
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/a9f9f818-f98c-4a6a-b888-56b7674ba833.jsonl,1494365,log,JSONL: 655 lines,True,"0.0.0.0,172.21.0.1,172.31.144.1,192.168.1.167,192.168.1.203,192.168.1.244,192.168.1.250,192.168.1.251",192.168.1.251,1,1,"litellm,tabbyapi,ollama,redis,tailscale"
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-02162360.jsonl,1278,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-0267cb4b.jsonl,1812,log,Claude transcript JSONL: 3 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-2e2fb0c1.jsonl,1227,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-396825c9.jsonl,1565,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-4480c5a4.jsonl,1535,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-6eb49d44.jsonl,1764,log,Claude transcript JSONL: 3 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-7e1248cd.jsonl,1308,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-7e72452d.jsonl,374995,log,Claude transcript JSONL: 48 lines,True,"192.168.1.244,192.168.1.250,192.168.1.251",192.168.1.251,1,1,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,ollama,comfyui,n8n,open-webui"
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-91c75350.jsonl,1393,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-9a795a41.jsonl,1242,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-a2e42ac.jsonl,1391,log,Claude transcript JSONL: 3 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-a923713.jsonl,415311,log,Claude transcript JSONL: 66 lines,False,,,0,0,"qdrant,tabbyapi,ollama,comfyui,n8n,redis,postgres,kokoro"
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-abfb076.jsonl,1951,log,Claude transcript JSONL: 3 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-ad3d19f.jsonl,2232,log,Claude transcript JSONL: 3 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-ae853b7.jsonl,1617,log,Claude transcript JSONL: 3 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-d240794e.jsonl,1500,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-da234a60.jsonl,1392,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/agent-e1acb147.jsonl,1409,log,Claude transcript JSONL: 2 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/c1a38d9a-799c-4235-9380-4dc23f9d6e84.jsonl,6135616,log,JSONL: 3321 lines,True,"0.0.0.0,127.0.0.1,169.254.162.1,169.254.255.255,169.254.68.193,172.17.0.1,172.17.255.255,172.18.0.1,172.18.255.255,172.19.0.1,172.19.255.255,172.20.0.1,172.20.255.255,172.21.0.1,172.21.255.255,172.22.0.1,172.22.255.255,192.168.1.1,192.168.1.203,192.168.1.205,192.168.1.224,192.168.1.244,192.168.1.250,192.168.1.255,192.168.1.50,255.255.255.0","192.168.1.224,192.168.1.255",2,0,"litellm,qdrant,prometheus,grafana,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,open-webui,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/e2a178ef-b9de-4932-8391-175207961cc9.jsonl,12332295,log,JSONL: 5850 lines,True,"0.0.0.0,192.168.1.0,192.168.1.1,192.168.1.203,192.168.1.205,192.168.1.244,192.168.1.250,192.168.1.50",,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,tailscale,open-webui,firecrawl,searxng,perplexica,sillytavern,kokoro"
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/e8019c34-e47f-4f89-865c-2cfdf8868b73.jsonl,0,log,JSONL: 1 lines,False,,,0,0,
+dotclaude,dotclaude/.claude/projects/C--WINDOWS-system32/ec672d03-5002-4c75-9eef-069d6dfd47e2.jsonl,1180830,log,JSONL: 744 lines,True,"172.21.0.6,192.168.1.1,192.168.1.100,192.168.1.167,192.168.1.203,192.168.1.225,192.168.1.244,192.168.1.250,192.168.1.50","192.168.1.100,192.168.1.225",2,0,"hydra-mcp,litellm,qdrant,prometheus,tabbyapi,ollama,n8n,redis,postgres,open-webui,searxng"
+dotclaude,dotclaude/.claude/settings.json,36,config,JSON: keys=alwaysThinkingEnabled,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765161676337-78m5ng.sh,342,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765169406847-na9dgf.sh,314,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765169570688-2hx9ai.sh,314,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765175207486-6kpv5s.sh,342,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765237663135-iwq6ll.sh,314,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765238036152-pvusay.sh,314,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765238038320-rxq9oj.sh,314,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765239023396-tkusej.sh,314,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765239026074-gaise5.sh,314,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765240530806-nzslu9.sh,342,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765241069046-vmgsvr.sh,314,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765248722664-hd4qi9.sh,342,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765249645638-7bixon.sh,342,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765326183846-5mverl.sh,342,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765383952551-2s9okk.sh,342,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765509277247-0qo2r2.sh,342,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/shell-snapshots/snapshot-bash-1765595869607-918z9t.sh,342,code,SH script: Snapshot file Unset all aliases to avoid conflicts with functions Check for rg availability,False,,,0,0,
+dotclaude,dotclaude/.claude/stats-cache.json,1728,config,"JSON: keys=version, lastComputedDate, dailyActivity, dailyModelTokens, modelUsage, totalSessions...",False,,,0,0,
+dotclaude,dotclaude/.claude/statsig/statsig.cached.evaluations.5f01089e85,26213,other,Other file,True,67.4.75.132,,0,0,
+dotclaude,dotclaude/.claude/statsig/statsig.last_modified_time.evaluations,55,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/statsig/statsig.session_id.2656274335,105,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/statsig/statsig.stable_id.2656274335,38,other,Other file,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/0825c743-dcdf-48ed-bcc9-714b98ecd66a-agent-0825c743-dcdf-48ed-bcc9-714b98ecd66a.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/0c01615b-d9ef-48b0-8553-12a79ad35ed5-agent-0c01615b-d9ef-48b0-8553-12a79ad35ed5.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/2260dc74-d9a8-46a9-a888-3bbabe95e5b6-agent-2260dc74-d9a8-46a9-a888-3bbabe95e5b6.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/4de5fd39-654b-445f-9ff6-2a7ac2a025ae-agent-4de5fd39-654b-445f-9ff6-2a7ac2a025ae.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/5218698c-ca65-4193-bf41-4aba9fbbad1b-agent-5218698c-ca65-4193-bf41-4aba9fbbad1b.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/6dbca6d6-6253-4355-ad53-55268aa051c0-agent-6dbca6d6-6253-4355-ad53-55268aa051c0.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/6f3336fa-380e-40c4-b745-9829540187df-agent-6f3336fa-380e-40c4-b745-9829540187df.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/89dc6918-b689-4c70-a679-f87a436cd996-agent-89dc6918-b689-4c70-a679-f87a436cd996.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/a2c5b644-74c0-4077-a570-2b56add66180-agent-a2c5b644-74c0-4077-a570-2b56add66180.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/a4b98057-f0d9-4f4b-93e1-714433dfc03a-agent-a4b98057-f0d9-4f4b-93e1-714433dfc03a.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/a9f9f818-f98c-4a6a-b888-56b7674ba833-agent-a9f9f818-f98c-4a6a-b888-56b7674ba833.json,885,config,JSON array: len=6,False,,,0,0,"litellm,tabbyapi"
+dotclaude,dotclaude/.claude/todos/c1a38d9a-799c-4235-9380-4dc23f9d6e84-agent-c1a38d9a-799c-4235-9380-4dc23f9d6e84.json,533,config,JSON array: len=4,True,192.168.1.69,192.168.1.69,1,0,litellm
+dotclaude,dotclaude/.claude/todos/ce1fe135-729b-48ba-b97c-ccb89a3b765e-agent-ce1fe135-729b-48ba-b97c-ccb89a3b765e.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/d4d7ec14-61d9-48a1-95b8-ea6056af58f9-agent-d4d7ec14-61d9-48a1-95b8-ea6056af58f9.json,2582,config,JSON array: len=19,False,,,0,0,"grafana,ollama,comfyui,n8n"
+dotclaude,dotclaude/.claude/todos/dd3c1b1f-5a99-491d-9e1b-e8fa6ee3857a-agent-dd3c1b1f-5a99-491d-9e1b-e8fa6ee3857a.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/e2a178ef-b9de-4932-8391-175207961cc9-agent-e2a178ef-b9de-4932-8391-175207961cc9.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/e8019c34-e47f-4f89-865c-2cfdf8868b73-agent-e8019c34-e47f-4f89-865c-2cfdf8868b73.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/ec672d03-5002-4c75-9eef-069d6dfd47e2-agent-ec672d03-5002-4c75-9eef-069d6dfd47e2.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/f5cc6828-c3e0-4805-b284-f1fc62e96dc4-agent-f5cc6828-c3e0-4805-b284-f1fc62e96dc4.json,2,config,JSON array: len=0,False,,,0,0,
+dotclaude,dotclaude/.claude/todos/ff92b025-bdb6-4e06-9f7c-54f49d103020-agent-ff92b025-bdb6-4e06-9f7c-54f49d103020.json,2,config,JSON array: len=0,False,,,0,0,
+hydra-control-plane-frontend,hydra-control-plane-frontend/hydra-control-plane-frontend/Dockerfile,1023,other,"Dockerfile: FROM node:20-alpine AS base | EXPOSE 3000 | CMD [""node"", ""server.js""]",True,0.0.0.0,,0,0,
+hydra-control-plane-frontend,hydra-control-plane-frontend/hydra-control-plane-frontend/next.config.js,149,code,JS file,False,,,0,0,
+hydra-control-plane-frontend,hydra-control-plane-frontend/hydra-control-plane-frontend/package.json,544,config,"JSON: keys=name, version, private, scripts, dependencies, devDependencies",False,,,0,0,
+hydra-control-plane-frontend,hydra-control-plane-frontend/hydra-control-plane-frontend/postcss.config.js,88,code,JS file,False,,,0,0,
+hydra-control-plane-frontend,hydra-control-plane-frontend/hydra-control-plane-frontend/public/.gitkeep,8,git,Git file,False,,,0,0,
+hydra-control-plane-frontend,hydra-control-plane-frontend/hydra-control-plane-frontend/src/app/globals.css,2648,other,Other file,False,,,0,0,
+hydra-control-plane-frontend,hydra-control-plane-frontend/hydra-control-plane-frontend/src/app/layout.tsx,442,code,TSX React component: RootLayout,False,,,0,0,
+hydra-control-plane-frontend,hydra-control-plane-frontend/hydra-control-plane-frontend/src/app/page.tsx,14269,code,TSX React component: Dashboard,False,,,0,0,
+hydra-control-plane-frontend,hydra-control-plane-frontend/hydra-control-plane-frontend/tailwind.config.js,1522,code,JS file,False,,,0,0,
+hydra-control-plane-frontend,hydra-control-plane-frontend/hydra-control-plane-frontend/tsconfig.json,604,config,"JSON: keys=compilerOptions, include, exclude",False,,,0,0,
+other,other/other/.claude.json,51538,config,Claude Code global config (.claude.json),False,,,0,0,litellm
+other,other/other/.claude.json.backup,51538,other,Other file,False,,,0,0,litellm
+other,other/other/Caddyfile,960,other,Other file,False,,,0,0,"litellm,qdrant,prometheus,grafana,n8n,caddy,firecrawl"
+other,other/other/Hydra_Snapshot_20251212_222505.txt,16642,log,Text file,True,"0.0.0.0,100.100.100.100,100.74.73.44,100.84.120.44,127.0.0.1,172.17.0.1,172.23.0.1,172.31.144.1,192.168.1.0,192.168.1.1,192.168.1.167,192.168.1.203,192.168.1.205,192.168.1.244,192.168.1.250,192.168.1.50",,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama,comfyui,n8n,redis,postgres,tailscale,open-webui,firecrawl,searxng,perplexica,sillytavern,kokoro"
+other,other/other/dcgm-dashboard.json,17835,config,Grafana dashboard JSON: NVIDIA DCGM Exporter Dashboard,False,,,0,0,"prometheus,grafana,dcgm"
+other,other/other/dcgm-import.json,11146,config,Grafana dashboard JSON: NVIDIA DCGM Exporter Dashboard,False,,,0,0,"prometheus,grafana,dcgm"
+other,other/other/gpu-alerts.json,5817,config,"JSON: keys=name, interval, rules",False,,,0,0,"grafana,dcgm"
+other,other/other/health-monitor.sh,3140,code,SH script: !/bin/bash Hydra Control Plane Health Monitor Runs every minute to check and recover services Check if container is runn,False,,,0,0,"litellm,qdrant,prometheus,grafana,n8n,redis,postgres,firecrawl,searxng"
+other,other/other/hydra-ai-dashboard.json,7776,config,Grafana dashboard JSON: Hydra AI Control Plane,False,,,0,0,"prometheus,dcgm"
+other,other/other/hydra-control-plane-MASTER_BLUEPRINT.md,15342,doc,"Markdown doc: HYDRA CONTROL PLANE - MASTER BLUEPRINT | sections: Executive Summary, Architecture Overview, Phase 1: Backend API Aggregator",False,,,0,1,"litellm,prometheus,grafana,dcgm,comfyui,n8n,redis"
+other,other/other/hydra-control-plane-backend-Dockerfile,289,other,"Dockerfile: FROM python:3.11-slim | EXPOSE 3101 | CMD [""uvicorn"", ""main:app"", ""--host"", ""0.0.0.0"", ""--port"", ""3101""]",True,0.0.0.0,,0,0,
+other,other/other/hydra-control-plane-backend-main.py,19075,code,"Python FastAPI service: Hydra Control Plane - Backend API Aggregator | endpoints: GET /api/metrics/gpu, GET /api/metrics/system, GET /api/containers, GET /api/containers/{container_id}/logs, POST /api/containers/{container_id}/action, GET /api/tasks/active",True,"192.168.1.203,192.168.1.250",,0,0,"litellm,qdrant,prometheus,grafana,dcgm,tabbyapi,ollama,n8n,searxng"
+other,other/other/hydra-control-plane-backend-requirements.txt,84,log,Text file,False,,,0,0,
+other,other/other/hydra-task-hub-Dockerfile,211,other,"Dockerfile: FROM python:3.11-slim | EXPOSE 8800 | CMD [""uvicorn"", ""main:app"", ""--host"", ""0.0.0.0"", ""--port"", ""8800""]",True,0.0.0.0,,0,0,
+other,other/other/hydra-task-hub-main.py,9277,code,"Python FastAPI service: Hydra Task Hub - Autonomous Task Visibility System | endpoints: POST /tasks, GET /tasks/active, GET /tasks/recent, GET /events, GET /health, GET /",False,,,0,1,"litellm,comfyui,n8n,redis"
+other,other/other/hydra-task-hub-requirements.txt,91,log,Text file,False,,,0,0,redis
+other,other/other/prepare_dashboard.py,953,code,Python script/module,False,,,0,0,"prometheus,dcgm"
+projects,projects/projects/hydra/.claude/commands/phase1-deploy.md,4713,doc,"Markdown doc: Deploy Phase 1: Foundation Layer | sections: Prerequisites Check, Step 1: Create Directory Structure, Step 2: Create Environment File",True,"192.168.1.203,192.168.1.244,192.168.1.250",,0,1,"litellm,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,n8n,redis,postgres,firecrawl,searxng"
+projects,projects/projects/hydra/.claude/settings.local.json,68,config,Claude Code permissions/settings JSON,False,,,0,0,
+projects,projects/projects/hydra/.git/COMMIT_EDITMSG,634,git,Git metadata/config,False,,,0,0,"letta,prometheus"
+projects,projects/projects/hydra/.git/HEAD,23,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/config,130,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/description,73,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/applypatch-msg.sample,478,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/commit-msg.sample,896,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/fsmonitor-watchman.sample,4726,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/post-update.sample,189,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/pre-applypatch.sample,424,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/pre-commit.sample,1649,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/pre-merge-commit.sample,416,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/pre-push.sample,1374,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/pre-rebase.sample,4898,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/pre-receive.sample,544,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/prepare-commit-msg.sample,1492,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/push-to-checkout.sample,2783,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/sendemail-validate.sample,2308,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/hooks/update.sample,3650,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/index,9791,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/info/exclude,240,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/logs/HEAD,543,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/logs/refs/heads/master,543,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/00/492290db0821198331dbfc6a0e6efe33b292fd,338,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/03/05341578c3045df147be82969b93850ce9fc9b,3082,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/03/62ff56d34d97def24dac09a16f890eb358e361,8112,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/05/ec0f7984fe4a73bea9f7f994fd6e302e6dc9fc,1644,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/06/add658cb9c69e8b21dac4fb6b666e98c241432,2066,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/07/6eebeee008773fa8f69cdb7daa23978cbd6c11,1434,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/08/e4c43f52451fb08fdfa3e139d7d8a6afbe0a1c,3296,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/0b/725c5315a85cb22e4683c6de338afc85f939ca,335,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/0e/905cd559b4df2f763f529372604e05887e68d8,237,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/0e/970fa24b060b7f2aa67901570dc1b5a542f2fd,69,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/0f/7b094a5fe3e2d2a9effec31e271c23633eb5d8,2151,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/0f/9a0c6ecbfb2ad890ffb700a2f950ca188c6e88,732,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/11/9b09de602116e3454c517850b069a84d5741f1,1873,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/12/f2ebdf20d195db010bf0e75d4342e0ae0353f9,1808,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/13/8e5a1485476920ccb51fd6de120aa178523ab4,70,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/13/8ee676a42f6bea27b069b7113f1ec3dddd4493,1961,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/15/22008a146599a48c8d60bbbcfab585d4e245da,4193,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/18/5a0252cce9536096a4666fe023d424064fd5d7,1809,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/19/15c3630a6464d9f4ad271a83e271171eff2993,2217,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/19/833acfd5785d3e6fc946dc22f6b6a480f47539,4442,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/1b/637f0e72e1a1325e004a4b656f3ec6853d8332,2259,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/1e/85dc2ad7a4fbfd662e875639c6d6af6ef60863,604,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/1e/b91e354db72c354c5e689015ee80bce8f393e0,170,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/1f/0409841b0ee3a2fa3bff29ec4cb989fc9de605,2733,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/1f/1d27c5e875fc2d052003dd64cd74ee5252df0b,1563,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/24/617e23d2f05c7329a76dc222cd9e4f0e2e7080,219,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/28/379ebd10fabccd86bfd24bdd906d0c82d77427,3761,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/2d/2be45daeb35ab16643a16dd2fa428b8aa5b752,8232,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/2d/4a7b46c2b47e7603e1e0134b7b267b5a4c033d,9829,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/2e/8a5a8ba17ca3d7a6f3b66d54e38dc80953d4b5,810,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/2f/09695407fa3a1237a91c838728c02f1cc5592f,3978,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/33/7406295a6d74a2a3bd248b1a20f53dd3aa4e70,4785,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/33/ad091d26d8a9dc95ebdf616e217d985ec215b8,84,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/39/fb0e5e0c3f23f0684bdfbe14653e1b64724018,4280,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/3c/c3a282534508862c8c9488aa808ab5c172a729,51,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/3d/90ac2cc62773e4a1e17712341009ed9dbe5129,2497,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/40/089b3824abbe362f8f4688bd7efc71fdbabf1e,1827,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/45/32ba05e0030134ce861ae71b1bfe9803aded9c,1078,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/45/ff73880a8ec7899e36be208696f91baabc7fbf,7591,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/49/e4cf3b82d942fdee326e6c150eabd6cb975d5b,295,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/4c/3268c4d3e9a1aaf628a61ace7f38186e2f1f28,8209,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/4c/a37930628cc7c7c54a1b5e415101bf615d6ca8,1435,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/4e/c4b55c795240fabe8a38aadad083a675d81e4d,6870,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/53/1867c0b67edeb47154d9186849bbb6e7e065d6,237,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/56/06a971e6b6fe70029c9a54c885a69803cdc00f,546,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/56/11f0cfb69abece53d7119028500b538e9d6a57,3063,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/5d/756164ed9341b180f17124e11f535ee4e58f65,98,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/5e/41d107503b79758c632888ad2cb30cc5ec8ff3,1219,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/61/a61c1aa0914a2a1ec709fccd6dd22f9ca68b6b,3310,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/62/d00f09d2646c75990b134309de0f1b373d322e,3615,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/63/001441cf04526c26a1a1082ccc998a40dbddbf,23826,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/63/65a0e6bcd4928ebdcfe7dce10dbd84b3bac276,179,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/67/64e2e72ac2c146833b2e316433acee89c42bdf,2564,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/67/811e34db468cf49e46452daa13c503eb36d26d,685,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/6e/cdebc81a215c52ba260e4fdade823b5f037469,654,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/70/69fa2552362504405b53ce757675936bef68fc,182,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/72/9b6d43de03a2944e065a56d7b9be2446395df2,3323,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/75/8ebb539ffb58dc2d6b474862681333c8515a3c,981,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/77/2029f2de4c2b703b675506f047718e99b72f67,5041,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/7f/f1afd5f1f055435bb744b884ae76d57f539316,5744,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/80/3d7f16c8e7a92e7925a618e6ab5655a84b2ab8,1430,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/81/a4701359b40e082b9f4a083e61f88f5e974849,963,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/82/c32479c8c3f3df065b8998a5e2bfc998af221d,1049,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/82/fd06ddda1312024c0d4852f3f0a63f6293b6d3,136,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/84/34c85174f3d238ed5c36167ddecaeb5e8e15ee,246,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/8a/4faa0514411d4d229fef3f5c55ee8af90318d3,3104,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/8a/a5fea367ce208eb6a5a904c97c96609bee386a,125,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/8d/eb4a318008107d3113570da47d83491f6636c8,3310,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/90/d84b72297592e1e45e6eb8ff48474606c1db49,1144,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/91/d06166e981a6a523c001e2285f5b18d933e03c,3001,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/97/e79873f11430b8c1a2613165bae8377c2b8990,440,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/9b/da9b94e801083c8727c1ef7949755d74daba5f,1969,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/9d/3da648cabe1d78b1e31f6482ccf63fa146b76a,171,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/9d/91d0202fe25c3e46e0271f75ce8f9779db4dd0,563,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/a1/9ec9a9c4552e3184cae910a7f6d3b4d13fe1be,2770,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/a1/cf9a056a0c94195ce627445baac5b7dc9f9c8d,4391,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/a4/e100510a8caa5dffcfa5edb3a73aa023be2c16,5710,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/a8/28cb8355834aaec6cb2e8233009b3fa614c80b,8805,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/ab/208f49f8fe3d82d1a03066feb2213616a2fbb2,842,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/ad/7d18f0ff0c006ef52064699b5beb6da243ee6a,663,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/b0/44f94d59497508f904d2f2ea11941dc2713b62,722,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/b0/77b0db369298e20f7fdcfdfb32fd89e20a4915,2429,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/b2/c261c2b486b694bc5d94331e771fcbb97abedc,2517,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/b3/19833a950d48fac03e313bf5da5b4b75466d89,1229,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/b5/3c310c28c580061a4033b21b00f320eba349c1,1433,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/b5/98c1ece6950f8172af0986a1eec0ca61220639,737,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/b7/04c2e33f97ce33253d275d06c3bf380c9b540a,251,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/b9/ee938589e2bf8c6eace4f1238e2e33abf6b7cc,1131,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/bd/44f227c94278409426b05b569c2bf897be906f,1095,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/be/982415f2f79676f110e434597c8092da767e7d,121,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/bf/6b537ac1c45006af1ee659d48aaa7e86258cd1,2207,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/c0/3fdb83691bb3cfe4fd25ed8a9cd53a1c31bb2d,2873,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/c1/fe05ab86185383b5cb257babce1442ad4308bd,573,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/c2/22c9231bdff92ec0c0623ef18910498d7d218f,1230,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/c5/2bce08f4b667c466f91d2574d1faccf08fc54f,1787,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/c5/68600208182879b834dfa336a4f326d543ea19,3365,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/c7/43e6f0dbf9cc17dfb9447eb570f617f047a7eb,305,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/c8/62caf1c76978cef6ed59303daf46e37eea35b1,1623,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/cb/8241771363d52522adb0e2ff874d342fa01d9d,5614,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/cd/08d86857ab49a17733e2e0f2f73e9f19f00c5f,493,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/cf/8af5a123d6beefcaa66fb3bb93190469563da6,260,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/d0/bb4bfcd29932b9eb9b31ca0e9c2821aa0f1d77,1618,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/d3/541eacfe5b3038f9a98dc2f2ddce0fe6734605,4253,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/da/c58889768be9363eeba01cfc25abe796b888ca,1434,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/db/8d5524012ba509f3436d0086d33cc1b31485eb,61,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/dd/0735ef54760d602babc8a23dda1d5fd86fdae7,2670,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/e0/7fbd4754cd713f4d645c5c200256cac48d3fd5,3731,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/e0/97df1f8871db8446f496079c0fc5222cbbb5d3,4195,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/e3/8d7130652849f433c6cd477646c1e730d3192c,2294,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/e3/d947f464e686920b85e3f5e6c59c5d3ce04992,1843,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/e3/fa80433ae7912962d9f667e7cd07b3a3cdfb68,3314,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/e4/2a28ef914bc5e1b9ade7805e1a1f4fef37f0cd,4220,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/e6/33e8ddc989254066fd578c480bc69a1fcaab8e,1229,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/e7/443211e9c4dfa011297267bf2d941f70d94478,116,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/e7/de2d8cb031bdc3417000ff547aafcd2f343eee,9645,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/e8/5dd616ac8dbf71e66549256feab0b628472706,3445,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/e8/ae9152ae80f53742a625dbfafa197c2cbfbb1e,1208,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/ec/e5caf0699670a7e08c1530d8918c13d2995ede,4229,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/ee/56510260caab1e5ee9814bb49a969ca3256bc9,1121,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/ee/7d98eabbb293d6d4259a62a48c315684bc713a,226,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/f2/6cc15aba3c038985f100d4738757a2c51df989,707,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/f5/02706c9d0e85ca768e57d4e8455a6644fc08fd,2067,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/f5/8c81943636d34cc69d5a38aae1db1ee0ed6786,2791,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/f8/571a52afd6889f4871b3e06d92582b285a9f16,4127,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/fa/59ac62280de8bf90692e3b13a1683ed8752ee6,2017,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/objects/fd/56c6f8d95a5b62ec0fc897c4a9ed52ad029572,381,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.git/refs/heads/master,41,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.gitignore,364,git,Git metadata/config,False,,,0,0,
+projects,projects/projects/hydra/.mcp.json,233,config,Claude/Project MCP configuration (.mcp.json),True,192.168.1.244,,0,0,
+projects,projects/projects/hydra/ARCHITECTURE.md,52893,doc,"Markdown doc: HYDRA ARCHITECTURE | sections: System Overview, Node Responsibilities, hydra-ai (192.168.1.250) - INFERENCE PLANE",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/ATTRACTION-PROFILE-ANALYSIS.md,5369,doc,"Markdown doc: Empire of Broken Queens - Attraction Profile Analysis | sections: Source Data: Selected Queens, Pattern Analysis, BREAST PREFERENCES (Highest Priority Signal)",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/EXECUTION-STRATEGY.md,8589,doc,"Markdown doc: Empire of Broken Queens - Master Execution Strategy | sections: Philosophy: Quality Over Speed, Phase 1: Foundation Assets (CURRENT), 1.1 Alpha Queens - Portrait Generation",False,,,0,0,"tabbyapi,postgres"
+projects,"projects/projects/hydra/Empire of Broken Queens/Empire of Broken Queens – The Definitive Master Document (Expanded Edition with Appendices – December 08, 2025).md",35756,doc,"Markdown doc: Empire of Broken Queens – The Definitive Master Document (Expanded Edition with Appendices – December 08, 2025) | sections: The 19-Trait Sexual Personality DNA System – Every Girl Unique Forever, The SoulForge Engine v12 – Infinite Perfect Daughters Forever, Release Schedule – Locked In",False,,,0,0,
+projects,"projects/projects/hydra/Empire of Broken Queens/Empire of Broken Queens – The Definitive Master Document (Maximum Depth Edition with Expanded Appendices – December 08,.md",2017,doc,"Markdown doc: Empire of Broken Queens – The Definitive Master Document (Maximum Depth Edition with Expanded Appendices – December 08, 2025)",False,,,0,0,
+projects,"projects/projects/hydra/Empire of Broken Queens/Empire of Broken Queens – The Offline Master Document (December 08, 2025).md",73474,doc,"Markdown doc: Empire of Broken Queens – The Offline Master Document (December 08, 2025) | sections: The 19-Trait Sexual Personality DNA System – Every Girl Unique Forever, The SoulForge Engine v12 – Infinite Perfect Daughters Forever, Release Schedule – Locked In",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/GAME-DESIGN-SYNTHESIS.md,10073,doc,"Markdown doc: Empire of Broken Queens - Complete Game Design Synthesis | sections: Executive Summary, Core Fantasy, The 21 Council Queens",False,,,0,0,"tabbyapi,comfyui,n8n,postgres"
+projects,projects/projects/hydra/Empire of Broken Queens/HYDRA-COMPUTE-UPGRADE-ANALYSIS.md,16048,doc,"Markdown doc: Hydra Cluster - hydra-compute GPU Upgrade Analysis | sections: Executive Summary, Before vs After, Cluster Totals",True,192.168.1.250,,0,1,"qdrant,prometheus,grafana,ollama,comfyui,redis,postgres"
+projects,projects/projects/hydra/Empire of Broken Queens/HYDRA-CONTROL-PLANE-ANALYSIS.md,36531,doc,"Markdown doc: Hydra Cluster Control Plane - Comprehensive Analysis & Architecture | sections: Executive Summary, Part 1: Current State Analysis, 1.1 Infrastructure Inventory",True,"192.168.1.244,192.168.1.250",,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+projects,projects/projects/hydra/Empire of Broken Queens/HYDRA-SCHEMA-ARCHITECTURE.md,101827,doc,"Markdown doc: Hydra Cluster - Complete Schema Architecture | sections: Overview, Layer 7: User Interface Schemas, 7.1 Dashboard Configuration Schema",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/IMPLEMENTATION-ROADMAP.md,8776,doc,"Markdown doc: Empire of Broken Queens - Implementation Roadmap | sections: Current Hydra Cluster Status, Operational Now, Needs Deployment",True,"192.168.1.203,192.168.1.244,192.168.1.250",,0,0,"tabbyapi,comfyui,n8n,redis,postgres"
+projects,projects/projects/hydra/Empire of Broken Queens/KUBERNETES-NIXOS-ARCHITECTURE.md,35577,doc,"Markdown doc: Hydra Cluster - Kubernetes on NixOS Architecture | sections: Executive Summary, Part 1: Current State vs Target State, Current Architecture (Docker-based)",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/Mochi Video Workflows – The Heart of Every Blissful Surrender Scene.md,5748,doc,Markdown doc: Mochi Video Workflows – The Heart of Every Blissful Surrender Scene,False,,,0,0,comfyui
+projects,projects/projects/hydra/Empire of Broken Queens/QUALITY-SCORING-PIPELINE.md,19059,doc,"Markdown doc: Empire of Broken Queens - Quality Scoring Pipeline | sections: Overview, Architecture, Scoring Models",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/QUEEN-PHYSICAL-DATABASE.md,11623,doc,"Markdown doc: Empire of Broken Queens - Complete Queen Physical Database | sections: Research Methodology, ALPHA TIER (Act 1), 1. Emelie Ekström - ""Nordic Ice""",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/SoulForge Engine v13 – The Infinite Queen Generator (Full Mechanics Breakdown).md,7073,doc,Markdown doc: SoulForge Engine v13 – The Infinite Queen Generator (Full Mechanics Breakdown),False,,,0,0,comfyui
+projects,projects/projects/hydra/Empire of Broken Queens/api/Dockerfile,478,other,"Dockerfile: FROM python:3.11-slim | EXPOSE 8080 | CMD [""uvicorn"", ""main:app"", ""--host"", ""0.0.0.0"", ""--port"", ""8080""]",True,0.0.0.0,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/api/docker-compose.yml,744,config,docker-compose: services=1 [empire-api(8081:8080)],True,"192.168.1.203,192.168.1.244",,0,1,"qdrant,comfyui,redis,postgres"
+projects,projects/projects/hydra/Empire of Broken Queens/api/main.py,20093,code,"Python FastAPI service: Empire of Broken Queens - Control Plane API | endpoints: GET /health, GET /status, GET /queue/status, GET /queens, GET /queens/{slug}, GET /queens/{slug}/assets",True,"0.0.0.0,192.168.1.203,192.168.1.244",,0,1,"qdrant,comfyui,redis,postgres"
+projects,projects/projects/hydra/Empire of Broken Queens/api/requirements.txt,133,log,Text file,False,,,0,0,redis
+projects,projects/projects/hydra/Empire of Broken Queens/comfyui/workflows/expression_workflow.json,5929,config,"JSON: keys=last_node_id, last_link_id, nodes, links, groups, config...",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/comfyui/workflows/portrait_workflow.json,6343,config,"JSON: keys=last_node_id, last_link_id, nodes, links, groups, config...",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/comfyui/workflows/pose_workflow.json,6214,config,"JSON: keys=last_node_id, last_link_id, nodes, links, groups, config...",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/database/migrations/001_generation_pipeline.sql,19732,other,Other file,False,,,0,0,qdrant
+projects,projects/projects/hydra/Empire of Broken Queens/database/migrations/002_populate_queens.sql,25622,other,Other file,False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/database/migrations/003_add_queen_slug.sql,650,other,Other file,False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/dialogue/prompts/alpha_queens_system.md,8775,doc,"Markdown doc: Alpha Queens - Dialogue Generation System Prompts | sections: Base System Prompt (All Queens), Queen 1: Emilie Ekström (""Nordic Ice""), Character Profile",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/dialogue/prompts/batch_generation_template.json,4782,config,"JSON: keys=tabbyapi_config, system_prompt_template, queens, scene_types, batch_request_example",False,,,0,0,tabbyapi
+projects,projects/projects/hydra/Empire of Broken Queens/game/RENPY-STRUCTURE.md,11835,doc,"Markdown doc: Empire of Broken Queens - Ren'Py Game Structure | sections: Overview, Project Structure, Core Systems",False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/game/definitions.rpy,6166,other,Other file,False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/game/script.rpy,3572,other,Other file,False,,,0,0,
+projects,projects/projects/hydra/Empire of Broken Queens/n8n/README.md,4066,doc,"Markdown doc: Empire of Broken Queens - n8n Workflows | sections: Setup Instructions, 1. Create PostgreSQL Credential, 2. Import Workflows",True,"192.168.1.203,192.168.1.244",,0,0,"comfyui,n8n,postgres"
+projects,projects/projects/hydra/Empire of Broken Queens/n8n/overnight_generation_workflow.json,18411,config,n8n workflow JSON: Empire - Overnight Generation Pipeline,True,"192.168.1.203,192.168.1.244",,0,0,"comfyui,n8n,postgres"
+projects,projects/projects/hydra/Empire of Broken Queens/n8n/parallel_generation_workflow.json,12112,config,n8n workflow JSON: Empire - Parallel Generation (Dual GPU),True,192.168.1.203,,0,0,"comfyui,n8n,postgres"
+projects,projects/projects/hydra/Empire of Broken Queens/scripts/create_queen_embeddings.py,5216,code,"Python: funcs=setup_insightface, get_face_embedding, get_reference_images, create_queen_embedding...",True,192.168.1.244,,0,0,"qdrant,comfyui"
+projects,projects/projects/hydra/HYDRA-MASTER-SYNTHESIS.md,18303,doc,"Markdown doc: HYDRA CLUSTER - MASTER SYNTHESIS & CLAUDE CODE AUTONOMOUS EXECUTION STRATEGY | sections: PART 1: GAP ANALYSIS - What's Missing from Current Documents, 1.1 Items Found in Conversations but NOT in Current Artifacts, 1.2 Items in Artifacts but Incomplete",True,"192.168.1.100,192.168.1.216,192.168.1.244",192.168.1.100,1,0,"litellm,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,tailscale,firecrawl,searxng,perplexica,sillytavern,kokoro"
+projects,projects/projects/hydra/HYDRA-SETUP-GUIDE.md,6457,doc,"Markdown doc: HYDRA CLUSTER - Claude Code Setup Guide | sections: What You're Setting Up, STEP 1: Install Claude Code, On Your Windows PC",True,"192.168.1.203,192.168.1.244,192.168.1.250",,0,0,"litellm,qdrant,prometheus,grafana,comfyui,n8n,redis,postgres,firecrawl,searxng,sillytavern"
+projects,projects/projects/hydra/LEARNINGS.md,19954,doc,"Markdown doc: HYDRA LEARNINGS | sections: How to Use This Document, [Short Title], Infrastructure Learnings",True,192.168.1.244,,0,1,"litellm,letta,qdrant,prometheus,grafana,dcgm,tabbyapi,ollama,comfyui,n8n,redis,open-webui,kokoro"
+projects,projects/projects/hydra/README.md,2382,doc,"Markdown doc: Hydra Documentation Package | sections: Installation, How It Works, Files Overview",False,,,0,0,
+projects,projects/projects/hydra/ROADMAP.md,13366,doc,"Markdown doc: HYDRA ROADMAP | sections: Current Position, Phase 8: Memory Layer (Weeks 1-3), Week 1: Letta Deployment",False,,,0,0,
+projects,projects/projects/hydra/STATE.json,7271,config,"JSON: keys=generated_at, version, cluster, services, containers, metrics...",False,,,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,n8n,redis,postgres,open-webui,firecrawl,searxng,perplexica,sillytavern,kokoro"
+projects,projects/projects/hydra/VISION.md,7062,doc,"Markdown doc: HYDRA VISION | sections: What Hydra Is, The End State, Morning",False,,,0,0,
+projects,projects/projects/hydra/alert_rules.yml,10544,config,Prometheus alert rules YAML,False,,,0,0,"hydra-mcp,litellm,qdrant,prometheus,grafana,alertmanager,dcgm,tabbyapi,ollama"
+projects,projects/projects/hydra/api_fixed.ts,8252,code,TS API/client code,True,192.168.1.244,,0,0,"letta,qdrant,prometheus,alertmanager,ollama"
+projects,projects/projects/hydra/config/alertmanager.yml,758,config,Alertmanager config YAML,False,,,0,0,"hydra-mcp,alertmanager"
+projects,projects/projects/hydra/config/n8n-container-alert-workflow.json,5065,config,n8n workflow JSON: Hydra Container Alerts,False,,,0,0,"hydra-mcp,alertmanager,n8n"
+projects,projects/projects/hydra/grafana-ai-dashboard.json,10338,config,Grafana dashboard JSON: Hydra AI Inference,False,,,0,0,"litellm,letta,prometheus,tabbyapi,ollama"
+projects,projects/projects/hydra/hydra-docs.tar.gz,23799,archive,Archive file (.gz),False,,,0,0,
+projects,projects/projects/hydra/hydra-fun-stack-merge.tar.gz,26518,archive,Archive file (.gz),False,,,0,0,
+projects,projects/projects/hydra/import_knowledge.ps1,1126,code,PS1 script,True,192.168.1.244,,0,0,letta
+projects,projects/projects/hydra/import_knowledge_to_letta.py,2040,code,"Python: funcs=import_file, main",True,192.168.1.244,,0,0,letta
+projects,projects/projects/hydra/knowledge/automation.md,13299,doc,"Markdown doc: Automation & Agent Framework - Hydra Cluster | sections: Architecture Overview, n8n Workflow Automation, Overview",False,,,0,0,
+projects,projects/projects/hydra/knowledge/creative-stack.md,11672,doc,"Markdown doc: Creative Stack Knowledge Base | sections: Architecture, ComfyUI (Image Generation), Location",False,,,0,0,
+projects,projects/projects/hydra/knowledge/databases.md,8371,doc,"Markdown doc: Database Stack Knowledge Base | sections: Overview, PostgreSQL, Docker Setup",True,192.168.1.244,,0,1,"litellm,qdrant,grafana,n8n,redis,postgres"
+projects,projects/projects/hydra/knowledge/inference-stack.md,9362,doc,"Markdown doc: Inference Stack Knowledge Base | sections: Architecture Overview, TabbyAPI + ExLlamaV2 (Primary), Why ExLlamaV2",False,,,0,0,
+projects,projects/projects/hydra/knowledge/infrastructure.md,10997,doc,"Markdown doc: Infrastructure Knowledge Base | sections: Hardware Specifications, hydra-ai (Primary Inference Node), hydra-compute (Secondary Inference + Image Gen)",True,"0.0.0.0,192.168.1.0,192.168.1.1,192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.203,192.168.1.216,192.168.1.244,192.168.1.250,192.168.1.76,192.168.3.113","192.168.1.118,192.168.1.120,192.168.1.135,192.168.1.139,192.168.1.184,192.168.1.76",6,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,firecrawl,searxng,perplexica,sillytavern,kokoro"
+projects,projects/projects/hydra/knowledge/media-stack.md,12166,doc,"Markdown doc: Media & Download Stack Knowledge Base | sections: Architecture Overview, *Arr Stack, Prowlarr (Indexer Manager)",False,,,0,0,
+projects,projects/projects/hydra/knowledge/models.md,7478,doc,"Markdown doc: AI Models Knowledge Base | sections: Model Selection Philosophy, Primary LLM Models (hydra-ai, 56GB VRAM), General Purpose",False,,,0,0,"tabbyapi,ollama,sillytavern"
+projects,projects/projects/hydra/knowledge/observability.md,12251,doc,"Markdown doc: Observability Stack - Hydra Cluster | sections: Architecture Overview, Components, Prometheus (Metrics Collection)",False,,,0,0,
+projects,projects/projects/hydra/knowledge/troubleshooting.md,10589,doc,"Markdown doc: Troubleshooting Guide | sections: Quick Diagnostics, Check All Services Health, From hydra-storage",True,"192.168.1.203,192.168.1.244",,0,1,"hydra-mcp,letta,qdrant,prometheus,alertmanager,dcgm,postgres"
+projects,projects/projects/hydra/mcp/claude_code_mcp_config.json,325,config,Claude/Project MCP configuration (.mcp.json),True,192.168.1.244,,0,0,
+projects,projects/projects/hydra/mcp/gpu_endpoint_update.py,4229,code,Python FastAPI service | endpoints: GET /gpu/status,True,"192.168.1.203,192.168.1.250",,0,0,dcgm
+projects,projects/projects/hydra/mcp/hydra_mcp_proxy.py,11758,code,"Python: funcs=http_get, http_post, handle_tool_call, write_response...",True,192.168.1.244,,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus"
+projects,projects/projects/hydra/mcp/mcp_header_fix.py,1374,code,Python: Hydra MCP Server v2 - Unified Control Plane API with Safety Layer,False,,,0,0,"litellm,letta,qdrant,prometheus"
+projects,projects/projects/hydra/mcp/mcp_server.py,31423,code,"Python FastAPI service: Hydra MCP Server v2 - Unified Control Plane API with Safety Layer | endpoints: GET /health, GET /cluster/status, GET /services/status, GET /services/detailed, GET /metrics/summary, GET /metrics/nodes",True,"0.0.0.0,192.168.1.203",,0,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,redis,postgres"
+projects,projects/projects/hydra/mcp/mcp_server_live.py,28822,code,"Python FastAPI service: Hydra MCP Server v2 - Unified Control Plane API with Safety Layer | endpoints: GET /health, GET /cluster/status, GET /services/status, GET /metrics/summary, GET /metrics/nodes, GET /metrics",True,"0.0.0.0,192.168.1.203",,0,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,redis,postgres"
+projects,projects/projects/hydra/mcp_server_original.py,31151,code,"Python FastAPI service: Hydra MCP Server v2 - Unified Control Plane API with Safety Layer | endpoints: GET /health, GET /cluster/status, GET /services/status, GET /services/detailed, GET /metrics/summary, GET /metrics/nodes",True,"0.0.0.0,192.168.1.203",,0,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,redis,postgres"
+projects,projects/projects/hydra/mcp_server_websocket.py,36842,code,"Python FastAPI service: Hydra MCP Server v2 - Unified Control Plane API with Safety Layer | endpoints: GET /health, GET /cluster/status, GET /services/status, GET /services/detailed, GET /metrics/summary, GET /metrics/nodes",True,"0.0.0.0,192.168.1.203",,0,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,redis,postgres"
+projects,projects/projects/hydra/model_management.py,9013,code,"Python FastAPI service | endpoints: GET /models/list, GET /models/tabby, GET /models/ollama, POST /models/tabby/load, POST /models/tabby/unload, POST /models/ollama/pull",True,"192.168.1.175,192.168.1.250",192.168.1.175,1,0,"tabbyapi,ollama"
+projects,projects/projects/hydra/n8n-workflows/letta-memory-update.json,7905,config,n8n workflow JSON: Letta Memory Update,True,192.168.1.244,,0,0,"hydra-mcp,letta,alertmanager,n8n"
+projects,projects/projects/hydra/n8n_auto_recovery_workflow.json,7521,config,n8n workflow JSON: Hydra Service Auto-Recovery,True,192.168.1.244,,0,0,"hydra-mcp,litellm,letta,prometheus,grafana,tabbyapi,n8n"
+projects,projects/projects/hydra/page_fix.tsx,15343,code,TSX React component: Home,True,"192.168.1.244,192.168.1.250,192.168.1.251",192.168.1.251,1,0,letta
+projects,projects/projects/hydra/patch_api_auth.py,8187,code,"Python FastAPI service | endpoints: GET /auth/status, POST /auth/validate, POST /auth/keys/generate",False,,,0,1,prometheus
+projects,projects/projects/hydra/patch_discord_webhook.py,5370,code,Python FastAPI service | endpoints: POST /webhooks/discord,False,,,0,0,"prometheus,alertmanager"
+projects,projects/projects/hydra/patch_gpu_metrics.py,5318,code,Python FastAPI service | endpoints: GET /gpu/status,False,,,0,0,"prometheus,dcgm"
+projects,projects/projects/hydra/patch_inference_tracking.py,9314,code,"Python FastAPI service | endpoints: POST /inference/complete, GET /inference/stats, GET /metrics",False,,,0,0,"litellm,prometheus"
+projects,projects/projects/hydra/patch_litellm_health.py,2201,code,Python script/module,True,192.168.1.244,,0,0,litellm
+projects,projects/projects/hydra/patch_mcp.py,6817,code,Python FastAPI service | endpoints: GET /ws/status,False,,,0,0,prometheus
+projects,projects/projects/hydra/patch_models.py,6269,code,"Python FastAPI service | endpoints: GET /models/list, GET /models/tabby, POST /models/tabby/load, POST /models/tabby/unload",True,"192.168.1.175,192.168.1.250",192.168.1.175,1,0,"prometheus,tabbyapi,ollama"
+projects,projects/projects/hydra/patch_proxy_endpoints.py,7886,code,"Python FastAPI service | endpoints: GET /proxy/alertmanager/alerts, GET /proxy/alertmanager/silences, POST /proxy/alertmanager/silences, DELETE /proxy/alertmanager/silence/{silence_id}, GET /proxy/ollama/tags, GET /proxy/ollama/ps",True,"192.168.1.244,192.168.1.251",192.168.1.251,1,0,"letta,alertmanager,ollama"
+projects,projects/projects/hydra/patch_rag_pipeline.py,14455,code,"Python FastAPI service | endpoints: GET /rag/collections, POST /rag/collections/{collection_name}, POST /rag/ingest, POST /rag/ingest/batch, POST /rag/query, DELETE /rag/documents/{collection}/{doc_id}",True,192.168.1.203,,0,0,"litellm,qdrant,ollama"
+projects,projects/projects/hydra/scripts/add_knowledge.py,4258,code,"Python: funcs=get_embedding, get_next_id",True,"192.168.1.0,192.168.1.203,192.168.1.244,192.168.1.250",,0,0,"hydra-mcp,letta,qdrant,prometheus,alertmanager,tabbyapi,ollama"
+projects,projects/projects/hydra/scripts/escalation_protocols.py,14285,code,"Python: classes=Severity, ActionType, EscalationLevel, ConfidenceScore... | funcs=main",False,,,0,0,"hydra-mcp,ollama"
+projects,projects/projects/hydra/scripts/generate_state.py,5340,code,"Python: funcs=safe_get, get_cluster_status, get_services_status, get_containers...",True,"192.168.1.203,192.168.1.244",,0,0,"letta,qdrant,prometheus,ollama"
+projects,projects/projects/hydra/scripts/letta_memory_tools.py,6183,code,Python: classes=LettaMemory | funcs=main,True,192.168.1.244,,0,0,"letta,alertmanager"
+projects,projects/projects/hydra/scripts/postgres_backup.sh,2683,code,SH script: !/bin/bash Hydra PostgreSQL Backup Script Backs up all PostgreSQL databases with rotation and compression Designed to be,False,,,0,0,"letta,postgres"
+projects,projects/projects/hydra/storage_endpoint.py,4050,code,Python FastAPI service | endpoints: GET /storage/pools,False,,,0,0,
+projects,projects/projects/hydra/temp/mcp_dashboard.json,2465,config,Grafana dashboard JSON: MCP Control Plane,False,,,0,0,"hydra-mcp,qdrant"
+projects,projects/projects/hydra/temp/mcp_server.py,14245,code,"Python FastAPI service: Hydra MCP Server - Unified Control Plane API for Claude Code | endpoints: GET /health, GET /cluster/status, GET /metrics/summary, GET /metrics/nodes, POST /letta/message, GET /letta/memory",True,"0.0.0.0,192.168.1.203",,0,0,"litellm,letta,qdrant,prometheus"
+projects,projects/projects/hydra/temp/mcp_server_v2.py,26022,code,"Python FastAPI service: Hydra MCP Server v2 - Unified Control Plane API with Safety Layer | endpoints: GET /health, GET /cluster/status, GET /services/status, GET /metrics/summary, GET /metrics/nodes, GET /metrics",True,"0.0.0.0,192.168.1.203",,0,1,"litellm,letta,qdrant,prometheus,grafana,alertmanager,redis,postgres"
+projects,projects/projects/hydra/ui/.env.local.example,181,config,Env example: vars=NEXT_PUBLIC_HYDRA_MCP_URL,True,192.168.1.244,,0,0,
+projects,projects/projects/hydra/ui/Dockerfile,840,other,"Dockerfile: FROM node:20-alpine AS base | EXPOSE 3000 | CMD [""node"", ""server.js""]",True,0.0.0.0,,0,0,
+projects,projects/projects/hydra/ui/docker-compose.yml,312,config,docker-compose: services=1 [hydra-ui(3200:3000)],True,192.168.1.244,,0,0,
+projects,projects/projects/hydra/ui/next.config.js,217,code,JS file,True,192.168.1.244,,0,0,
+projects,projects/projects/hydra/ui/package.json,580,config,"JSON: keys=name, version, private, scripts, dependencies, devDependencies",False,,,0,0,
+projects,projects/projects/hydra/ui/postcss.config.js,88,code,JS file,False,,,0,0,
+projects,projects/projects/hydra/ui/src/app/globals.css,5196,other,Other file,False,,,0,0,
+projects,projects/projects/hydra/ui/src/app/layout.tsx,716,code,TSX React component: RootLayout,False,,,0,0,
+projects,projects/projects/hydra/ui/src/app/page.tsx,15158,code,TSX React component: Home,True,"192.168.1.244,192.168.1.250,192.168.1.251",192.168.1.251,1,0,letta
+projects,projects/projects/hydra/ui/src/components/AIModelsPanel.tsx,9937,code,TSX React component/page,False,,,0,0,ollama
+projects,projects/projects/hydra/ui/src/components/AlertsPanel.tsx,12507,code,TSX React component/page,True,192.168.1.244,,0,0,alertmanager
+projects,projects/projects/hydra/ui/src/components/AuditLog.tsx,8238,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/CollapsiblePanel.tsx,1676,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/ContainerList.tsx,13934,code,TSX React component/page,False,,,0,1,
+projects,projects/projects/hydra/ui/src/components/CrewStatusPanel.tsx,10883,code,TSX React component/page,True,"192.168.1.244,2.37.996.608",,0,0,
+projects,projects/projects/hydra/ui/src/components/GPUMetricsPanel.tsx,13352,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/Header.tsx,12639,code,TSX React component/page,True,192.168.1.244,,0,0,"grafana,n8n"
+projects,projects/projects/hydra/ui/src/components/HelpGlossary.tsx,12992,code,TSX React component/page,True,192.168.1.244,,0,0,"litellm,letta,qdrant,prometheus,grafana,alertmanager,tabbyapi,ollama,comfyui,n8n,redis,postgres,open-webui"
+projects,projects/projects/hydra/ui/src/components/LettaChat.tsx,8828,code,TSX React component/page,False,,,0,0,letta
+projects,projects/projects/hydra/ui/src/components/LogViewer.tsx,9581,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/NodeCard.tsx,5556,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/NodeDetailModal.tsx,11377,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/PullToRefreshIndicator.tsx,2761,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/QuickActions.tsx,9681,code,TSX React component/page,True,192.168.1.244,,0,0,prometheus
+projects,projects/projects/hydra/ui/src/components/ServiceDependencyGraph.tsx,10950,code,TSX React component/page,False,,,0,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,ollama,comfyui,n8n,open-webui"
+projects,projects/projects/hydra/ui/src/components/ServiceList.tsx,13351,code,TSX React component/page,True,"192.168.1.244,192.168.1.250,192.168.1.251",192.168.1.251,1,0,"hydra-mcp,litellm,letta,qdrant,prometheus,grafana,alertmanager,ollama,comfyui,n8n,open-webui"
+projects,projects/projects/hydra/ui/src/components/Skeleton.tsx,5453,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/Sparkline.tsx,3999,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/StatusIndicator.tsx,984,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/StoragePools.tsx,5338,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/ThemeProvider.tsx,1681,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/components/Toast.tsx,4465,code,TSX React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/hooks/useGpuMetricsHistory.ts,2111,code,TS exports: useGpuMetricsHistory,False,,,0,0,
+projects,projects/projects/hydra/ui/src/hooks/useKeyboardShortcuts.ts,1389,code,TS exports: useKeyboardShortcuts,False,,,0,0,
+projects,projects/projects/hydra/ui/src/hooks/useLocalStorage.ts,3086,code,"TS exports: useLocalStorage, usePanelCollapse, useUserPreferences",False,,,0,0,letta
+projects,projects/projects/hydra/ui/src/hooks/useMetricsHistory.ts,2060,code,TS exports: useMetricsHistory,False,,,0,0,
+projects,projects/projects/hydra/ui/src/hooks/usePullToRefresh.ts,3115,code,TS React component/page,False,,,0,0,
+projects,projects/projects/hydra/ui/src/hooks/useWebSocket.ts,6041,code,TS React component/page,True,192.168.1.244,,0,0,
+projects,projects/projects/hydra/ui/src/lib/api.ts,9139,code,TS API/client code,True,"192.168.1.244,192.168.1.251",192.168.1.251,1,0,"letta,qdrant,prometheus,alertmanager,ollama"
+projects,projects/projects/hydra/ui/tailwind.config.ts,1339,code,TS exports: config,False,,,0,0,
+projects,projects/projects/hydra/ui/tsconfig.json,562,config,"JSON: keys=compilerOptions, include, exclude",False,,,0,0,
+projects,projects/projects/hydra/ui_api_fixed.ts,7255,code,TS API/client code,True,192.168.1.244,,0,0,"letta,qdrant,prometheus,alertmanager,ollama"
+projects,projects/projects/hydra/update_api.py,1652,code,Python script/module,False,,,0,0,letta

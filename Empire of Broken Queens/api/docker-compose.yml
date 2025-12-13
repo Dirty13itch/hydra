@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  empire-api:
+    build: .
+    container_name: empire-control-plane
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      - DATABASE_URL=postgresql://hydra:g9cUyFK6unpMQ8XBmeJNZJPoY6viGg6@192.168.1.244:5432/empire_of_broken_queens
+      - COMFYUI_URL=http://192.168.1.203:8188
+      - QDRANT_URL=http://192.168.1.244:6333
+      - REDIS_URL=redis://192.168.1.244:6379
+    networks:
+      - hydra-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  hydra-network:
+    external: true
