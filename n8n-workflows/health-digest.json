@@ -1,0 +1,177 @@
+{
+  "name": "Hydra Health Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 12 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:9090/api/v1/targets",
+        "options": {}
+      },
+      "id": "get-prometheus-targets",
+      "name": "Get Prometheus Targets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, -100]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.250:5000/v1/model",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "get-tabby-model",
+      "name": "Get TabbyAPI Model",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.203:11434/api/tags",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "get-ollama-models",
+      "name": "Get Ollama Models",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, 100],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:6333/collections",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "get-qdrant-collections",
+      "name": "Get Qdrant Collections",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Aggregate health status from all inputs\nconst prometheus = $('Get Prometheus Targets').first().json;\nconst tabby = $('Get TabbyAPI Model').first().json;\nconst ollama = $('Get Ollama Models').first().json;\nconst qdrant = $('Get Qdrant Collections').first().json;\n\n// Parse Prometheus targets\nlet healthyTargets = 0;\nlet unhealthyTargets = [];\n\nif (prometheus?.data?.activeTargets) {\n  for (const target of prometheus.data.activeTargets) {\n    if (target.health === 'up') {\n      healthyTargets++;\n    } else {\n      unhealthyTargets.push(`${target.labels.job}: ${target.labels.instance}`);\n    }\n  }\n}\n\n// Check TabbyAPI\nconst tabbyStatus = tabby?.model_name ? `Loaded: ${tabby.model_name}` : 'DOWN or no model loaded';\n\n// Check Ollama\nlet ollamaModels = [];\nif (ollama?.models) {\n  ollamaModels = ollama.models.map(m => m.name);\n}\nconst ollamaStatus = ollamaModels.length > 0 ? `${ollamaModels.length} models available` : 'DOWN or no models';\n\n// Check Qdrant\nlet qdrantCollections = [];\nif (qdrant?.result?.collections) {\n  qdrantCollections = qdrant.result.collections.map(c => c.name);\n}\nconst qdrantStatus = qdrantCollections.length > 0 ? `${qdrantCollections.length} collections` : 'DOWN or empty';\n\n// Build digest\nconst timestamp = new Date().toISOString();\nconst allHealthy = unhealthyTargets.length === 0 && tabby?.model_name && ollamaModels.length > 0;\n\nconst digest = {\n  timestamp,\n  overall_status: allHealthy ? 'HEALTHY' : 'DEGRADED',\n  prometheus: {\n    healthy_targets: healthyTargets,\n    unhealthy: unhealthyTargets\n  },\n  tabbyapi: {\n    status: tabbyStatus,\n    healthy: !!tabby?.model_name\n  },\n  ollama: {\n    status: ollamaStatus,\n    models: ollamaModels.slice(0, 5),\n    healthy: ollamaModels.length > 0\n  },\n  qdrant: {\n    status: qdrantStatus,\n    collections: qdrantCollections,\n    healthy: qdrantCollections.length > 0\n  },\n  summary: `Hydra Cluster: ${allHealthy ? 'All systems operational' : 'Some issues detected'}`\n};\n\nreturn [{ json: digest }];"
+      },
+      "id": "aggregate-health",
+      "name": "Aggregate Health",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 50]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.overall_status }}",
+              "operation": "equals",
+              "value2": "DEGRADED"
+            }
+          ]
+        }
+      },
+      "id": "check-degraded",
+      "name": "Is Degraded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [700, 50]
+    },
+    {
+      "parameters": {
+        "content": "## Hydra Health Digest\n\n**Status:** {{ $json.overall_status }}\n**Time:** {{ $json.timestamp }}\n\n### Prometheus Targets\n- Healthy: {{ $json.prometheus.healthy_targets }}\n- Unhealthy: {{ $json.prometheus.unhealthy.length > 0 ? $json.prometheus.unhealthy.join(', ') : 'None' }}\n\n### TabbyAPI\n- {{ $json.tabbyapi.status }}\n\n### Ollama\n- {{ $json.ollama.status }}\n\n### Qdrant\n- {{ $json.qdrant.status }}\n\n---\n{{ $json.summary }}",
+        "options": {}
+      },
+      "id": "format-report",
+      "name": "Format Report",
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [920, -50]
+    },
+    {
+      "parameters": {
+        "content": "## ALERT: Hydra Cluster Degraded\n\n**Status:** {{ $json.overall_status }}\n**Time:** {{ $json.timestamp }}\n\n### Issues Detected\n\n{{ $json.prometheus.unhealthy.length > 0 ? '**Prometheus Targets Down:**\\n' + $json.prometheus.unhealthy.join('\\n') : '' }}\n\n{{ !$json.tabbyapi.healthy ? '**TabbyAPI:** ' + $json.tabbyapi.status : '' }}\n\n{{ !$json.ollama.healthy ? '**Ollama:** ' + $json.ollama.status : '' }}\n\n{{ !$json.qdrant.healthy ? '**Qdrant:** ' + $json.qdrant.status : '' }}\n\n---\n**Action Required:** Check failed services",
+        "options": {}
+      },
+      "id": "format-alert",
+      "name": "Format Alert",
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [920, 150]
+    }
+  ],
+  "connections": {
+    "Every 12 Hours": {
+      "main": [
+        [
+          { "node": "Get Prometheus Targets", "type": "main", "index": 0 },
+          { "node": "Get TabbyAPI Model", "type": "main", "index": 0 },
+          { "node": "Get Ollama Models", "type": "main", "index": 0 },
+          { "node": "Get Qdrant Collections", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Prometheus Targets": {
+      "main": [
+        [{ "node": "Aggregate Health", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get TabbyAPI Model": {
+      "main": [
+        [{ "node": "Aggregate Health", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Ollama Models": {
+      "main": [
+        [{ "node": "Aggregate Health", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Qdrant Collections": {
+      "main": [
+        [{ "node": "Aggregate Health", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aggregate Health": {
+      "main": [
+        [{ "node": "Is Degraded?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Is Degraded?": {
+      "main": [
+        [{ "node": "Format Alert", "type": "main", "index": 0 }],
+        [{ "node": "Format Report", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "active": false,
+  "versionId": "1"
+}
