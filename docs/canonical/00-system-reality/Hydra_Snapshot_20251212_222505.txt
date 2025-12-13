@@ -1,0 +1,450 @@
+HYDRA_SNAPSHOT_BUNDLE|version=1|timestamp=2025-12-13T04:22:00Z
+=====BEGIN NODE|label=hydra-compute-nixos|target=typhon@192.168.1.203=====
+HOMEOPS_NODE_SNAPSHOT|hostname=hydra-compute|os=NixOS|version=25.11|kernel=6.12.60|cpu=AMD_Ryzen_9_9950X_16-Core|cores=32|ram_total=60Gi|ram_used=13Gi|gpus=2xRTX5070Ti|uptime=1h08m
+-----BEGIN OS_IDENTITY-----
+CMD: hostname; date -Is; uname -a; nixos-version
+hydra-compute
+2025-12-12T22:21:50-06:00
+Linux hydra-compute 6.12.60 #1-NixOS SMP PREEMPT_DYNAMIC Mon Dec 1 10:43:41 UTC 2025 x86_64 GNU/Linux
+NixOS 25.11 (Xantusia)
+25.11.1056.d9bc5c7dceb3
+EXIT: 0
+-----END OS_IDENTITY-----
+-----BEGIN UPTIME-----
+CMD: uptime
+22:21:50 up 1:08, 2 users, load average: 58.02, 26.42, 25.35
+EXIT: 0
+-----END UPTIME-----
+-----BEGIN CPU-----
+CMD: lscpu
+Architecture:           x86_64
+CPU(s):                 32
+Model name:             AMD Ryzen 9 9950X 16-Core Processor
+Thread(s) per core:     2
+Core(s) per socket:     16
+Socket(s):              1
+CPU max MHz:            5752.0000
+L1d cache:              768 KiB (16 instances)
+L2 cache:               16 MiB (16 instances)
+L3 cache:               64 MiB (2 instances)
+EXIT: 0
+-----END CPU-----
+-----BEGIN RAM-----
+CMD: free -h
+              total        used        free      shared  buff/cache   available
+Mem:           60Gi        13Gi        34Gi        18Mi        13Gi        46Gi
+Swap:            0B          0B          0B
+EXIT: 0
+-----END RAM-----
+-----BEGIN DISKS-----
+CMD: lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL
+nvme0n1     931.5G disk                       Samsung SSD 990 EVO Plus 1TB
+nvme1n1     931.5G disk (boot+root)           Samsung SSD 990 EVO Plus 1TB
+nvme2n1     931.5G disk zfs_member            Samsung SSD 990 EVO Plus 1TB
+EXIT: 0
+-----END DISKS-----
+-----BEGIN DF-----
+CMD: df -hT
+/dev/nvme1n1p2                 ext4      916G  151G  719G  18% /
+/dev/nvme1n1p1                 vfat      487M   25M  462M   6% /boot
+192.168.1.244:/mnt/user/models nfs4      5.4T  2.3T  3.1T  43% /mnt/models
+EXIT: 0
+-----END DF-----
+-----BEGIN NETWORK-----
+CMD: ip -br addr; ip route
+lo               UNKNOWN   127.0.0.1/8
+enp11s0          UP        192.168.1.203/24
+tailscale0       UNKNOWN   100.74.73.44/32
+docker0          DOWN      172.17.0.1/16
+br-51af09705c65  UP        172.23.0.1/16
+default via 192.168.1.1 dev enp11s0
+EXIT: 0
+-----END NETWORK-----
+-----BEGIN DNS-----
+CMD: resolvectl status
+Link 3 (enp11s0): DNS Server 192.168.1.244
+Link 4 (tailscale0): DNS Server 100.100.100.100 (taildaa46.ts.net)
+EXIT: 0
+-----END DNS-----
+-----BEGIN PORTS-----
+CMD: ss -tulpn
+tcp LISTEN 0.0.0.0:22      (sshd)
+tcp LISTEN 0.0.0.0:8188    (ComfyUI)
+tcp LISTEN 0.0.0.0:9835    (nvidia-smi exporter)
+tcp LISTEN *:11434         (Ollama)
+tcp LISTEN *:9100          (node-exporter)
+tcp LISTEN 0.0.0.0:9002    (whisper-asr)
+EXIT: 0
+-----END PORTS-----
+-----BEGIN SERVICES-----
+CMD: systemctl list-units --type=service --state=running
+acpid.service         ACPI Daemon
+docker.service        Docker Application Container Engine
+nix-daemon.service    Nix Daemon
+ollama.service        Server for local large language models
+sshd.service          SSH Daemon
+tailscaled.service    Tailscale node agent
+EXIT: 0
+-----END SERVICES-----
+-----BEGIN DOCKER_VERSION-----
+CMD: docker version
+Client: 28.5.1 | Server: 28.5.1 | API: 1.51
+EXIT: 0
+-----END DOCKER_VERSION-----
+-----BEGIN DOCKER_PS-----
+CMD: docker ps
+kohya-training   kohya-sdxl:latest                         Up 1h
+comfyui-cu128    comfyui-cu128-comfyui:latest              Up 1h
+whisper-asr      fedirz/faster-whisper-server:latest-cpu   Up 1h
+node-exporter    quay.io/prometheus/node-exporter:latest   Up 1h
+EXIT: 0
+-----END DOCKER_PS-----
+-----BEGIN DOCKER_COMPOSE-----
+CMD: docker compose ls
+comfyui       running(1)  /home/typhon/comfyui/docker-compose.yml
+kohya_docker  running(1)  /home/typhon/kohya_docker/docker-compose.yml
+whisper-asr   running(1)  /home/typhon/whisper-asr/docker-compose.yml
+EXIT: 0
+-----END DOCKER_COMPOSE-----
+-----BEGIN GPU-----
+CMD: nvidia-smi
+Driver: 580.105.08 | CUDA: 13.0
+GPU 0: RTX 5070 Ti | 43C | 18W/250W | 240MiB/16303MiB | 0%
+GPU 1: RTX 5070 Ti | 40C | 11W/250W |   2MiB/16303MiB | 0%
+EXIT: 0
+-----END GPU-----
+-----BEGIN LSPCI_GPU-----
+CMD: lspci | grep -Ei vga
+01:00.0 VGA: NVIDIA GB203 [GeForce RTX 5070 Ti] (rev a1)
+03:00.0 VGA: NVIDIA GB203 [GeForce RTX 5070 Ti] (rev a1)
+7a:00.0 VGA: AMD Granite Ridge [Radeon Graphics] (rev c1)
+EXIT: 0
+-----END LSPCI_GPU-----
+=====END NODE|label=hydra-compute-nixos=====
+=====BEGIN NODE|label=hydra-ai-nixos|target=typhon@192.168.1.250=====
+HOMEOPS_NODE_SNAPSHOT|hostname=hydra-ai|os=NixOS|version=25.11|kernel=6.12.60|cpu=AMD_Threadripper_7960X_24-Cores|cores=48|ram_total=125Gi|ram_used=7.1Gi|gpus=RTX5090+RTX4090|uptime=4h19m
+-----BEGIN OS_IDENTITY-----
+CMD: hostname; date -Is; uname -a; nixos-version
+hydra-ai
+2025-12-12T22:21:53-06:00
+Linux hydra-ai 6.12.60 #1-NixOS SMP PREEMPT_DYNAMIC Mon Dec 1 10:43:41 UTC 2025 x86_64 GNU/Linux
+NixOS 25.11 (Xantusia)
+25.11.1056.d9bc5c7dceb3
+EXIT: 0
+-----END OS_IDENTITY-----
+-----BEGIN UPTIME-----
+CMD: uptime
+22:21:53 up 4:19, 0 users, load average: 0.00, 0.00, 0.00
+EXIT: 0
+-----END UPTIME-----
+-----BEGIN CPU-----
+CMD: lscpu
+Architecture:           x86_64
+CPU(s):                 48
+Model name:             AMD Ryzen Threadripper 7960X 24-Cores
+Thread(s) per core:     2
+Core(s) per socket:     24
+Socket(s):              1
+CPU max MHz:            5362.0000
+L1d cache:              768 KiB (24 instances)
+L2 cache:               24 MiB (24 instances)
+L3 cache:               128 MiB (4 instances)
+EXIT: 0
+-----END CPU-----
+-----BEGIN RAM-----
+CMD: free -h
+              total        used        free      shared  buff/cache   available
+Mem:          125Gi       7.1Gi        97Gi        80Mi        22Gi       118Gi
+Swap:            0B          0B          0B
+EXIT: 0
+-----END RAM-----
+-----BEGIN DISKS-----
+CMD: lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL
+nvme0n1       3.6T disk zfs_member  Samsung SSD 990 PRO 4TB
+nvme1n1     931.5G disk (boot+root) Samsung SSD 990 EVO Plus 1TB
+nvme2n1       3.6T disk zfs_member  CT4000T700SSD5
+nvme3n1       3.6T disk zfs_member  CT4000P3SSD8
+EXIT: 0
+-----END DISKS-----
+-----BEGIN DF-----
+CMD: df -hT
+/dev/nvme1n1p2                 ext4      916G   84G  786G  10% /
+/dev/nvme1n1p1                 vfat      487M   25M  462M   6% /boot
+192.168.1.244:/mnt/user/models nfs4      5.4T  2.3T  3.1T  43% /mnt/models
+EXIT: 0
+-----END DF-----
+-----BEGIN NETWORK-----
+CMD: ip -br addr; ip route
+lo         UNKNOWN   127.0.0.1/8
+enp71s0    UP        192.168.1.205/24
+eno1       UP        192.168.1.250/24 192.168.1.50/24
+tailscale0 UNKNOWN   100.84.120.44/32
+docker0    UP        172.17.0.1/16
+default via 192.168.1.1 dev eno1 proto static
+192.168.1.244 dev eno1 proto static scope link
+EXIT: 0
+-----END NETWORK-----
+-----BEGIN DNS-----
+CMD: resolvectl status
+Link 3 (eno1): DNS Server 192.168.1.244
+Link 5 (tailscale0): DNS Server 100.100.100.100 (taildaa46.ts.net)
+EXIT: 0
+-----END DNS-----
+-----BEGIN PORTS-----
+CMD: ss -tulpn
+tcp LISTEN 0.0.0.0:22      (sshd)
+tcp LISTEN 0.0.0.0:5000    (TabbyAPI primary)
+tcp LISTEN 0.0.0.0:5001    (TabbyAPI secondary)
+tcp LISTEN 0.0.0.0:9835    (dcgm-exporter)
+tcp LISTEN *:9100          (node-exporter)
+EXIT: 0
+-----END PORTS-----
+-----BEGIN SERVICES-----
+CMD: systemctl list-units --type=service --state=running
+acpid.service         ACPI Daemon
+docker.service        Docker Application Container Engine
+tabbyapi.service      TabbyAPI - OpenAI-compatible LLM API Server
+tailscaled.service    Tailscale node agent
+sshd.service          SSH Daemon
+EXIT: 0
+-----END SERVICES-----
+-----BEGIN DOCKER_VERSION-----
+CMD: docker version
+Client: 28.5.1 | Server: 28.5.1 | API: 1.51
+EXIT: 0
+-----END DOCKER_VERSION-----
+-----BEGIN DOCKER_PS-----
+CMD: docker ps
+dcgm-exporter   nvcr.io/nvidia/k8s/dcgm-exporter:3.3.8-3.6.0-ubuntu22.04   Up 4h
+node-exporter   quay.io/prometheus/node-exporter:latest                    Up 4h
+EXIT: 0
+-----END DOCKER_PS-----
+-----BEGIN GPU-----
+CMD: nvidia-smi
+Driver: 580.105.08 | CUDA: 13.0
+GPU 0: RTX 5090  | 37C | 24W/450W | 29763MiB/32607MiB | 0% (TabbyAPI loaded)
+GPU 1: RTX 4090  | 30C |  4W/300W | 20239MiB/24564MiB | 0% (TabbyAPI loaded)
+Processes:
+  GPU 0: /opt/tabbyapi/venv/bin/python  20310MiB + 9430MiB
+  GPU 1: /opt/tabbyapi/venv/bin/python   4672MiB + 15552MiB
+EXIT: 0
+-----END GPU-----
+-----BEGIN LSPCI_GPU-----
+CMD: lspci | grep -Ei vga
+41:00.0 VGA: NVIDIA GB202 [GeForce RTX 5090] (rev a1)
+81:00.0 VGA: NVIDIA AD102 [GeForce RTX 4090] (rev a1)
+EXIT: 0
+-----END LSPCI_GPU-----
+=====END NODE|label=hydra-ai-nixos=====
+=====BEGIN NODE|label=hydra-storage-unraid|target=root@192.168.1.244=====
+HOMEOPS_NODE_SNAPSHOT|hostname=Unraid|os=Unraid_OS|version=7.2.0|kernel=6.12.54-Unraid|cpu=AMD_EPYC_7663_56-Core|cores=112|ram_total=251Gi|ram_used=73Gi|gpus=ArcA380|uptime=3d9h|containers=60
+-----BEGIN OS_IDENTITY-----
+CMD: hostname; date -Is; uname -a; cat /etc/os-release
+Unraid
+2025-12-12T20:21:55-08:00
+Linux Unraid 6.12.54-Unraid x86_64 GNU/Linux
+NAME=Unraid OS
+PRETTY_NAME=Unraid OS 7.2 x86_64
+VERSION=7.2.0 2025-10-29
+EXIT: 0
+-----END OS_IDENTITY-----
+-----BEGIN UPTIME-----
+CMD: uptime
+20:21:55 up 3 days, 9:40, 0 users, load average: 1.42, 1.57, 1.64
+EXIT: 0
+-----END UPTIME-----
+-----BEGIN CPU-----
+CMD: lscpu
+Architecture:           x86_64
+CPU(s):                 112
+Model name:             AMD EPYC 7663 56-Core Processor
+Thread(s) per core:     2
+Core(s) per socket:     56
+Socket(s):              1
+CPU max MHz:            3541.0149
+L3 cache:               256 MiB (8 instances)
+EXIT: 0
+-----END CPU-----
+-----BEGIN RAM-----
+CMD: free -h
+              total        used        free      shared  buff/cache   available
+Mem:          251Gi        73Gi       5.7Gi       9.3Gi       184Gi       177Gi
+EXIT: 0
+-----END RAM-----
+-----BEGIN DISKS-----
+CMD: lsblk summary
+sda       28.7G  Cruzer Glide (boot USB)
+sdb-sdc   21.8T  WDC WD241KFGX (parity x2)
+sdd-sdk   16-18T WDC/Seagate (data array x8)
+md1-md9   array  /mnt/disk1-9 (xfs)
+nvme0-11  12x931.5G NVMe (ZFS hpc_nvme pool)
+EXIT: 0
+-----END DISKS-----
+-----BEGIN DF-----
+CMD: df -hT (key filesystems)
+/dev/md1p1-md9p1  xfs   17-22T  ~90% used  /mnt/disk1-9
+hpc_nvme          zfs   5.0T    39% used   /mnt/hpc_nvme
+hpc_nvme/models   zfs   3.5T    11% used   /mnt/hpc_nvme/models
+shfs              fuse  164T    91% used   /mnt/user (148T data)
+/dev/loop2        btrfs 100G    54% used   /var/lib/docker
+EXIT: 0
+-----END DF-----
+-----BEGIN NETWORK-----
+CMD: ip -br addr; ip route
+br0              UP   192.168.1.244/24
+docker0          UP   172.17.0.1/16
+br-*             UP   172.18-24.0.1/16 (docker networks)
+default via 192.168.1.1 dev br0
+EXIT: 0
+-----END NETWORK-----
+-----BEGIN DNS-----
+CMD: cat /etc/resolv.conf
+nameserver 192.168.1.1
+EXIT: 0
+-----END DNS-----
+-----BEGIN PORTS-----
+CMD: ss -tulpn (key ports)
+53:AdGuard 111:rpcbind 2049:NFS 3000:OpenWebUI 3003:Grafana
+3005:Firecrawl 3030:Perplexica 3053:AdGuardSetup 3333:Homepage
+4000:LiteLLM 5001:Docling 5432:PostgreSQL 5678:n8n 6333:Qdrant
+6379:Redis 6767:Bazarr 7878:Radarr 8000:SillyTavern 8082:qBittorrent
+8085:SABnzbd 8123:HomeAssistant 8180:Miniflux 8444:Vaultwarden
+8686:Lidarr 8880:KokoroTTS 8888:SearXNG 8989:Sonarr 9000:Portainer
+9090:Prometheus 9093:Alertmanager 9696:Prowlarr 9999:Stash 32400:Plex
+EXIT: 0
+-----END PORTS-----
+-----BEGIN SERVICES-----
+CMD: Unraid - no systemd
+Services managed via Docker containers (60 running)
+EXIT: 0
+-----END SERVICES-----
+-----BEGIN DOCKER_VERSION-----
+CMD: docker version
+Docker Engine Community 27.4.1 API 1.47
+EXIT: 0
+-----END DOCKER_VERSION-----
+-----BEGIN DOCKER_PS-----
+CMD: docker ps (60 containers - abbreviated)
+auditforecaster-backup    postgres-backup-local:16     Up 6h
+empire-control-plane      empire-api                   Up 7h
+hydra-mcp                 python:3.11-slim             Up 9h
+hydra-crewai              python:3.11-slim             Up 9h
+pigallery2                bpatrik/pigallery2           Up 14h
+letta-proxy               python:3.11-slim             Up 24h
+tailscale                 tailscale/tailscale          Up 24h
+vaultwarden               vaultwarden/server           Up 24h
+hydra-n8n                 n8nio/n8n                    Up 28h
+hydra-neo4j               neo4j:5.26.0-community       Up 29h
+hydra-prometheus          prom/prometheus:v2.54.1      Up 34h
+hydra-letta               letta/letta                  Up 28h
+hydra-alertmanager        prom/alertmanager:v0.28.1    Up 29h
+letta-db                  pgvector/pgvector:pg16       Up 34h
+portainer                 portainer/portainer-ce       Up 34h
+hydra-qdrant              qdrant/qdrant                Up 34h
+sonarr                    linuxserver/sonarr           Up 34h
+radarr                    linuxserver/radarr           Up 34h
+prowlarr                  linuxserver/prowlarr         Up 34h
+adguard                   adguard/adguardhome          Up 34h
+homepage                  gethomepage/homepage         Up 22h
+hydra-grafana             grafana/grafana:11.3.0       Up 6h
+hydra-litellm             berriai/litellm              Up 56m
+hydra-loki                grafana/loki:3.2.0           Up 34h
+sabnzbd                   linuxserver/sabnzbd          Up 34h
+qbittorrent               linuxserver/qbittorrent      Up 34h
+lidarr                    linuxserver/lidarr           Up 34h
+bazarr                    linuxserver/bazarr           Up 34h
+homeassistant             home-assistant               Up 34h
+perplexica                itzcrazykns/perplexica       Up 34h
+sillytavern               sillytavern/sillytavern      Up 34h
+kokoro-tts                remsky/kokoro-fastapi-cpu    Up 34h
+hydra-firecrawl-api       trieve/firecrawl             Up 34h
+hydra-docling             docling-serve                Up 34h
+hydra-searxng             searxng/searxng              Up 34h
+hydra-redis               redis:alpine                 Up 34h
+hydra-postgres            postgres:16-alpine           Up 34h
+hydra-uptime-kuma         louislam/uptime-kuma         Up 34h
+open-webui                open-webui/open-webui        Up 34h
+stash                     hotio/stash                  Up 34h
+Plex-Media-Server         plexinc/pms-docker           Up 34h
++19 more containers...
+EXIT: 0
+-----END DOCKER_PS-----
+-----BEGIN GPU-----
+CMD: nvidia-smi / lspci
+Intel Arc A380 (i915 driver, no nvidia-smi)
+EXIT: 0
+-----END GPU-----
+=====END NODE|label=hydra-storage-unraid=====
+=====BEGIN NODE|label=desktop-windows|target=localhost=====
+HOMEOPS_NODE_SNAPSHOT|hostname=ShaunsDesktop|os=Windows_11_Pro|version=10.0.26200|cpu=Intel_i7-13700K|cores=16|threads=24|ram_total=63.77GB|gpus=RTX3060+UHD770
+-----BEGIN OS_IDENTITY-----
+CMD: Get-CimInstance Win32_OperatingSystem
+Hostname: ShaunsDesktop
+Caption: Microsoft Windows 11 Pro
+Version: 10.0.26200
+BuildNumber: 26200
+Timestamp: 2025-12-12T22:22:10-06:00
+EXIT: 0
+-----END OS_IDENTITY-----
+-----BEGIN CPU-----
+CMD: Get-CimInstance Win32_Processor
+Name:                      13th Gen Intel(R) Core(TM) i7-13700K
+NumberOfCores:             16
+NumberOfLogicalProcessors: 24
+MaxClockSpeed:             3400 MHz
+EXIT: 0
+-----END CPU-----
+-----BEGIN RAM-----
+CMD: Get-CimInstance Win32_ComputerSystem
+Total RAM: 63.77 GB
+EXIT: 0
+-----END RAM-----
+-----BEGIN NETWORK-----
+CMD: Get-NetIPAddress -AddressFamily IPv4
+InterfaceAlias    IPAddress
+Ethernet          192.168.1.167
+vEthernet         172.31.144.1
+EXIT: 0
+-----END NETWORK-----
+-----BEGIN ROUTES-----
+CMD: Get-NetRoute -AddressFamily IPv4
+DestinationPrefix  NextHop       InterfaceAlias
+0.0.0.0/0          192.168.1.1   Ethernet
+192.168.1.0/24     On-link       Ethernet
+192.168.1.167/32   On-link       Ethernet
+EXIT: 0
+-----END ROUTES-----
+-----BEGIN DNS-----
+CMD: Get-DnsClientServerAddress
+Ethernet: (configured via DHCP)
+EXIT: 0
+-----END DNS-----
+-----BEGIN PORTS-----
+CMD: Get-NetTCPConnection -State Listen
+LocalAddress  LocalPort  Service
+::            135        RPC
+0.0.0.0       135        RPC
+192.168.1.167 139        NetBIOS
+::            445        SMB
+0.0.0.0       2179       Hyper-V
+::            3389       RDP
+0.0.0.0       3389       RDP
+0.0.0.0       5040       WinHTTP
+::            5357       WSDAPI
+::            9101       Claude Code
+127.0.0.1     19292      Local service
+0.0.0.0       49664-49677 Dynamic RPC
+0.0.0.0       54950      Application
+0.0.0.0       59869      Application
+EXIT: 0
+-----END PORTS-----
+-----BEGIN GPU-----
+CMD: Get-CimInstance Win32_VideoController
+Name:          NVIDIA GeForce RTX 3060
+DriverVersion: 32.0.15.9144
+
+Name:          Intel(R) UHD Graphics 770
+DriverVersion: 32.0.101.6129
+EXIT: 0
+-----END GPU-----
+=====END NODE|label=desktop-windows=====

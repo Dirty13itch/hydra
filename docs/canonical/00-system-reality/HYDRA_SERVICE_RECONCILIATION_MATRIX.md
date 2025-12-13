@@ -1,0 +1,17 @@
+# Hydra Service Reconciliation Matrix
+
+This is a compact mapping of **(runtime truth)** vs **(repo references)**, so you can converge on one canonical architecture.
+
+| Service | Runtime node:port | Runtime form | Where it appears in files | Drift / notes |
+|---|---|---|---|---|
+| MCP API (hydra-mcp) | **hydra-storage:8600** | Docker container | `projects/projects/hydra/.mcp.json`<br>`projects/projects/hydra/mcp/hydra_mcp_proxy.py`<br>`projects/projects/hydra/mcp/mcp_server.py`<br>`projects/projects/hydra/ui/src/lib/api.ts`<br>`projects/projects/hydra/config/alertmanager.yml` | None obvious; ensure port published and reachable from desktop. |
+| Prometheus | **hydra-storage:9090** | Docker container | `projects/projects/hydra/alert_rules.yml`<br>`projects/projects/hydra/knowledge/observability.md`<br>`projects/projects/hydra/ui/src/components/ServiceList.tsx` | Alert rules assume DCGM metrics; compute uses nvidia-smi-exporter (9835) so alerts may partially fail. |
+| Grafana | **hydra-storage:3003** | Docker container | `projects/projects/hydra/grafana-ai-dashboard.json`<br>`projects/projects/hydra/grafana-hydra-dashboard.json`<br>`projects/projects/hydra/knowledge/observability.md`<br>`projects/projects/hydra/ui/src/components/ServiceList.tsx` | None major; verify Loki port mapping (docs vs snapshot differ). |
+| Alertmanager | **hydra-storage:9093** | Docker container | `projects/projects/hydra/config/alertmanager.yml`<br>`projects/projects/hydra/ui/src/lib/api.ts` | Webhook target assumes hydra-mcp in docker network; keep network stable. |
+| LiteLLM | **hydra-storage:4000** | Docker container | `projects/projects/hydra/.claude/commands/phase1-deploy.md`<br>`projects/projects/hydra/knowledge/inference-stack.md`<br>`projects/projects/hydra/ui/src/components/ServiceList.tsx` | Architecture.md incorrectly lists LiteLLM under hydra-ai; should be hydra-storage. |
+| Letta | **hydra-storage:8283** | Docker container | `projects/projects/hydra/import_knowledge_to_letta.py`<br>`projects/projects/hydra/ui/src/lib/api.ts`<br>`projects/projects/hydra/ui/src/components/LettaChat.tsx` | None obvious. |
+| Qdrant | **hydra-storage:6333** | Docker container | `projects/projects/hydra/knowledge/databases.md`<br>`projects/projects/hydra/ui/src/components/ServiceList.tsx` | None. |
+| Ollama | **hydra-compute:11434** | NixOS systemd service | `projects/projects/hydra/scripts/generate_state.py`<br>`projects/projects/hydra/knowledge/inference-stack.md`<br>`projects/projects/hydra/ui/src/lib/api.ts`<br>`projects/projects/hydra/ui/src/components/ServiceList.tsx` | UI hardcodes 192.168.1.251; should be 192.168.1.203 or DNS alias. |
+| ComfyUI | **hydra-compute:8188** | Docker compose stack | `projects/projects/hydra/Empire of Broken Queens/api/main.py` | None; snapshot matches 8188. |
+| TabbyAPI | **hydra-ai:5000/5001** | systemd service | `projects/projects/hydra/knowledge/inference-stack.md`<br>`dotclaude/.claude/CLAUDE.md` | Architecture.md does not list it; update port reference. |
+| GPU metrics exporter | **hydra-compute + hydra-ai:9835** | docker exporter containers | `projects/projects/hydra/alert_rules.yml`<br>`projects/projects/hydra/patch_gpu_metrics.py` | Compute uses nvidia-smi-exporter; ai uses dcgm-exporter. Consider standardizing. |
