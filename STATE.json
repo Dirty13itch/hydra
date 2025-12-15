@@ -1,6 +1,6 @@
 {
-  "generated_at": "2025-12-15T06:35:00Z",
-  "version": "2.3.5",
+  "generated_at": "2025-12-15T15:00:00Z",
+  "version": "2.3.6",
   "phase": "12-COMPLETE",
   "cluster": {
     "nodes": {
@@ -81,18 +81,19 @@
     "active": 8,
     "api_key": "n8n_api_hydra_cluster_2024",
     "admin_email": "admin@hydra.local",
-    "last_validated": "2025-12-15T09:45:00Z",
+    "last_validated": "2025-12-15T15:00:00Z",
     "parsing_bugs_fixed": true,
     "webhooks_fixed": true,
-    "notes": "2025-12-15: Imported 3 new workflows via direct PostgreSQL. All 8 workflows now activated.",
+    "code_nodes_fixed": true,
+    "notes": "2025-12-15: All workflows tested and verified. Alertmanager fixed (runOnceForAllItems mode). Health digest verified (100% health).",
     "workflows": [
       {"id": "learnings-new-001", "name": "Learnings Capture", "active": true, "webhook": "/webhook/learnings", "status": "verified"},
-      {"id": "cJA5gkMfkwQ0RoOn", "name": "Alertmanager Self-Healing Handler", "active": true, "webhook": "/webhook/alertmanager", "status": "verified"},
+      {"id": "cJA5gkMfkwQ0RoOn", "name": "Alertmanager Self-Healing Handler", "active": true, "webhook": "/webhook/alertmanager", "status": "verified", "note": "Fixed: code nodes use runOnceForAllItems mode. Tested: successfully restarted hydra-crewai container."},
       {"id": "letta-memory-fixed-001", "name": "Letta Memory Update (Fixed)", "active": true, "webhook": "/webhook/letta-memory", "status": "verified"},
-      {"id": "9hHaupQyL94tQ99S", "name": "Hydra Daily Health Digest", "active": true, "trigger": "schedule", "note": "Runs daily at 8 AM CST"},
+      {"id": "9hHaupQyL94tQ99S", "name": "Hydra Daily Health Digest", "active": true, "trigger": "schedule", "status": "verified", "note": "Runs daily at 8 AM CST. Tested: generates 100% health report, saves to file, logs to Letta memory."},
       {"id": "5dfc809bbfe348a89", "name": "Disk Cleanup Automation", "active": true, "trigger": "schedule", "note": "Runs daily at 4 AM"},
       {"id": "container-restart-001", "name": "Container Restart with Rate Limiting", "active": true, "webhook": "/webhook/container-failed", "status": "needs-config", "note": "HTTP request target needs fixing"},
-      {"id": "crewai-dispatch-001", "name": "CrewAI Task Dispatcher", "active": true, "webhook": "/webhook/crew-task", "status": "verified", "note": "All 3 crews working: monitoring, research, maintenance"},
+      {"id": "crewai-dispatch-001", "name": "CrewAI Task Dispatcher", "active": true, "webhook": "/webhook/crew-task", "status": "verified", "note": "Tested: all 3 crews working (monitoring, research, maintenance). Field: crew_type."},
       {"id": "model-perf-001", "name": "Model Performance Tracker", "active": true, "trigger": "schedule", "note": "Runs hourly"}
     ],
     "removed_workflows": [
