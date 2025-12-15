@@ -1,333 +1,257 @@
 {
-  "generated_at": "2025-12-12T03:03:22.819895Z",
-  "version": "1.0",
+  "generated_at": "2025-12-15T05:20:00Z",
+  "version": "2.3.5",
+  "phase": "12-COMPLETE",
   "cluster": {
+    "nodes": {
+      "hydra-ai": {
+        "ip": "192.168.1.250",
+        "tailscale_ip": "100.84.120.44",
+        "os": "NixOS",
+        "status": "online",
+        "gpus": [
+          {"name": "RTX 5090", "vram_total": 32607, "vram_used": 29771, "temp": 36},
+          {"name": "RTX 4090", "vram_total": 24564, "vram_used": 20247, "temp": 29}
+        ],
+        "services": {
+          "tabbyapi": "active",
+          "ollama": "available"
+        }
+      },
+      "hydra-compute": {
+        "ip": "192.168.1.203",
+        "tailscale_ip": "100.74.73.44",
+        "os": "NixOS",
+        "status": "online",
+        "gpus": [
+          {"name": "RTX 5070 Ti", "vram_total": 16303, "vram_used": 8876, "temp": 45, "service": "tabbyapi"},
+          {"name": "RTX 5070 Ti", "vram_total": 16303, "vram_used": 232, "temp": 41, "service": "comfyui"}
+        ],
+        "services": {
+          "tabbyapi": "active",
+          "comfyui": "active",
+          "ollama": "available"
+        }
+      },
+      "hydra-storage": {
+        "ip": "192.168.1.244",
+        "tailscale_ip": "100.111.54.59",
+        "os": "Unraid",
+        "status": "online",
+        "containers": {
+          "total": 63,
+          "running": 63,
+          "healthy": 63,
+          "unhealthy": 0
+        }
+      }
+    },
     "prometheus_targets": {
       "up": 11,
       "total": 11
     },
     "letta": {
       "version": "0.15.1",
-      "status": "ok"
+      "status": "ok",
+      "agents": ["hydra-steward"]
     },
     "crewai": {
       "status": "ok",
-      "crews": [
-        "monitoring",
-        "research",
-        "maintenance"
-      ],
-      "timestamp": "2025-12-12T03:03:25.756747"
+      "crews": ["monitoring", "research", "maintenance"]
     },
-    "qdrant_collections": 4
+    "qdrant_collections": 6
   },
   "services": {
+    "tabbyapi": "up",
+    "litellm": "up",
     "letta": "up",
     "crewai": "up",
     "qdrant": "up",
-    "litellm": "up",
-    "prometheus": "up"
+    "neo4j": "up",
+    "prometheus": "up",
+    "grafana": "up",
+    "n8n": "up",
+    "hydra-tools-api": "up",
+    "hydra-mcp": "up"
   },
-  "containers": [
-    {
-      "name": "hydra-control-plane-ui",
-      "status": "Up 18 minutes",
-      "health": "running"
-    },
-    {
-      "name": "hydra-crewai",
-      "status": "Up 42 minutes (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "hydra-n8n",
-      "status": "Up 3 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-neo4j",
-      "status": "Up 3 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "hydra-promtail",
-      "status": "Up 8 hours",
-      "health": "running"
-    },
-    {
-      "name": "letta-proxy",
-      "status": "Up 4 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "hydra-mcp",
-      "status": "Up 5 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "hydra-watchtower",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "hydra-prometheus",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-letta",
-      "status": "Up 3 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "hydra-alertmanager",
-      "status": "Up 4 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "letta-db",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "portainer",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-qdrant",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "sonarr",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "radarr",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "prowlarr",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "adguard",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "homepage",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "hydra-miniflux",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-grafana",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-litellm",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-loki",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-control-plane-backend",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "auditforecaster-ui",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-task-hub",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "auditforecaster-db",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "node-exporter",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "readarr",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "whisparr",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "sabnzbd",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "qbittorrent",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "lidarr",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "bazarr",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "homeassistant",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "perplexica",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "sillytavern",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "kokoro-tts",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-firecrawl-api",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-firecrawl-worker",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-firecrawl-playwright",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-firecrawl-redis",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-docling",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "hydra-searxng",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "hydra-redis",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "hydra-postgres",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "hydra-uptime-kuma",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "auditforecaster-backup",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "auditforecaster-proxy",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "auditforecaster-monitor",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "hydra-brain",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "open-webui",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    },
-    {
-      "name": "stash",
-      "status": "Up 9 hours",
-      "health": "running"
-    },
-    {
-      "name": "Plex-Media-Server",
-      "status": "Up 9 hours (unhealthy)",
-      "health": "unhealthy"
-    }
-  ],
-  "metrics": {
-    "cpu_avg": 2.0,
-    "memory_used_pct": 13.23,
-    "disk_used_pct": 13.13
+  "n8n_workflows": {
+    "total": 5,
+    "active": 4,
+    "api_key": "n8n_api_hydra_cluster_2024",
+    "admin_email": "admin@hydra.local",
+    "last_validated": "2025-12-15T05:17:00Z",
+    "parsing_bugs_fixed": true,
+    "webhooks_fixed": true,
+    "notes": "2025-12-15: Removed broken workflows (Knowledge Refresh, Research Agent, Empire Processor) that had structural issues causing WorkflowHasIssuesError. Core operational workflows working correctly.",
+    "workflows": [
+      {"id": "learnings-new-001", "name": "Learnings Capture", "active": true, "webhook": "/webhook/learnings", "status": "verified"},
+      {"id": "cJA5gkMfkwQ0RoOn", "name": "Alertmanager Self-Healing Handler", "active": true, "webhook": "/webhook/alertmanager", "status": "verified"},
+      {"id": "letta-memory-fixed-001", "name": "Letta Memory Update (Fixed)", "active": true, "webhook": "/webhook/letta-memory", "status": "verified"},
+      {"id": "9hHaupQyL94tQ99S", "name": "Hydra Daily Health Digest", "active": true, "trigger": "schedule", "note": "Runs daily at 8 AM CST"},
+      {"id": "5dfc809bbfe348a89", "name": "Disk Cleanup Automation", "active": false, "trigger": "schedule", "note": "Replaced by cron script for direct Docker access"}
+    ],
+    "removed_workflows": [
+      {"id": "knowledge-refresh-fixed-001", "reason": "Structural issues - WorkflowHasIssuesError"},
+      {"id": "research-fixed-001", "reason": "Complex workflow with credential and node issues"},
+      {"id": "mFPUiBj0AQ5ErJZs", "reason": "Empire Chapter Processor - structural issues"}
+    ]
   },
-  "models": [
-    "qwen2.5-coder:7b",
-    "deepseek-r1:8b",
-    "llama3.2:3b",
-    "codellama:13b",
-    "mistral:7b-instruct",
-    "mxbai-embed-large:latest",
-    "nomic-embed-text:latest",
-    "qwen2.5:7b"
-  ],
-  "agents": {
-    "hydra-steward": {
-      "id": "agent-b3fb1747-1a5b-4c94-b713-11d6403350bf",
-      "name": "hydra-steward",
-      "created_at": "2025-12-10T23:01:32.994393Z"
+  "cron_jobs": {
+    "disk_cleanup": {
+      "schedule": "0 4 * * *",
+      "script": "/mnt/user/appdata/hydra-stack/scripts/disk-cleanup.sh",
+      "log": "/mnt/user/appdata/hydra-stack/logs/disk-cleanup.log",
+      "tasks": ["docker prune", "build cache", "volumes", "loki logs", "temp files", "old backups"]
+    },
+    "postgres_backup": {
+      "schedule": "0 2 * * *",
+      "script": "/mnt/user/appdata/hydra-stack/scripts/postgres_backup.sh"
+    },
+    "qdrant_backup": {
+      "schedule": "0 3 * * *",
+      "script": "/mnt/user/appdata/hydra-stack/scripts/qdrant_backup.sh"
+    },
+    "health_monitor": {
+      "schedule": "*/1 * * * *",
+      "script": "/mnt/user/appdata/hydra-stack/scripts/health-monitor.sh"
     }
+  },
+  "secrets": {
+    "sops_deployed": true,
+    "encrypted_file": "/opt/hydra-secrets/docker.yaml",
+    "deployed_to": "/mnt/user/appdata/hydra-stack/.env.secrets"
+  },
+  "models": {
+    "tabbyapi": ["Midnight-Miqu-70B-v1.5-exl2-2.5bpw"],
+    "available_exl2": [
+      "Midnight-Miqu-70B-v1.5-exl2-2.5bpw",
+      "Llama-3.1-70B-Instruct-exl2-4.5bpw",
+      "Llama-3.1-70B-Instruct-exl2-3.5bpw",
+      "Llama-3.1-8B-Instruct-exl2-6.0bpw",
+      "Dolphin-2.9-Llama3-70B-exl2-4.0bpw",
+      "Lumimaid-v0.2-70B-exl2-4.0bpw"
+    ],
+    "ollama": [
+      "dolphin-llama3:70b",
+      "qwen2.5-coder:7b",
+      "deepseek-r1:8b",
+      "llama3.2:3b",
+      "codellama:13b",
+      "mistral:7b-instruct",
+      "mxbai-embed-large:latest",
+      "nomic-embed-text:latest",
+      "qwen2.5:7b"
+    ]
+  },
+  "phase_11_tools": {
+    "api_endpoint": "http://192.168.1.244:8700",
+    "endpoints": [
+      "/diagnosis",
+      "/optimization",
+      "/knowledge",
+      "/capabilities",
+      "/routing",
+      "/preferences",
+      "/activity",
+      "/control"
+    ],
+    "status": "operational",
+    "last_verified": "2025-12-15T03:40:00Z",
+    "routing_tiers": {
+      "fast": "qwen2.5-7b (Ollama)",
+      "quality": "midnight-miqu-70b (TabbyAPI)",
+      "code": "qwen2.5-coder-7b (Ollama)"
+    },
+    "diagnosis_health": 100
+  },
+  "uptime_kuma": {
+    "url": "http://192.168.1.244:3004",
+    "monitors": {
+      "total": 40,
+      "active": 40,
+      "up": 38,
+      "down": 2
+    },
+    "down_services": ["Firecrawl (endpoint issue)", "SABnzbd (network config)"],
+    "last_verified": "2025-12-15T03:35:00Z"
+  },
+  "phase_12_character_system": {
+    "status": "complete",
+    "modules": {
+      "character_consistency": "hydra_tools.character_consistency",
+      "comfyui_client": "hydra_tools.comfyui_client",
+      "tts_synthesis": "hydra_tools.tts_synthesis"
+    },
+    "qdrant_collections": {
+      "empire_faces": {"dim": 512, "points": 0},
+      "empire_images": {"dim": 768, "points": 6}
+    },
+    "characters_seeded": ["seraphina", "mira", "lysander"],
+    "voice_profiles": "config/kokoro/empire_voice_profiles.json",
+    "comfyui_templates": ["character_portrait_template", "background_template"],
+    "kokoro_tts": {
+      "url": "http://192.168.1.244:8880",
+      "voices_available": 67,
+      "character_voices": {
+        "seraphina": "af_bella",
+        "mira": "af_sarah",
+        "lysander": "am_michael"
+      }
+    },
+    "features": [
+      "CharacterManager",
+      "ScriptParser",
+      "ComfyUIWorkflowGenerator",
+      "VoiceSynthesizer",
+      "VoiceProfileManager",
+      "TTSSynthesizer"
+    ]
+  },
+  "neo4j_knowledge_graph": {
+    "nodes": {"Service": 20, "GPU": 4, "Node": 3, "Network": 1},
+    "relationships": {"RUNS_ON": 20, "DEPENDS_ON": 8, "HAS_GPU": 4}
+  },
+  "home_assistant": {
+    "url": "http://192.168.1.244:8123",
+    "status": "running",
+    "discovered_devices": {
+      "google_cast": ["Nest Hub"],
+      "sonos": ["Living Room (3x)", "Sub Mini"]
+    },
+    "gpu_metrics_api": {
+      "url": "http://192.168.1.244:8701",
+      "container": "gpu-metrics-api",
+      "sensors": [
+        "sensor.rtx_5090_temperature",
+        "sensor.rtx_4090_temperature",
+        "sensor.rtx_5090_power",
+        "sensor.rtx_4090_power",
+        "sensor.rtx_5090_vram",
+        "sensor.rtx_4090_vram"
+      ]
+    },
+    "automations": [
+      "automation.gpu_temperature_alert",
+      "automation.gpu_temp_alert_sonos",
+      "automation.gpu_vram_high_alert",
+      "automation.gpu_power_high_alert",
+      "automation.cluster_health_check"
+    ],
+    "integration_opportunities": [
+      "Shell commands for container health",
+      "n8n webhooks for automations",
+      "LiteLLM for voice AI",
+      "Kokoro TTS integration",
+      "Sonos TTS alerts"
+    ]
   },
   "summary": {
-    "total_containers": 54,
-    "running_containers": 54,
-    "healthy_containers": 0,
-    "unhealthy_containers": 18,
-    "available_models": 8,
-    "status": "degraded"
+    "total_containers": 63,
+    "running_containers": 63,
+    "healthy_containers": 63,
+    "unhealthy_containers": 0,
+    "available_models": 10,
+    "gpu_vram_total_gb": 89,
+    "status": "healthy"
   }
 }
