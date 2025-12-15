@@ -1,0 +1,69 @@
+{
+  "name": "Container Restart with Rate Limiting",
+  "nodes": [
+    {
+      "id": "webhook-trigger",
+      "name": "Container Failed Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [100, 300],
+      "webhookId": "container-failed-v2",
+      "parameters": {
+        "path": "container-failed",
+        "httpMethod": "POST",
+        "responseData": "allEntries",
+        "responseMode": "onReceived"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "extract-container",
+      "name": "Extract Container",
+      "type": "n8n-nodes-base.code",
+      "position": [320, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const input = items[0].json.body || items[0].json;\nconst container = input.container || input.alertname || 'unknown';\n\nreturn [{ json: { container } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "restart-container",
+      "name": "Restart Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [540, 300],
+      "parameters": {
+        "url": "http://192.168.1.244:8600/containers/restart",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ container: $json.container }) }}",
+        "options": {"timeout": 30000}
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "log-restart",
+      "name": "Log Activity",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [760, 300],
+      "parameters": {
+        "url": "http://192.168.1.244:8700/activity",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'container_restart', source: 'n8n-automation', action_type: 'automated', target: $('Extract Container').item.json.container, result: $json.status || 'attempted', decision_reason: $json.message || 'Auto-restart triggered by webhook', requires_approval: false }) }}",
+        "options": {"timeout": 10000}
+      },
+      "typeVersion": 4.2,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Container Failed Webhook": {"main": [[{"node": "Extract Container", "type": "main", "index": 0}]]},
+    "Extract Container": {"main": [[{"node": "Restart Container", "type": "main", "index": 0}]]},
+    "Restart Container": {"main": [[{"node": "Log Activity", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "active": true
+}
