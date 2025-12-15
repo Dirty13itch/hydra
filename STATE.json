@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-12-15T05:20:00Z",
+  "generated_at": "2025-12-15T05:35:00Z",
   "version": "2.3.5",
   "phase": "12-COMPLETE",
   "cluster": {
@@ -169,11 +169,12 @@
     "monitors": {
       "total": 40,
       "active": 40,
-      "up": 38,
-      "down": 2
+      "up": 40,
+      "down": 0
     },
-    "down_services": ["Firecrawl (endpoint issue)", "SABnzbd (network config)"],
-    "last_verified": "2025-12-15T03:35:00Z"
+    "down_services": [],
+    "last_verified": "2025-12-15T05:35:00Z",
+    "notes": "SABnzbd fixed: corrected port mapping 8085:8080 and changed monitor to HTTP type"
   },
   "phase_12_character_system": {
     "status": "complete",
