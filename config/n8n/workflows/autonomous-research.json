@@ -1,0 +1,444 @@
+{
+  "name": "Autonomous Research Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "research",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Research Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [260, 300],
+      "webhookId": "research-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse research request and create search plan\nconst body = $input.item.json.body || $input.item.json;\n\nconst research = {\n  topic: body.topic || body.query,\n  depth: body.depth || 'medium',  // shallow, medium, deep\n  maxSources: body.max_sources || 10,\n  outputFormat: body.format || 'markdown',\n  saveToFile: body.save || true,\n  timestamp: new Date().toISOString(),\n  id: `research-${Date.now()}`\n};\n\n// Generate search queries based on topic\nconst queries = [];\n\n// Base query\nqueries.push(research.topic);\n\n// Add variations for deeper research\nif (research.depth !== 'shallow') {\n  queries.push(`${research.topic} tutorial`);\n  queries.push(`${research.topic} best practices`);\n  queries.push(`${research.topic} examples`);\n}\n\nif (research.depth === 'deep') {\n  queries.push(`${research.topic} advanced`);\n  queries.push(`${research.topic} comparison`);\n  queries.push(`${research.topic} alternatives`);\n  queries.push(`${research.topic} problems issues`);\n}\n\nreturn {\n  json: {\n    ...research,\n    queries: queries\n  }\n};"
+      },
+      "id": "code-1",
+      "name": "Plan Research",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "queries",
+        "options": {}
+      },
+      "id": "split-1",
+      "name": "Split Queries",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8888/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.queries }}"
+            },
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "engines",
+              "value": "google,bing,duckduckgo"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-1",
+      "name": "Search via SearXNG",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extract and deduplicate search results\nconst results = $input.item.json.results || [];\nconst topic = $input.item.json.topic;\n\n// Take top results\nconst sources = results.slice(0, 5).map(r => ({\n  title: r.title,\n  url: r.url,\n  snippet: r.content || r.snippet || '',\n  engine: r.engine\n}));\n\nreturn {\n  json: {\n    topic,\n    query: $input.item.json.queries,\n    sources\n  }\n};"
+      },
+      "id": "code-2",
+      "name": "Extract Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-1",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1360, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Compile all sources and prepare for LLM synthesis\nconst items = $input.item.json.data || [];\nconst topic = items[0]?.topic || 'Unknown Topic';\n\n// Deduplicate sources by URL\nconst seenUrls = new Set();\nconst allSources = [];\n\nfor (const item of items) {\n  for (const source of (item.sources || [])) {\n    if (!seenUrls.has(source.url)) {\n      seenUrls.add(source.url);\n      allSources.push(source);\n    }\n  }\n}\n\n// Build context for LLM\nlet context = `Research Topic: ${topic}\\n\\nSources Found:\\n\\n`;\nallSources.forEach((s, i) => {\n  context += `[${i + 1}] ${s.title}\\nURL: ${s.url}\\nSnippet: ${s.snippet}\\n\\n`;\n});\n\nreturn {\n  json: {\n    topic,\n    sourceCount: allSources.length,\n    sources: allSources,\n    context\n  }\n};"
+      },
+      "id": "code-3",
+      "name": "Compile Sources",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1580, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:4000/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a research assistant. Synthesize the provided search results into a comprehensive, well-organized research report. Include key findings, important details, and cite sources using [n] notation. Structure the report with clear sections.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.context.replace(/\"/g, '\\\\\"').replace(/\\n/g, '\\\\n') }}\"\n    }\n  ],\n  \"max_tokens\": 4096,\n  \"temperature\": 0.7\n}",
+        "options": {
+          "timeout": 120000
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth"
+      },
+      "id": "http-2",
+      "name": "Synthesize with LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1800, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Format final research report\nconst llmResponse = $input.item.json;\nconst topic = $input.all()[0]?.json?.topic || 'Research';\nconst sources = $input.all()[0]?.json?.sources || [];\nconst timestamp = new Date().toISOString();\nconst date = timestamp.split('T')[0];\n\nconst synthesis = llmResponse.choices?.[0]?.message?.content || 'No synthesis available';\n\n// Build markdown report\nlet report = `# Research Report: ${topic}\\n\\n`;\nreport += `**Generated:** ${timestamp}\\n\\n`;\nreport += `**Sources Analyzed:** ${sources.length}\\n\\n`;\nreport += `---\\n\\n`;\nreport += `## Summary\\n\\n`;\nreport += synthesis;\nreport += `\\n\\n---\\n\\n`;\nreport += `## Sources\\n\\n`;\n\nsources.forEach((s, i) => {\n  report += `${i + 1}. [${s.title}](${s.url})\\n`;\n});\n\nreport += `\\n\\n---\\n\\n`;\nreport += `*Generated by Hydra Autonomous Research Agent*\\n`;\n\n// Generate filename\nconst safeTopic = topic.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50);\nconst filename = `research-${safeTopic}-${date}.md`;\n\nreturn {\n  json: {\n    topic,\n    filename,\n    report,\n    sourceCount: sources.length,\n    timestamp\n  }\n};"
+      },
+      "id": "code-4",
+      "name": "Format Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2020, 300]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "filePath": "=/data/research/{{ $json.filename }}",
+        "options": {}
+      },
+      "id": "write-1",
+      "name": "Save Report",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [2240, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"topic\": \"{{ $json.topic }}\",\n  \"filename\": \"{{ $json.filename }}\",\n  \"sources\": {{ $json.sourceCount }},\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2460, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-1",
+      "name": "Nightly Schedule (2 AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [260, 540]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "filePath": "/data/research/research-queue.json",
+        "options": {}
+      },
+      "id": "read-1",
+      "name": "Read Research Queue",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [480, 540]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.topics?.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-1",
+      "name": "Has Queued Topics?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 540]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "topics",
+        "options": {}
+      },
+      "id": "split-2",
+      "name": "Split Topics",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [920, 480]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/research",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"topic\": \"{{ $json.topics }}\",\n  \"depth\": \"deep\",\n  \"save\": true\n}",
+        "options": {
+          "timeout": 300000
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth"
+      },
+      "id": "http-3",
+      "name": "Trigger Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1140, 480]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "filePath": "/data/research/research-queue.json",
+        "options": {}
+      },
+      "id": "write-2",
+      "name": "Clear Queue",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [1360, 480]
+    }
+  ],
+  "connections": {
+    "Research Request": {
+      "main": [
+        [
+          {
+            "node": "Plan Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Research": {
+      "main": [
+        [
+          {
+            "node": "Split Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Queries": {
+      "main": [
+        [
+          {
+            "node": "Search via SearXNG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search via SearXNG": {
+      "main": [
+        [
+          {
+            "node": "Extract Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Results": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Compile Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Sources": {
+      "main": [
+        [
+          {
+            "node": "Synthesize with LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Synthesize with LLM": {
+      "main": [
+        [
+          {
+            "node": "Format Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Report": {
+      "main": [
+        [
+          {
+            "node": "Save Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Report": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nightly Schedule (2 AM)": {
+      "main": [
+        [
+          {
+            "node": "Read Research Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Research Queue": {
+      "main": [
+        [
+          {
+            "node": "Has Queued Topics?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Queued Topics?": {
+      "main": [
+        [
+          {
+            "node": "Split Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Topics": {
+      "main": [
+        [
+          {
+            "node": "Trigger Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Research": {
+      "main": [
+        [
+          {
+            "node": "Clear Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "automation"
+    },
+    {
+      "name": "hydra"
+    },
+    {
+      "name": "research"
+    }
+  ],
+  "triggerCount": 2,
+  "pinData": {},
+  "versionId": "1"
+}

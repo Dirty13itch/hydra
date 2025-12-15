@@ -1,0 +1,260 @@
+# Hydra Cluster Deployment Pipeline
+#
+# Manually triggered workflow for deploying to cluster
+# Can deploy specific services or full stack
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Deployment target'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - health-service
+          - alerts-service
+          - configs
+          - nixos-ai
+          - nixos-compute
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      dry_run:
+        description: 'Dry run (no actual changes)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  HYDRA_STORAGE: 192.168.1.244
+  HYDRA_AI: 192.168.1.250
+  HYDRA_COMPUTE: 192.168.1.203
+
+jobs:
+  # ===========================================================================
+  # Pre-deployment Checks
+  # ===========================================================================
+  pre-deploy:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check deployment conditions
+        id: check
+        run: |
+          echo "Target: ${{ inputs.target }}"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Dry run: ${{ inputs.dry_run }}"
+          echo "should_deploy=true" >> $GITHUB_OUTPUT
+
+      - name: Notify start
+        if: ${{ !inputs.dry_run }}
+        run: |
+          echo "Deployment starting: ${{ inputs.target }} to ${{ inputs.environment }}"
+          # Add Discord/Slack notification here if desired
+
+  # ===========================================================================
+  # Deploy Docker Services
+  # ===========================================================================
+  deploy-docker:
+    name: Deploy Docker Services
+    runs-on: ubuntu-latest
+    needs: pre-deploy
+    if: inputs.target == 'all' || inputs.target == 'health-service' || inputs.target == 'alerts-service'
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ env.HYDRA_STORAGE }} >> ~/.ssh/known_hosts
+
+      - name: Deploy health service
+        if: inputs.target == 'all' || inputs.target == 'health-service'
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "[DRY RUN] Would deploy hydra-health to ${{ env.HYDRA_STORAGE }}"
+          else
+            ssh root@${{ env.HYDRA_STORAGE }} << 'EOF'
+              cd /mnt/user/appdata/hydra-stack
+              docker-compose pull hydra-health
+              docker-compose up -d hydra-health
+              docker-compose logs --tail=20 hydra-health
+          EOF
+          fi
+
+      - name: Deploy alerts service
+        if: inputs.target == 'all' || inputs.target == 'alerts-service'
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "[DRY RUN] Would deploy hydra-alerts to ${{ env.HYDRA_STORAGE }}"
+          else
+            ssh root@${{ env.HYDRA_STORAGE }} << 'EOF'
+              cd /mnt/user/appdata/hydra-stack
+              docker-compose pull hydra-alerts
+              docker-compose up -d hydra-alerts
+              docker-compose logs --tail=20 hydra-alerts
+          EOF
+          fi
+
+      - name: Verify deployment
+        if: ${{ !inputs.dry_run }}
+        run: |
+          sleep 10
+          # Health check
+          if [ "${{ inputs.target }}" = "all" ] || [ "${{ inputs.target }}" = "health-service" ]; then
+            curl -sf http://${{ env.HYDRA_STORAGE }}:8600/health || echo "Warning: Health service not responding"
+          fi
+          if [ "${{ inputs.target }}" = "all" ] || [ "${{ inputs.target }}" = "alerts-service" ]; then
+            curl -sf http://${{ env.HYDRA_STORAGE }}:9095/health || echo "Warning: Alerts service not responding"
+          fi
+
+  # ===========================================================================
+  # Deploy Configs
+  # ===========================================================================
+  deploy-configs:
+    name: Deploy Configurations
+    runs-on: ubuntu-latest
+    needs: pre-deploy
+    if: inputs.target == 'all' || inputs.target == 'configs'
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ env.HYDRA_STORAGE }} >> ~/.ssh/known_hosts
+
+      - name: Deploy Prometheus configs
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "[DRY RUN] Would deploy Prometheus config"
+          else
+            scp config/prometheus/*.yml root@${{ env.HYDRA_STORAGE }}:/mnt/user/appdata/prometheus/
+            ssh root@${{ env.HYDRA_STORAGE }} "docker restart prometheus"
+          fi
+
+      - name: Deploy Alertmanager configs
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "[DRY RUN] Would deploy Alertmanager config"
+          else
+            scp config/alertmanager/*.yml root@${{ env.HYDRA_STORAGE }}:/mnt/user/appdata/alertmanager/
+            ssh root@${{ env.HYDRA_STORAGE }} "docker restart alertmanager"
+          fi
+
+      - name: Deploy Loki configs
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "[DRY RUN] Would deploy Loki config"
+          else
+            scp config/loki/*.yaml root@${{ env.HYDRA_STORAGE }}:/mnt/user/appdata/loki/
+            ssh root@${{ env.HYDRA_STORAGE }} "docker restart loki"
+          fi
+
+  # ===========================================================================
+  # Deploy NixOS
+  # ===========================================================================
+  deploy-nixos:
+    name: Deploy NixOS Configuration
+    runs-on: ubuntu-latest
+    needs: pre-deploy
+    if: inputs.target == 'nixos-ai' || inputs.target == 'nixos-compute'
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ env.HYDRA_AI }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ env.HYDRA_COMPUTE }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to hydra-ai
+        if: inputs.target == 'nixos-ai'
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "[DRY RUN] Would deploy NixOS config to hydra-ai"
+            ssh typhon@${{ env.HYDRA_AI }} "sudo nixos-rebuild dry-build"
+          else
+            # Copy modules
+            scp -r nixos-modules typhon@${{ env.HYDRA_AI }}:/tmp/
+            ssh typhon@${{ env.HYDRA_AI }} << 'EOF'
+              sudo cp -r /tmp/nixos-modules/* /etc/nixos/modules/
+              sudo nixos-rebuild switch
+          EOF
+          fi
+
+      - name: Deploy to hydra-compute
+        if: inputs.target == 'nixos-compute'
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "[DRY RUN] Would deploy NixOS config to hydra-compute"
+            ssh typhon@${{ env.HYDRA_COMPUTE }} "sudo nixos-rebuild dry-build"
+          else
+            # Copy modules
+            scp -r nixos-modules typhon@${{ env.HYDRA_COMPUTE }}:/tmp/
+            ssh typhon@${{ env.HYDRA_COMPUTE }} << 'EOF'
+              sudo cp -r /tmp/nixos-modules/* /etc/nixos/modules/
+              sudo nixos-rebuild switch
+          EOF
+          fi
+
+  # ===========================================================================
+  # Post-deployment
+  # ===========================================================================
+  post-deploy:
+    name: Post-deployment Verification
+    runs-on: ubuntu-latest
+    needs: [deploy-docker, deploy-configs, deploy-nixos]
+    if: always() && !inputs.dry_run
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ env.HYDRA_STORAGE }} >> ~/.ssh/known_hosts
+
+      - name: Verify cluster health
+        run: |
+          sleep 30
+          HEALTH=$(curl -sf http://${{ env.HYDRA_STORAGE }}:8600/health/summary || echo '{"status":"unknown"}')
+          echo "Cluster health: $HEALTH"
+
+      - name: Notify completion
+        run: |
+          echo "Deployment completed: ${{ inputs.target }} to ${{ inputs.environment }}"
+          # Add Discord/Slack notification here if desired

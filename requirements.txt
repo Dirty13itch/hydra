@@ -1,0 +1,33 @@
+# Hydra Tools API Dependencies
+# Generated for Docker build
+# Updated: December 14, 2025
+
+# Core
+requests>=2.31.0
+httpx>=0.25.0
+pyyaml>=6.0
+pydantic>=2.0
+pydantic-settings>=2.0.0
+
+# CLI
+tqdm>=4.66.0
+rich>=13.0.0
+click>=8.1.0
+
+# API
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+websockets>=12.0
+aiofiles>=23.2.0
+
+# Database (Transparency Framework)
+asyncpg>=0.29.0
+redis>=5.0.0
+
+# Metrics & Monitoring
+prometheus-client>=0.19.0
+
+# Optional: Agent integration
+# langchain>=0.1.0
+# langchain-community>=0.0.1

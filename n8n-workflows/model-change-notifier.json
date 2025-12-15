@@ -1,0 +1,149 @@
+{
+  "name": "Hydra Model Change Notifier",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "trigger-1min",
+      "name": "Every Minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.250:5000/v1/model",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "get-current-model",
+      "name": "Get Current Model",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first();\n\n// Get stored previous model from workflow static data\nlet previousModel = $getWorkflowStaticData('global').previousModel || null;\nlet currentModel = null;\nlet modelChanged = false;\n\n// Check if request succeeded\nif (response.json && response.json.model_name) {\n  currentModel = response.json.model_name;\n  \n  if (previousModel !== null && previousModel !== currentModel) {\n    modelChanged = true;\n  }\n  \n  // Store current model\n  $getWorkflowStaticData('global').previousModel = currentModel;\n} else {\n  // Model unloaded or TabbyAPI down\n  if (previousModel !== null) {\n    modelChanged = true;\n    currentModel = null;\n    $getWorkflowStaticData('global').previousModel = null;\n  }\n}\n\nreturn [{\n  json: {\n    modelChanged,\n    previousModel,\n    currentModel,\n    maxSeqLen: response.json?.max_seq_len || null,\n    cacheSize: response.json?.cache_size || null,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "check-change",
+      "name": "Check for Change",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "changed",
+              "leftValue": "={{ $json.modelChanged }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-changed",
+      "name": "Model Changed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nlet message;\nlet color;\n\nif (data.currentModel === null) {\n  // Model unloaded\n  message = `🔄 **TabbyAPI Model Unloaded**\\n\\nPrevious model: \\`${data.previousModel}\\`\\n\\nNo model currently loaded.`;\n  color = 16776960; // Yellow\n} else if (data.previousModel === null) {\n  // First model load\n  message = `✅ **TabbyAPI Model Loaded**\\n\\n**Model:** \\`${data.currentModel}\\`\\n**Context:** ${data.maxSeqLen} tokens\\n**Cache:** ${data.cacheSize}`;\n  color = 65280; // Green\n} else {\n  // Model switch\n  message = `🔄 **TabbyAPI Model Changed**\\n\\n**From:** \\`${data.previousModel}\\`\\n**To:** \\`${data.currentModel}\\`\\n\\n**Context:** ${data.maxSeqLen} tokens\\n**Cache:** ${data.cacheSize}`;\n  color = 3447003; // Blue\n}\n\nreturn [{\n  json: {\n    embeds: [{\n      title: \"TabbyAPI Model Update\",\n      description: message,\n      color: color,\n      timestamp: data.timestamp,\n      footer: {\n        text: \"Hydra Steward\"\n      }\n    }]\n  }\n}];"
+      },
+      "id": "format-notification",
+      "name": "Format Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "send-discord",
+      "name": "Send to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {},
+      "id": "noop",
+      "name": "No Change",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [880, 200]
+    }
+  ],
+  "connections": {
+    "Every Minute": {
+      "main": [
+        [{"node": "Get Current Model", "type": "main", "index": 0}]
+      ]
+    },
+    "Get Current Model": {
+      "main": [
+        [{"node": "Check for Change", "type": "main", "index": 0}]
+      ]
+    },
+    "Check for Change": {
+      "main": [
+        [{"node": "Model Changed?", "type": "main", "index": 0}]
+      ]
+    },
+    "Model Changed?": {
+      "main": [
+        [{"node": "Format Notification", "type": "main", "index": 0}],
+        [{"node": "No Change", "type": "main", "index": 0}]
+      ]
+    },
+    "Format Notification": {
+      "main": [
+        [{"node": "Send to Discord", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "global": {
+      "previousModel": null
+    }
+  },
+  "tags": [
+    {"name": "hydra"},
+    {"name": "monitoring"},
+    {"name": "inference"}
+  ]
+}

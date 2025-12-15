@@ -1,0 +1,147 @@
+# Media Stack Health Check Additions
+#
+# These health checks target the *Arr apps and download clients
+# Apply with: docker-compose -f media-stack.yml -f media-healthchecks.yml up -d
+#
+# Generated: December 14, 2025
+
+version: "3.9"
+
+services:
+  # ===========================================
+  # *ARR APPS
+  # ===========================================
+
+  radarr:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:7878/api/v3/health || wget -q --spider http://localhost:7878/ping || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  sonarr:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8989/api/v3/health || wget -q --spider http://localhost:8989/ping || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  lidarr:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8686/api/v1/health || wget -q --spider http://localhost:8686/ping || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  prowlarr:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9696/ping || wget -q --spider http://localhost:9696/ping || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  bazarr:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:6767/api/system/status || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+  readarr:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8787/api/v1/health || wget -q --spider http://localhost:8787/ping || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ===========================================
+  # DOWNLOAD CLIENTS
+  # ===========================================
+
+  qbittorrent:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8082/api/v2/app/version || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  sabnzbd:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf 'http://localhost:8085/api?mode=version' || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ===========================================
+  # VPN (when enabled)
+  # ===========================================
+
+  gluetun:
+    healthcheck:
+      # Gluetun exposes a control server for health checks
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8000/v1/publicip/ip || exit 1"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+
+  # ===========================================
+  # MEDIA SERVERS
+  # ===========================================
+
+  plex:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:32400/identity || exit 1"]
+      interval: 120s
+      timeout: 15s
+      retries: 3
+      start_period: 180s
+
+  jellyfin:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8096/health || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # ===========================================
+  # SUBTITLE MANAGEMENT
+  # ===========================================
+
+  subcleaner:
+    # Background process, check if script is running
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep -v grep | grep -q python || exit 0"]
+      interval: 300s
+      timeout: 10s
+      retries: 1
+      start_period: 60s
+
+  # ===========================================
+  # INDEXERS
+  # ===========================================
+
+  jackett:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9117/UI/Dashboard || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  nzbhydra2:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5076/api/health || wget -q --spider http://localhost:5076 || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

@@ -1,0 +1,153 @@
+# LiteLLM Router Configuration
+#
+# Dynamic model routing with fallbacks, load balancing, and intelligent selection.
+# This config enables smart routing between TabbyAPI (70B), Ollama (7B), and cloud APIs.
+#
+# Deploy:
+#   cp router-config.yaml /mnt/user/appdata/hydra-stack/litellm/
+#   docker restart litellm
+
+model_list:
+  # Primary: Local 70B model via TabbyAPI (highest quality)
+  - model_name: "gpt-4"  # Alias for external compatibility
+    litellm_params:
+      model: "openai/Llama-3.3-70B-Instruct-exl2-4.0bpw"
+      api_base: "http://192.168.1.250:5000/v1"
+      api_key: "not-needed"
+      rpm: 10  # Requests per minute limit
+      tpm: 50000  # Tokens per minute limit
+    model_info:
+      id: "tabby-70b"
+      mode: "completion"
+      max_tokens: 32768
+      supports_function_calling: true
+
+  # Secondary: Local 7B model via Ollama (fast, efficient)
+  - model_name: "gpt-3.5-turbo"  # Alias for simpler tasks
+    litellm_params:
+      model: "ollama/qwen2.5:7b"
+      api_base: "http://192.168.1.203:11434"
+      rpm: 60
+      tpm: 100000
+    model_info:
+      id: "ollama-7b"
+      mode: "completion"
+      max_tokens: 8192
+
+  # Alternative 7B models on Ollama
+  - model_name: "mistral"
+    litellm_params:
+      model: "ollama/mistral:7b"
+      api_base: "http://192.168.1.203:11434"
+      rpm: 60
+      tpm: 100000
+
+  - model_name: "codestral"
+    litellm_params:
+      model: "ollama/codestral:latest"
+      api_base: "http://192.168.1.203:11434"
+      rpm: 30
+      tpm: 50000
+    model_info:
+      id: "ollama-codestral"
+      mode: "completion"
+      max_tokens: 32768
+      supports_function_calling: true
+
+  # Embeddings
+  - model_name: "text-embedding-ada-002"
+    litellm_params:
+      model: "ollama/nomic-embed-text"
+      api_base: "http://192.168.1.203:11434"
+
+# Router settings
+router_settings:
+  # Load balancing strategy
+  routing_strategy: "usage-based-routing"  # Route to least used model
+
+  # Enable model fallbacks
+  enable_fallbacks: true
+
+  # Retry settings
+  num_retries: 2
+  retry_after: 5  # seconds
+
+  # Timeout settings
+  request_timeout: 300  # 5 minutes for long generations
+  connect_timeout: 10
+
+  # Cache settings
+  cache: true
+  cache_params:
+    type: "redis"
+    host: "192.168.1.244"
+    port: 6379
+    password: "ls32WXmttrQ6v3Jxw9bh6XmFqhCYmIC"
+    ttl: 3600  # 1 hour cache
+
+  # Cost tracking
+  set_verbose: false
+
+# Model group definitions for intelligent routing
+model_group_alias:
+  # Quality tier - use 70B for complex tasks
+  quality:
+    - "gpt-4"
+
+  # Speed tier - use 7B for simple tasks
+  speed:
+    - "gpt-3.5-turbo"
+    - "mistral"
+
+  # Code tier - use code-optimized models
+  code:
+    - "codestral"
+    - "gpt-4"
+
+  # Default - balanced choice
+  default:
+    - "gpt-3.5-turbo"
+    - "gpt-4"
+
+# Fallback chains
+fallbacks:
+  - "gpt-4": ["gpt-3.5-turbo", "mistral"]
+  - "gpt-3.5-turbo": ["mistral", "gpt-4"]
+  - "codestral": ["gpt-4", "gpt-3.5-turbo"]
+
+# General settings
+general_settings:
+  # Master key for API access
+  master_key: "sk-PyKRr5POL0tXJEMOEGnliWk6doMb31k7"
+
+  # Database for request logging
+  database_url: "postgresql://hydra:g9cUyFK6unpMQ8XBmeJNZJPoY6viGg6@192.168.1.244:5432/litellm"
+
+  # Alerting webhook
+  alerting:
+    - slack
+    - webhook
+
+  alerting_args:
+    webhook_url: "http://192.168.1.244:9095/alert"
+    slack_webhook_url: ""  # Add if needed
+
+  # Budget management (optional)
+  # max_budget: 100.0  # USD per month
+  # budget_duration: "monthly"
+
+# Logging
+litellm_settings:
+  # Enable detailed logging
+  set_verbose: false
+  json_logs: true
+
+  # Success/failure callbacks
+  success_callback: ["prometheus"]
+  failure_callback: ["prometheus"]
+
+  # Prometheus metrics
+  prometheus_port: 9091
+
+  # Drop params not supported by target model
+  drop_params: true

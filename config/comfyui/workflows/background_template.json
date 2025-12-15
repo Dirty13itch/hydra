@@ -1,0 +1,69 @@
+{
+  "_meta": {
+    "name": "Empire Scene Background",
+    "description": "Template for generating visual novel backgrounds",
+    "version": "1.0.0",
+    "variables": {
+      "SCENE_DESCRIPTION": "Location and atmosphere description",
+      "TIME_OF_DAY": "Lighting conditions (day, night, sunset, etc.)",
+      "OUTPUT_PATH": "Output file path"
+    }
+  },
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "NoobAI-XL-v1.0.safetensors"
+    }
+  },
+  "2": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1920,
+      "height": 1080,
+      "batch_size": 1
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "{{SCENE_DESCRIPTION}}, {{TIME_OF_DAY}} lighting, visual novel background, no characters, no people, detailed environment, atmospheric, anime style, painterly, high detail architecture, volumetric lighting",
+      "clip": ["1", 1]
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "people, characters, faces, text, watermark, signature, low quality, blurry, distorted, ugly, deformed architecture",
+      "clip": ["1", 1]
+    }
+  },
+  "5": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["1", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["2", 0],
+      "seed": -1,
+      "steps": 35,
+      "cfg": 8.0,
+      "sampler_name": "dpmpp_2m_sde",
+      "scheduler": "karras",
+      "denoise": 1.0
+    }
+  },
+  "6": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["5", 0],
+      "vae": ["1", 2]
+    }
+  },
+  "7": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["6", 0],
+      "filename_prefix": "background"
+    }
+  }
+}

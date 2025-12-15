@@ -1,0 +1,94 @@
+# Hydra Custom Services
+#
+# Deploys custom Python services built for the cluster:
+# - hydra-health: Unified health aggregator API
+# - hydra-alerts: Alert webhook receiver
+#
+# Deploy: docker-compose -f hydra-services.yml up -d
+# Logs: docker-compose -f hydra-services.yml logs -f
+
+version: "3.8"
+
+services:
+  # Health Aggregator API
+  hydra-health:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.health
+    container_name: hydra-health
+    restart: unless-stopped
+    ports:
+      - "8600:8600"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8600/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - hydra-net
+    labels:
+      - "com.hydra.service=health-aggregator"
+      - "com.hydra.category=observability"
+
+  # Alert Webhook Receiver
+  hydra-alerts:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.alerts
+    container_name: hydra-alerts
+    restart: unless-stopped
+    ports:
+      - "9095:9095"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - ALERT_LOG_DIR=/var/log/hydra-alerts
+    volumes:
+      - hydra-alerts-logs:/var/log/hydra-alerts
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9095/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - hydra-net
+    labels:
+      - "com.hydra.service=alert-receiver"
+      - "com.hydra.category=observability"
+
+  # MCP Server (for development/testing)
+  hydra-mcp:
+    build:
+      context: ../mcp-servers/hydra-cluster
+      dockerfile: ../../docker/Dockerfile.mcp
+    container_name: hydra-mcp
+    restart: unless-stopped
+    environment:
+      - LITELLM_URL=http://hydra-litellm:4000
+      - HEALTH_URL=http://hydra-health:8600
+      - QDRANT_URL=http://hydra-qdrant:6333
+      - TABBY_URL=http://192.168.1.250:5000
+      - OLLAMA_URL=http://192.168.1.203:11434
+    networks:
+      - hydra-net
+    profiles:
+      - mcp  # Only start with --profile mcp
+    labels:
+      - "com.hydra.service=mcp-server"
+      - "com.hydra.category=integration"
+
+networks:
+  hydra-net:
+    external: true
+    name: hydra-stack_default
+
+volumes:
+  hydra-alerts-logs:
+    driver: local

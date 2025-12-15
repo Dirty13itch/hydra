@@ -1,0 +1,176 @@
+{
+  "name": "GPU Thermal Throttling Handler",
+  "description": "Monitors GPU temperatures and takes protective action when thresholds are exceeded",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gpu-thermal-alert",
+        "responseMode": "onReceived"
+      },
+      "id": "webhook-trigger",
+      "name": "Thermal Alert Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const alert = $input.first().json.body || $input.first().json;\nconst gpu = alert.labels?.gpu || alert.gpu || 'unknown';\nconst node = alert.labels?.instance || alert.node || 'unknown';\nconst temp = parseFloat(alert.value || alert.labels?.temperature || 0);\nconst tempF = Math.round(temp * 9/5 + 32);\n\n// Determine severity and action\nlet severity = 'warning';\nlet action = 'monitor';\nlet powerLimit = null;\n\nif (temp >= 85) {\n  severity = 'critical';\n  action = 'throttle';\n  powerLimit = 200; // Reduce to 200W\n} else if (temp >= 80) {\n  severity = 'high';\n  action = 'reduce_power';\n  powerLimit = 350; // Reduce to 350W\n} else if (temp >= 75) {\n  severity = 'warning';\n  action = 'alert_only';\n}\n\nreturn {\n  gpu,\n  node,\n  tempC: temp,\n  tempF,\n  severity,\n  action,\n  powerLimit,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "parse-alert",
+      "name": "Parse Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "throttle",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "throttle",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-severity",
+      "name": "Check Severity",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "command": "=ssh typhon@{{ $json.node.includes('ai') ? '192.168.1.250' : '192.168.1.203' }} 'sudo nvidia-smi -i {{ $json.gpu }} -pl {{ $json.powerLimit }}'"
+      },
+      "id": "apply-throttle",
+      "name": "Apply Power Limit",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [760, 200],
+      "credentials": {
+        "sshPassword": {
+          "id": "hydra-ssh",
+          "name": "Hydra SSH"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/api/activities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"gpu_thermal_action\",\n  \"source\": \"n8n-automation\",\n  \"target\": \"{{ $('Parse Alert').item.json.node }}:{{ $('Parse Alert').item.json.gpu }}\",\n  \"status\": \"{{ $('Parse Alert').item.json.action }}\",\n  \"details\": \"GPU at {{ $('Parse Alert').item.json.tempF }}F ({{ $('Parse Alert').item.json.tempC }}C) - Applied power limit {{ $('Parse Alert').item.json.powerLimit }}W\"\n}"
+      },
+      "id": "log-throttle",
+      "name": "Log Throttle Action",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/api/activities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"gpu_thermal_warning\",\n  \"source\": \"n8n-automation\",\n  \"target\": \"{{ $json.node }}:{{ $json.gpu }}\",\n  \"status\": \"warning\",\n  \"details\": \"GPU temperature warning: {{ $json.tempF }}F ({{ $json.tempC }}C) - Severity: {{ $json.severity }}\"\n}"
+      },
+      "id": "log-warning",
+      "name": "Log Warning",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 400]
+    }
+  ],
+  "connections": {
+    "Thermal Alert Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Alert": {
+      "main": [
+        [
+          {
+            "node": "Check Severity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Severity": {
+      "main": [
+        [
+          {
+            "node": "Apply Power Limit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Warning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Power Limit": {
+      "main": [
+        [
+          {
+            "node": "Log Throttle Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Chicago"
+  }
+}

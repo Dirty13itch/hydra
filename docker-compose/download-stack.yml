@@ -1,0 +1,154 @@
+# Hydra Download Stack - Docker Compose
+# Deploy on hydra-storage (Unraid 192.168.1.244)
+#
+# This stack manages download clients with VPN protection.
+# IMPORTANT: Configure Gluetun VPN before enabling torrent clients.
+
+version: "3.9"
+
+x-common-labels: &common-labels
+  com.hydra.stack: "download"
+  com.hydra.managed: "true"
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+x-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-common-env: &common-env
+  PUID: 1000
+  PGID: 1000
+  TZ: America/Chicago
+
+networks:
+  hydra-net:
+    external: true
+
+services:
+  # ===========================================
+  # VPN GATEWAY
+  # ===========================================
+
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: hydra-gluetun
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "vpn-gateway"
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      # VPN Provider Configuration
+      # Supported: mullvad, nordvpn, expressvpn, pia, surfshark, etc.
+      VPN_SERVICE_PROVIDER: ${VPN_SERVICE_PROVIDER:-mullvad}
+      VPN_TYPE: wireguard
+
+      # Mullvad specific (adjust for your provider)
+      WIREGUARD_PRIVATE_KEY: ${VPN_WIREGUARD_PRIVATE_KEY:-}
+      WIREGUARD_ADDRESSES: ${VPN_WIREGUARD_ADDRESSES:-}
+      SERVER_COUNTRIES: ${VPN_SERVER_COUNTRIES:-USA}
+
+      # Alternative: OpenVPN
+      # VPN_TYPE: openvpn
+      # OPENVPN_USER: ${VPN_USERNAME:-}
+      # OPENVPN_PASSWORD: ${VPN_PASSWORD:-}
+
+      # Firewall - only allow these ports through VPN
+      FIREWALL_VPN_INPUT_PORTS: 51413  # qBittorrent
+
+      # Health check
+      HEALTH_VPN_DURATION_INITIAL: 30s
+      HEALTH_SUCCESS_WAIT_DURATION: 10s
+    volumes:
+      - /mnt/user/appdata/hydra-stack/gluetun:/gluetun
+    networks:
+      - hydra-net
+    ports:
+      # qBittorrent WebUI (through VPN)
+      - "8082:8082"
+      # qBittorrent torrent port
+      - "51413:51413"
+      - "51413:51413/udp"
+    healthcheck:
+      test: ["CMD", "/gluetun-entrypoint", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ===========================================
+  # TORRENT CLIENT
+  # ===========================================
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: hydra-qbittorrent
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "torrent-client"
+    network_mode: "service:gluetun"  # Route through VPN
+    environment:
+      <<: *common-env
+      WEBUI_PORT: 8082
+    volumes:
+      - /mnt/user/appdata/qbittorrent:/config
+      - /mnt/user/data/downloads:/downloads
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    # Note: ports are defined on gluetun service
+
+  # ===========================================
+  # USENET CLIENT
+  # ===========================================
+
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: hydra-sabnzbd
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "usenet-client"
+    environment:
+      <<: *common-env
+    volumes:
+      - /mnt/user/appdata/sabnzbd:/config
+      - /mnt/user/data/downloads:/downloads
+    networks:
+      - hydra-net
+    ports:
+      - "8085:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================
+  # DOWNLOAD AUTOMATION
+  # ===========================================
+
+  autobrr:
+    image: ghcr.io/autobrr/autobrr:latest
+    container_name: hydra-autobrr
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "download-automation"
+    environment:
+      <<: *common-env
+    volumes:
+      - /mnt/user/appdata/autobrr:/config
+    networks:
+      - hydra-net
+    ports:
+      - "7474:7474"

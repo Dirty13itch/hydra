@@ -1,0 +1,184 @@
+{
+  "name": "Document Ingestion Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingest-document",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 0],
+      "webhookId": "ingest-doc"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.file_type }}",
+              "operation": "equals",
+              "value2": "pdf"
+            }
+          ]
+        }
+      },
+      "id": "check-pdf",
+      "name": "Is PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:5001/convert",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.body.file_url }}"
+            },
+            {
+              "name": "output_format",
+              "value": "markdown"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "docling-parse",
+      "name": "Parse PDF with Docling",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [440, -100],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "content",
+              "value": "={{ $json.body.content || $json.body.text }}"
+            },
+            {
+              "name": "source",
+              "value": "={{ $json.body.source || 'direct-input' }}"
+            }
+          ]
+        }
+      },
+      "id": "use-direct-content",
+      "name": "Use Direct Content",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [440, 100]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const content = $json.content || $json.markdown || $json.text || '';\nconst source = $json.source || 'unknown';\n\n// Recursive text splitter\nconst chunkSize = 1000;\nconst chunkOverlap = 200;\n\nfunction splitText(text, size, overlap) {\n  const chunks = [];\n  let start = 0;\n  \n  while (start < text.length) {\n    const end = Math.min(start + size, text.length);\n    chunks.push(text.substring(start, end));\n    start = end - overlap;\n    if (start + overlap >= text.length) break;\n  }\n  \n  return chunks;\n}\n\nconst chunks = splitText(content, chunkSize, chunkOverlap);\n\nreturn chunks.map((chunk, index) => ({\n  json: {\n    chunk_id: `${source}-${Date.now()}-${index}`,\n    text: chunk,\n    source: source,\n    chunk_index: index,\n    total_chunks: chunks.length,\n    created_at: new Date().toISOString()\n  }\n}));"
+      },
+      "id": "split-text",
+      "name": "Split into Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.203:11434/api/embeddings",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"nomic-embed-text\",\n  \"prompt\": \"{{ $json.text }}\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "generate-embedding",
+      "name": "Generate Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:6333/collections/documents/points",
+        "method": "PUT",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"points\": [\n    {\n      \"id\": \"{{ $('Split into Chunks').item.json.chunk_id }}\",\n      \"vector\": {{ JSON.stringify($json.embedding) }},\n      \"payload\": {\n        \"text\": \"{{ $('Split into Chunks').item.json.text.replace(/\"/g, '\\\\\"').replace(/\\n/g, '\\\\n') }}\",\n        \"source\": \"{{ $('Split into Chunks').item.json.source }}\",\n        \"chunk_index\": {{ $('Split into Chunks').item.json.chunk_index }},\n        \"created_at\": \"{{ $('Split into Chunks').item.json.created_at }}\"\n      }\n    }\n  ]\n}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "upsert-qdrant",
+      "name": "Upsert to Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\nconst source = items[0]?.json?.source || 'unknown';\nconst totalChunks = items.length;\n\nreturn [{\n  json: {\n    status: 'success',\n    message: `Ingested ${totalChunks} chunks from ${source}`,\n    source: source,\n    chunks_processed: totalChunks,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "aggregate-result",
+      "name": "Aggregate Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [{ "node": "Is PDF?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Is PDF?": {
+      "main": [
+        [{ "node": "Parse PDF with Docling", "type": "main", "index": 0 }],
+        [{ "node": "Use Direct Content", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse PDF with Docling": {
+      "main": [
+        [{ "node": "Split into Chunks", "type": "main", "index": 0 }]
+      ]
+    },
+    "Use Direct Content": {
+      "main": [
+        [{ "node": "Split into Chunks", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split into Chunks": {
+      "main": [
+        [{ "node": "Generate Embedding", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate Embedding": {
+      "main": [
+        [{ "node": "Upsert to Qdrant", "type": "main", "index": 0 }]
+      ]
+    },
+    "Upsert to Qdrant": {
+      "main": [
+        [{ "node": "Aggregate Result", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "1"
+}

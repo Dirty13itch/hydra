@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh:*)",
+      "Bash(ping:*)",
+      "Bash(curl:*)",
+      "Bash(echo:*)",
+      "Bash(python -m json.tool:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(python3:*)",
+      "Bash(scp:*)",
+      "WebSearch",
+      "Bash(# Check if the webhook path is registered - look at the nodes for the webhook ssh root@192.168.1.244 ''docker exec hydra-postgres psql -U hydra -d n8n -c \"\"SELECT nodes FROM workflow_entity WHERE id = ''\\''''knowledge-refresh-fixed-001''\\'''';\"\"'')",
+      "Bash(# Check for versionId and activeVersionId columns - compare working vs non-working workflows ssh root@192.168.1.244 ''docker exec hydra-postgres psql -U hydra -d n8n -c \"\"\\d workflow_entity\"\"'')",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfix(n8n): update STATE.json with verified workflow status\n\n- Removed 3 broken workflows causing WorkflowHasIssuesError:\n  - knowledge-refresh-fixed-001 (structural issues)\n  - research-fixed-001 (credential and node issues)\n  - mFPUiBj0AQ5ErJZs (Empire Chapter Processor - structural issues)\n- Verified 4 working workflows:\n  - Learnings Capture (webhook)\n  - Alertmanager Self-Healing Handler (webhook)\n  - Letta Memory Update (webhook)\n  - Hydra Daily Health Digest (scheduled)\n- Added removed_workflows section documenting why workflows were deleted\n- Updated workflow counts: total 5, active 4\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git config:*)",
+      "Bash(git commit:*)"
+    ],
+    "ask": [
+      "Bash(*)",
+      "WebFetch(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(del /s /q:*)",
+      "Bash(format:*)",
+      "Bash(diskpart:*)",
+      "Bash(reg delete:*)",
+      "Bash(cipher /w:*)",
+      "Bash(shred:*)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "hydra"
+  ],
+  "enableAllProjectMcpServers": true
+}

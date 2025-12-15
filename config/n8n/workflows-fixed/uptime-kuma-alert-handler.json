@@ -1,0 +1,404 @@
+{
+  "name": "Uptime Kuma Alert Handler",
+  "description": "Receives alerts from Uptime Kuma and routes to appropriate handlers",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uptime-kuma-alert",
+        "options": {}
+      },
+      "id": "alert-webhook",
+      "name": "Alert Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        100,
+        300
+      ],
+      "webhookId": "uptime-kuma-alert"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\n// Uptime Kuma webhook payload structure\nconst monitor = body.monitor || {};\nconst heartbeat = body.heartbeat || {};\nconst msg = body.msg || '';\n\nconst isDown = heartbeat.status === 0;\nconst isUp = heartbeat.status === 1;\n\n// Determine severity\nlet severity = 'info';\nconst tags = monitor.tags || [];\nconst tagNames = tags.map(t => t.name || t);\n\nif (isDown) {\n  if (tagNames.includes('critical')) {\n    severity = 'critical';\n  } else {\n    severity = 'warning';\n  }\n} else if (isUp) {\n  severity = 'resolved';\n}\n\nreturn {\n  monitor_name: monitor.name || 'Unknown',\n  monitor_type: monitor.type || 'unknown',\n  monitor_url: monitor.url || monitor.hostname || '',\n  status: isDown ? 'DOWN' : 'UP',\n  status_code: heartbeat.status,\n  message: msg,\n  ping: heartbeat.ping,\n  duration: heartbeat.duration,\n  timestamp: heartbeat.time || new Date().toISOString(),\n  severity: severity,\n  tags: tagNames,\n  is_critical: tagNames.includes('critical'),\n  is_infrastructure: tagNames.includes('infrastructure'),\n  is_inference: tagNames.includes('inference'),\n  is_database: tagNames.includes('database')\n};"
+      },
+      "id": "parse-alert",
+      "name": "Parse Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-down",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "DOWN",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-down",
+      "name": "Is Down?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-critical",
+              "leftValue": "={{ $json.is_critical }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-critical",
+      "name": "Is Critical?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        760,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:5678/webhook/discord-notify",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"severity\": \"critical\",\n  \"title\": \"CRITICAL: {{ $json.monitor_name }} is DOWN\",\n  \"message\": \"Service {{ $json.monitor_name }} ({{ $json.monitor_type }}) is not responding.\\n\\nURL: {{ $json.monitor_url }}\\nTime: {{ $json.timestamp }}\\nTags: {{ $json.tags.join(', ') }}\",\n  \"source\": \"uptime-kuma\"\n}",
+        "options": {}
+      },
+      "id": "notify-critical",
+      "name": "Notify Critical",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        980,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "service_down"
+            },
+            {
+              "name": "source",
+              "value": "uptime-kuma"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-down",
+      "name": "Log Down Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-database",
+              "leftValue": "={{ $json.is_database }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-database",
+      "name": "Is Database?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:5678/webhook/restart-service",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"service\": \"{{ $json.monitor_name.toLowerCase().replace(/\\s+/g, '-') }}\",\n  \"restart_dependents\": false,\n  \"triggered_by\": \"uptime-kuma-auto-restart\"\n}",
+        "options": {}
+      },
+      "id": "trigger-restart",
+      "name": "Trigger Restart",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1420,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "service_recovered"
+            },
+            {
+              "name": "source",
+              "value": "uptime-kuma"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-recovery",
+      "name": "Log Recovery",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        760,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, processed: $json.monitor_name, status: $json.status } }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1420,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Alert Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Alert": {
+      "main": [
+        [
+          {
+            "node": "Is Down?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Down?": {
+      "main": [
+        [
+          {
+            "node": "Is Critical?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Down Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Recovery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Critical?": {
+      "main": [
+        [
+          {
+            "node": "Notify Critical",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Database?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Notify Critical": {
+      "main": [
+        []
+      ]
+    },
+    "Log Down Event": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Database?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Trigger Restart",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Recovery": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "monitoring",
+      "id": "3"
+    },
+    {
+      "name": "automation",
+      "id": "4"
+    }
+  ],
+  "versionId": "5571c9d1-0061-4613-8c36-1c7d5f3bbfd4",
+  "id": "18b45def0b004ca5b",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

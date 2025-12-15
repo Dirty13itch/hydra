@@ -1,0 +1,231 @@
+{
+  "name": "Hydra Daily Health Digest (Instrumented)",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily 8AM CST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n', source_id: 'health-digest', action: 'health_digest_started', action_type: 'scheduled', target: 'cluster', params: { scheduled_time: '08:00 CST' }, result: 'pending', decision_reason: 'Daily scheduled health digest' }) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "log-start",
+      "name": "Log Start",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8700/aggregate/health",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "get-health",
+      "name": "Get Aggregate Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:9090/api/v1/query",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "up"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "get-prometheus",
+      "name": "Get Prometheus Targets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 560]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build comprehensive health digest\nconst healthData = $('Get Aggregate Health').first().json || {};\nconst promData = $('Get Prometheus Targets').first().json || {};\nconst timestamp = new Date();\nconst dateStr = timestamp.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });\nconst timeStr = timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago' });\n\n// Overall health\nconst overall = healthData.overall_health || {};\nconst healthScore = overall.score || 0;\nconst healthStatus = overall.status || 'unknown';\n\n// Subsystems\nconst subsystems = healthData.subsystems || {};\nconst diagnosis = subsystems.diagnosis || {};\nconst resources = subsystems.resources || {};\nconst knowledge = subsystems.knowledge || {};\n\n// Prometheus targets\nconst promResults = promData?.data?.result || [];\nconst targetsUp = promResults.filter(r => r.value?.[1] === '1').length;\nconst targetsTotal = promResults.length;\n\n// Build report\nlet report = `# Hydra Daily Health Digest\\n`;\nreport += `**${dateStr}** at ${timeStr} CST\\n\\n`;\nreport += `## Overall Health: ${healthScore.toFixed(1)}% (${healthStatus})\\n\\n`;\n\nreport += `### Subsystems\\n`;\nreport += `- **Diagnosis**: Score ${diagnosis.score?.toFixed(1) || 'N/A'}%, Trend: ${diagnosis.trend || 'N/A'}\\n`;\nreport += `- **Resources**: Score ${resources.score?.toFixed(1) || 'N/A'}%\\n`;\nreport += `- **Knowledge**: ${knowledge.total_entries || 0} entries, ${knowledge.stale || 0} stale\\n\\n`;\n\nreport += `### Prometheus\\n`;\nreport += `- Targets UP: ${targetsUp}/${targetsTotal}\\n\\n`;\n\n// Warnings\nlet warnings = [];\nif (healthScore < 90) warnings.push(`Overall health below 90% (${healthScore.toFixed(1)}%)`);\nif (diagnosis.recent_failures > 0) warnings.push(`${diagnosis.recent_failures} recent failures detected`);\nif (knowledge.stale > 5) warnings.push(`${knowledge.stale} stale knowledge entries`);\nif (targetsUp < targetsTotal) warnings.push(`${targetsTotal - targetsUp} Prometheus targets down`);\n\nif (warnings.length > 0) {\n  report += `### ⚠️ Warnings\\n`;\n  warnings.forEach(w => report += `- ${w}\\n`);\n}\n\nreturn {\n  json: {\n    report,\n    healthScore,\n    healthStatus,\n    targetsUp,\n    targetsTotal,\n    warnings,\n    timestamp: timestamp.toISOString()\n  }\n};"
+      },
+      "id": "build-report",
+      "name": "Build Digest Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 480]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n', source_id: 'health-digest', action: 'health_digest_completed', action_type: 'scheduled', target: 'cluster', params: { health_score: $json.healthScore, targets_up: $json.targetsUp, targets_total: $json.targetsTotal, warnings_count: $json.warnings?.length || 0 }, result: 'ok', result_details: { summary: `Health: ${$json.healthScore?.toFixed(1)}%, Targets: ${$json.targetsUp}/${$json.targetsTotal}` }, decision_reason: 'Daily health digest completed successfully' }) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "log-complete",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [780, 480],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8283/v1/agents/agent-b3fb1747-1a5b-4c94-b713-11d6403350bf/archival-memory",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `[DAILY DIGEST] ${new Date().toISOString().split('T')[0]} - Health: ${$json.healthScore?.toFixed(1)}% | Targets: ${$json.targetsUp}/${$json.targetsTotal} | Warnings: ${$json.warnings?.length || 0}` }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "update-letta",
+      "name": "Update Letta Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 480],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Daily 8AM CST": {
+      "main": [
+        [
+          {
+            "node": "Log Start",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Aggregate Health",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Prometheus Targets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Aggregate Health": {
+      "main": [
+        [
+          {
+            "node": "Build Digest Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Prometheus Targets": {
+      "main": [
+        [
+          {
+            "node": "Build Digest Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Digest Report": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Completion": {
+      "main": [
+        [
+          {
+            "node": "Update Letta Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Chicago"
+  },
+  "tags": [
+    {
+      "name": "monitoring"
+    },
+    {
+      "name": "transparency"
+    }
+  ]
+}

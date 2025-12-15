@@ -1,0 +1,67 @@
+# Hydra STT (Speech-to-Text) Service
+#
+# GPU-accelerated transcription using faster-whisper
+# Runs on hydra-compute for RTX 5070 Ti acceleration
+#
+# Usage:
+#   docker-compose -f stt-service.yml up -d
+#
+# Ports:
+#   - 9001: STT API
+#
+# Generated: December 14, 2025
+
+version: "3.9"
+
+services:
+  hydra-stt:
+    build:
+      context: ../src/hydra_stt
+      dockerfile: Dockerfile
+    image: hydra-stt:latest
+    container_name: hydra-stt
+    restart: unless-stopped
+    ports:
+      - "9001:9001"
+    environment:
+      WHISPER_MODEL: "large-v3"
+      WHISPER_DEVICE: "cuda"
+      WHISPER_COMPUTE: "float16"
+      WHISPER_LANGUAGE: "en"
+      WHISPER_BEAM_SIZE: "5"
+      WHISPER_VAD: "true"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      # Cache for downloaded models
+      - hydra-stt-cache:/root/.cache/huggingface
+    networks:
+      - hydra-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      com.hydra.stack: "core"
+      com.hydra.service: "stt"
+      com.hydra.layer: "6"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  hydra-stt-cache:
+    driver: local
+
+networks:
+  hydra-net:
+    external: true

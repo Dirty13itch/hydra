@@ -1,0 +1,213 @@
+{
+  "name": "Container Restart with Rate Limiting",
+  "description": "Automatically restarts failed containers with rate limiting (max 3 restarts/hour per container)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "container-failed",
+        "responseMode": "onReceived",
+        "responseData": "allEntries"
+      },
+      "id": "webhook-trigger",
+      "name": "Container Failed Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const container = $input.first().json.body?.container || $input.first().json.container;\nconst timestamp = Date.now();\n\n// Get static data for rate limiting\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.restartHistory) {\n  staticData.restartHistory = {};\n}\n\n// Clean up old entries (older than 1 hour)\nconst oneHourAgo = timestamp - (60 * 60 * 1000);\nfor (const [key, times] of Object.entries(staticData.restartHistory)) {\n  staticData.restartHistory[key] = times.filter(t => t > oneHourAgo);\n}\n\n// Check rate limit for this container\nconst history = staticData.restartHistory[container] || [];\nconst restartsInLastHour = history.length;\nconst maxRestarts = 3;\n\nif (restartsInLastHour >= maxRestarts) {\n  return {\n    container,\n    action: 'blocked',\n    reason: `Rate limit exceeded: ${restartsInLastHour}/${maxRestarts} restarts in last hour`,\n    restartsInLastHour,\n    shouldRestart: false\n  };\n}\n\n// Record this restart attempt\nhistory.push(timestamp);\nstaticData.restartHistory[container] = history;\n\nreturn {\n  container,\n  action: 'restart',\n  restartsInLastHour: restartsInLastHour + 1,\n  shouldRestart: true\n};"
+      },
+      "id": "check-rate-limit",
+      "name": "Check Rate Limit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.shouldRestart }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "should-restart",
+      "name": "Should Restart?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://192.168.1.244:2375/containers/{{ $json.container }}/restart",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "t",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "id": "restart-container",
+      "name": "Restart Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/api/activities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "container_restart"
+            },
+            {
+              "name": "source",
+              "value": "n8n-automation"
+            },
+            {
+              "name": "target",
+              "value": "={{ $('Check Rate Limit').item.json.container }}"
+            },
+            {
+              "name": "status",
+              "value": "success"
+            },
+            {
+              "name": "details",
+              "value": "=Auto-restarted due to health check failure ({{ $('Check Rate Limit').item.json.restartsInLastHour }}/3 restarts this hour)"
+            }
+          ]
+        }
+      },
+      "id": "log-restart",
+      "name": "Log Restart",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/api/activities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "container_restart_blocked"
+            },
+            {
+              "name": "source",
+              "value": "n8n-automation"
+            },
+            {
+              "name": "target",
+              "value": "={{ $json.container }}"
+            },
+            {
+              "name": "status",
+              "value": "blocked"
+            },
+            {
+              "name": "details",
+              "value": "={{ $json.reason }}"
+            }
+          ]
+        }
+      },
+      "id": "log-blocked",
+      "name": "Log Rate Limited",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 400]
+    }
+  ],
+  "connections": {
+    "Container Failed Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Rate Limit": {
+      "main": [
+        [
+          {
+            "node": "Should Restart?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Restart?": {
+      "main": [
+        [
+          {
+            "node": "Restart Container",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Rate Limited",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restart Container": {
+      "main": [
+        [
+          {
+            "node": "Log Restart",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Chicago"
+  }
+}

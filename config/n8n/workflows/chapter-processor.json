@@ -1,0 +1,142 @@
+{
+  "name": "Empire Chapter Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "empire/process-chapter",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Chapter Upload",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [260, 300],
+      "webhookId": "empire-chapter-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse chapter markdown into scenes\nconst body = $input.item.json.body || $input.item.json;\nconst chapterText = body.chapter_text || body.text || '';\nconst chapterNum = body.chapter_number || 1;\n\n// Scene header pattern: ## Scene N: Location - Time\nconst scenePattern = /^##\\s*Scene\\s*(\\d+):\\s*(.+?)(?:\\s*-\\s*(.+))?$/gm;\n\n// Dialogue pattern: **Character** (emotion): \"text\"\nconst dialoguePattern = /\\*\\*([^*]+)\\*\\*(?:\\s*\\(([^)]+)\\))?\\s*:\\s*\"([^\"]+)\"/g;\n\n// Background pattern: [Background: description]\nconst bgPattern = /\\[Background:\\s*([^\\]]+)\\]/gi;\n\n// Parse scenes\nconst scenes = [];\nconst parts = chapterText.split(/(?=^## Scene)/gm);\n\nfor (const part of parts) {\n  const headerMatch = part.match(/^##\\s*Scene\\s*(\\d+):\\s*(.+?)(?:\\s*-\\s*(.+))?$/m);\n  if (!headerMatch) continue;\n  \n  const sceneNum = parseInt(headerMatch[1]);\n  const location = headerMatch[2].trim();\n  const timeOfDay = headerMatch[3]?.trim() || 'day';\n  \n  // Extract dialogues\n  const dialogues = [];\n  const characters = new Set();\n  let match;\n  \n  const dialogueRegex = /\\*\\*([^*]+)\\*\\*(?:\\s*\\(([^)]+)\\))?\\s*:\\s*\"([^\"]+)\"/g;\n  while ((match = dialogueRegex.exec(part)) !== null) {\n    const charName = match[1].trim().toLowerCase();\n    characters.add(charName);\n    dialogues.push({\n      character: charName,\n      emotion: (match[2] || 'neutral').trim().toLowerCase(),\n      text: match[3]\n    });\n  }\n  \n  // Extract background\n  const bgMatch = part.match(/\\[Background:\\s*([^\\]]+)\\]/i);\n  const background = bgMatch ? bgMatch[1] : '';\n  \n  scenes.push({\n    id: `ch${String(chapterNum).padStart(2, '0')}_sc${String(sceneNum).padStart(3, '0')}`,\n    chapter: chapterNum,\n    scene_number: sceneNum,\n    location,\n    time_of_day: timeOfDay,\n    characters: Array.from(characters),\n    dialogue_count: dialogues.length,\n    dialogues,\n    background\n  });\n}\n\nreturn {\n  json: {\n    chapter: chapterNum,\n    scene_count: scenes.length,\n    scenes,\n    total_dialogues: scenes.reduce((sum, s) => sum + s.dialogue_count, 0),\n    unique_characters: [...new Set(scenes.flatMap(s => s.characters))]\n  }\n};"
+      },
+      "id": "code-1",
+      "name": "Parse Chapter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "scenes",
+        "options": {}
+      },
+      "id": "split-1",
+      "name": "Split Scenes",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:6333/collections/empire_images/points/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"vector\": {{ JSON.stringify(Array(768).fill(0.01)) }},\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"character_name\",\n        \"match\": {\n          \"any\": {{ JSON.stringify($json.characters) }}\n        }\n      }\n    ]\n  },\n  \"limit\": 10,\n  \"with_payload\": true\n}",
+        "options": {"timeout": 30000}
+      },
+      "id": "http-1",
+      "name": "Lookup Characters",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [920, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Build asset generation requests for this scene\nconst scene = $('Split Scenes').item.json;\nconst charLookup = $input.first().json;\nconst charResults = charLookup?.result || [];\n\n// Map character data\nconst characterData = {};\nfor (const result of charResults) {\n  const payload = result.payload || {};\n  characterData[payload.character_name] = payload;\n}\n\n// Build portrait requests\nconst portraitRequests = [];\nconst ttsRequests = [];\n\nfor (const dialogue of (scene.dialogues || [])) {\n  const charData = characterData[dialogue.character] || {};\n  \n  // Portrait request\n  portraitRequests.push({\n    type: 'portrait',\n    scene_id: scene.id,\n    character: dialogue.character,\n    emotion: dialogue.emotion,\n    character_data: charData,\n    output_path: `/data/empire/assets/${scene.id}/${dialogue.character}_${dialogue.emotion}.png`\n  });\n  \n  // TTS request\n  const voiceProfile = charData.voice_profile || {};\n  ttsRequests.push({\n    type: 'tts',\n    scene_id: scene.id,\n    character: dialogue.character,\n    text: dialogue.text,\n    emotion: dialogue.emotion,\n    voice_id: voiceProfile.voice_id || 'af_sarah',\n    speed: voiceProfile.base_speed || 1.0,\n    output_path: `/data/empire/assets/${scene.id}/${dialogue.character}_${Date.now()}.wav`\n  });\n}\n\n// Background request\nconst bgRequest = scene.background ? {\n  type: 'background',\n  scene_id: scene.id,\n  description: scene.background,\n  time_of_day: scene.time_of_day,\n  location: scene.location,\n  output_path: `/data/empire/assets/${scene.id}/background.png`\n} : null;\n\nreturn {\n  json: {\n    scene_id: scene.id,\n    scene_number: scene.scene_number,\n    portrait_count: portraitRequests.length,\n    tts_count: ttsRequests.length,\n    has_background: !!bgRequest,\n    portrait_requests: portraitRequests,\n    tts_requests: ttsRequests,\n    background_request: bgRequest\n  }\n};"
+      },
+      "id": "code-2",
+      "name": "Build Asset Requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-1",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1360, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Compile final job manifest\nconst items = $input.first().json.data || [];\nconst timestamp = new Date().toISOString();\nconst jobId = `empire-job-${Date.now()}`;\n\nlet totalPortraits = 0;\nlet totalTTS = 0;\nlet totalBackgrounds = 0;\n\nconst allPortraits = [];\nconst allTTS = [];\nconst allBackgrounds = [];\n\nfor (const item of items) {\n  totalPortraits += item.portrait_count || 0;\n  totalTTS += item.tts_count || 0;\n  if (item.has_background) totalBackgrounds++;\n  \n  allPortraits.push(...(item.portrait_requests || []));\n  allTTS.push(...(item.tts_requests || []));\n  if (item.background_request) allBackgrounds.push(item.background_request);\n}\n\nreturn {\n  json: {\n    job_id: jobId,\n    timestamp,\n    status: 'queued',\n    summary: {\n      total_scenes: items.length,\n      total_portraits: totalPortraits,\n      total_tts: totalTTS,\n      total_backgrounds: totalBackgrounds\n    },\n    manifest: {\n      portraits: allPortraits,\n      tts: allTTS,\n      backgrounds: allBackgrounds\n    }\n  }\n};"
+      },
+      "id": "code-3",
+      "name": "Build Job Manifest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1580, 300]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "filePath": "=/data/empire/jobs/{{ $json.job_id }}.json",
+        "options": {}
+      },
+      "id": "write-1",
+      "name": "Save Job Manifest",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [1800, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"job_id\": \"{{ $json.job_id }}\",\n  \"summary\": {{ JSON.stringify($json.summary) }},\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Return Job Status",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2020, 300]
+    }
+  ],
+  "connections": {
+    "Chapter Upload": {
+      "main": [[{"node": "Parse Chapter", "type": "main", "index": 0}]]
+    },
+    "Parse Chapter": {
+      "main": [[{"node": "Split Scenes", "type": "main", "index": 0}]]
+    },
+    "Split Scenes": {
+      "main": [[{"node": "Lookup Characters", "type": "main", "index": 0}]]
+    },
+    "Lookup Characters": {
+      "main": [[{"node": "Build Asset Requests", "type": "main", "index": 0}]]
+    },
+    "Build Asset Requests": {
+      "main": [[{"node": "Aggregate Results", "type": "main", "index": 0}]]
+    },
+    "Aggregate Results": {
+      "main": [[{"node": "Build Job Manifest", "type": "main", "index": 0}]]
+    },
+    "Build Job Manifest": {
+      "main": [[{"node": "Save Job Manifest", "type": "main", "index": 0}]]
+    },
+    "Save Job Manifest": {
+      "main": [[{"node": "Return Job Status", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

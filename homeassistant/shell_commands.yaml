@@ -1,0 +1,102 @@
+# Home Assistant Shell Commands for Hydra Cluster
+#
+# Add to configuration.yaml: shell_command: !include shell_commands.yaml
+#
+# Prerequisites:
+# - SSH keys configured for HA to reach cluster nodes
+# - User 'homeassistant' or service account with appropriate sudo rights
+
+# =============================================================================
+# Service Management
+# =============================================================================
+
+# Restart LiteLLM on hydra-storage
+hydra_restart_litellm: >-
+  ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no root@192.168.1.244
+  'docker restart litellm'
+
+# Restart TabbyAPI on hydra-ai
+hydra_restart_tabbyapi: >-
+  ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no typhon@192.168.1.250
+  'sudo systemctl restart tabbyapi'
+
+# Restart Ollama on hydra-compute
+hydra_restart_ollama: >-
+  ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no typhon@192.168.1.203
+  'sudo systemctl restart ollama'
+
+# Restart Open WebUI
+hydra_restart_openwebui: >-
+  ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no typhon@192.168.1.250
+  'sudo systemctl restart open-webui'
+
+# =============================================================================
+# GPU Power Management
+# =============================================================================
+
+# Set GPU power limits on hydra-ai (safety limits)
+hydra_gpu_power_limit_ai: >-
+  ssh -o ConnectTimeout=10 typhon@192.168.1.250
+  'sudo nvidia-smi -i 0 -pl 450 && sudo nvidia-smi -i 1 -pl 300'
+
+# Set GPU power limits on hydra-compute
+hydra_gpu_power_limit_compute: >-
+  ssh -o ConnectTimeout=10 typhon@192.168.1.203
+  'sudo nvidia-smi -i 0 -pl 250'
+
+# =============================================================================
+# Model Management
+# =============================================================================
+
+# Load default model preset
+hydra_load_model_default: >-
+  curl -s -X POST "http://192.168.1.250:5000/v1/model/load"
+  -H "Content-Type: application/json"
+  -d '{"model_name": "Llama-3.3-70B-Instruct-exl2-4.0bpw"}'
+
+# Load fast model (8B)
+hydra_load_model_fast: >-
+  curl -s -X POST "http://192.168.1.250:5000/v1/model/load"
+  -H "Content-Type: application/json"
+  -d '{"model_name": "Llama-3.1-8B-Instruct-exl2-6.0bpw"}'
+
+# Load coding model
+hydra_load_model_coding: >-
+  curl -s -X POST "http://192.168.1.250:5000/v1/model/load"
+  -H "Content-Type: application/json"
+  -d '{"model_name": "DeepSeek-Coder-V2-Instruct-exl2-4.0bpw"}'
+
+# Unload current model
+hydra_unload_model: >-
+  curl -s -X POST "http://192.168.1.250:5000/v1/model/unload"
+
+# =============================================================================
+# Health & Diagnostics
+# =============================================================================
+
+# Trigger full health check
+hydra_health_check: >-
+  curl -s "http://192.168.1.244:8600/health/summary"
+
+# Clear Docker system on hydra-storage
+hydra_docker_cleanup: >-
+  ssh -o ConnectTimeout=10 root@192.168.1.244
+  'docker system prune -f --volumes=false'
+
+# =============================================================================
+# Node Operations
+# =============================================================================
+
+# Reboot hydra-ai (careful!)
+hydra_reboot_ai: >-
+  ssh -o ConnectTimeout=10 typhon@192.168.1.250
+  'sudo systemctl reboot'
+
+# Reboot hydra-compute (careful!)
+hydra_reboot_compute: >-
+  ssh -o ConnectTimeout=10 typhon@192.168.1.203
+  'sudo systemctl reboot'
+
+# Wake hydra-ai via Wake-on-LAN (if supported)
+# hydra_wake_ai: >-
+#   wakeonlan <MAC_ADDRESS>

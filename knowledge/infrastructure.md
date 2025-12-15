@@ -5,49 +5,68 @@
 ### hydra-ai (Primary Inference Node)
 - **IP:** 192.168.1.250
 - **OS:** NixOS (kernel 6.12+)
-- **CPU:** AMD Threadripper 7960X (24 cores / 48 threads)
-- **RAM:** 128GB DDR5
+- **CPU:** AMD Ryzen Threadripper 7960X (24 cores / 48 threads, boost to 5.3GHz)
+- **RAM:** 125GB DDR5 (usable)
 - **GPUs:**
-  - NVIDIA RTX 5090 32GB (Blackwell, sm_120)
-  - NVIDIA RTX 4090 24GB (Ada Lovelace, sm_89)
-  - Combined VRAM: 56GB (tensor parallel)
-- **Storage:** 
-  - NVMe for OS
+  - NVIDIA RTX 5090 32GB (Blackwell, sm_120, compute_cap 12.0)
+  - NVIDIA RTX 4090 24GB (Ada Lovelace, sm_89, compute_cap 8.9)
+  - Combined VRAM: 56GB (tensor parallel via ExLlamaV2)
+- **Storage:**
+  - Samsung 990 PRO 4TB NVMe (OS + primary)
+  - Samsung 990 EVO Plus 1TB NVMe
+  - Crucial T700 4TB NVMe
+  - Crucial P3 4TB NVMe
   - NFS mount for models (/mnt/models)
 - **Network:**
-  - eno1: Aquantia AQC113C 10GbE (PRIMARY - use this for data)
-  - enp71s0: Realtek 2.5GbE (management only)
+  - eno1: 10GbE (PRIMARY - use this for data) - confirmed 10000Mb/s
+  - enp71s0: 2.5GbE (management only)
 - **Power:** ~800W sustained, ~1425W peak (both GPUs maxed)
+- **Live Metrics:** Query via `/hardware/inventory` API or Prometheus
 
 ### hydra-compute (Secondary Inference + Image Gen)
 - **IP:** 192.168.1.203
 - **OS:** NixOS (kernel 6.12+)
-- **CPU:** AMD Ryzen 9950X (16 cores / 32 threads)
-- **RAM:** 64GB DDR5
+- **CPU:** AMD Ryzen 9 9950X (16 cores / 32 threads, boost to 5.7GHz)
+- **RAM:** 60GB DDR5 (usable)
 - **GPUs:**
-  - NVIDIA RTX 5070 Ti 16GB (Blackwell, sm_120)
-  - NVIDIA RTX 3060 12GB (Ampere, sm_86)
+  - NVIDIA RTX 5070 Ti 16GB (Blackwell, sm_120, compute_cap 12.0) x2
+  - Combined VRAM: 32GB (two separate GPUs, not tensor parallel)
 - **Storage:**
-  - NVMe for OS
-  - NFS mount for models
+  - Samsung 990 EVO Plus 1TB NVMe x3 (total ~3TB)
+  - NFS mount for models (/mnt/models)
 - **Network:**
-  - enp1s0f0: Intel X540-T2 10GbE
+  - enp11s0: 10GbE (active)
 - **Power:** ~400W sustained, ~650W peak
+- **Note:** Both GPUs are RTX 5070 Ti - RTX 3060 was replaced
+- **Live Metrics:** Query via `/hardware/inventory` API or Prometheus
 
-### hydra-storage (Unraid NAS + Services)
+### hydra-storage (Unraid NAS + Services + Orchestration Hub)
 - **IP:** 192.168.1.244
 - **IPMI:** 192.168.1.216
 - **OS:** Unraid 7.2.x
-- **CPU:** AMD EPYC 7663 (56 cores / 112 threads)
-- **RAM:** 256GB DDR4 ECC
-- **GPU:** Intel Arc A380 (transcoding, light inference)
-- **Storage:** ~180TB mixed array
-  - NVMe cache pool
-  - HDD parity array
-  - SSD for Docker appdata
+- **CPU:** AMD EPYC 7663 (56 cores / 112 threads, boost to 3.5GHz)
+  - 256MB L3 Cache
+  - Ideal for parallel agent orchestration (can run 20+ concurrent agents)
+- **RAM:** 251GB DDR4 ECC (usable)
+  - ~70GB in use by containers
+  - ~180GB available for KV cache tier / semantic caching
+- **GPU:** Intel Arc A380 (DEDICATED to Plex transcoding via Quick Sync Video)
+  - Handles all media transcoding, freeing CPU for other workloads
+  - Extremely efficient - uses minimal power for 4K transcodes
+- **Storage:** 164TB total array (148TB used = 90%)
+  - ~120TB: Media (Plex, Stash, *Arr apps)
+  - ~2TB: AI models (NFS exported to compute nodes)
+  - ~25TB: Databases, configs, scratch space
+  - Parity protected with 2x 22TB WD drives
+  - HDD array: mix of 16TB-22TB WD/Seagate drives
 - **Network:**
-  - eth0/eth1: Intel X550-T2 dual 10GbE (LACP bonded)
+  - bond0: Intel X550-T2 dual 10GbE (LACP bonded eth0+eth1)
 - **Power:** ~400W sustained, ~530W peak
+- **Containers:** 60+ Docker containers running
+- **Orchestration Capacity:** With transcoding offloaded to Arc A380, the full EPYC 7663
+  (56 cores) and 180GB+ available RAM can be used for agent orchestration, KV caching,
+  and parallel workloads
+- **Live Metrics:** Query via `/hardware/inventory` API or Prometheus
 
 ### hydra-dev (Development VM on Unraid)
 - **IP:** DHCP (check Unraid VM tab)

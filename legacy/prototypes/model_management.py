@@ -11,7 +11,7 @@ Provides model management across inference services:
 
 # Add these constants near the top with other URLs
 TABBY_API_URL = "http://192.168.1.250:5000"
-OLLAMA_COMPUTE_URL = "http://192.168.1.175:11434"
+OLLAMA_COMPUTE_URL = "http://192.168.1.203:11434"
 
 # =============================================================================
 # Model Management Endpoints

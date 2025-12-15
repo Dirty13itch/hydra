@@ -1,0 +1,86 @@
+# Model Loading Presets for TabbyAPI
+# Add custom presets here to override defaults
+
+presets:
+  # High-quality reasoning
+  llama-70b-reasoning:
+    model_name: Llama-3.3-70B-Instruct-exl2-4.0bpw
+    max_seq_len: 16384
+    cache_size: 16384
+    gpu_split: [0.6, 0.4]
+    description: Llama 3.3 70B for complex reasoning tasks
+
+  # Maximum context
+  llama-70b-max-context:
+    model_name: Llama-3.1-70B-Instruct-exl2-3.5bpw
+    max_seq_len: 65536
+    cache_size: 65536
+    gpu_split: [0.55, 0.45]
+    description: Llama 70B at lower quant for maximum context
+
+  # Coding focused
+  deepseek-r1:
+    model_name: DeepSeek-R1-Distill-Llama-70B-exl2-4.0bpw
+    max_seq_len: 16384
+    cache_size: 16384
+    gpu_split: [0.6, 0.4]
+    description: DeepSeek R1 distilled for code and reasoning
+
+  # Fast iteration
+  qwen-14b-fast:
+    model_name: Qwen2.5-14B-Instruct-exl2-6.0bpw
+    max_seq_len: 8192
+    cache_size: 8192
+    description: Qwen 2.5 14B for fast inference
+
+  # Creative writing (uncensored)
+  midnight-rose:
+    model_name: Midnight-Rose-70B-v2-exl2-4.0bpw
+    max_seq_len: 8192
+    cache_size: 8192
+    gpu_split: [0.6, 0.4]
+    description: Creative writing focused, uncensored
+
+  # Roleplay
+  rocinante:
+    model_name: Rocinante-12B-v1.1-exl2-6.0bpw
+    max_seq_len: 8192
+    cache_size: 8192
+    description: Roleplay and character interaction
+
+# Draft model settings (for speculative decoding)
+draft_models:
+  # Small Llama for drafting
+  llama-1b:
+    model_name: Llama-3.2-1B-Instruct-exl2-8.0bpw
+    description: Llama 3.2 1B for speculative decoding
+
+# GPU configurations
+gpu_configs:
+  # hydra-ai: 5090 (32GB) + 4090 (24GB) = 56GB
+  dual-gpu-balanced:
+    gpu_split: [0.57, 0.43]  # ~32GB : ~24GB ratio
+
+  dual-gpu-primary:
+    gpu_split: [0.7, 0.3]  # Favor 5090
+
+  single-gpu:
+    gpu_split: [1.0]  # 5090 only
+
+# Batch presets for different workloads
+workloads:
+  chat:
+    max_seq_len: 8192
+    cache_size: 8192
+
+  document:
+    max_seq_len: 32768
+    cache_size: 32768
+
+  code:
+    max_seq_len: 16384
+    cache_size: 16384
+
+  max:
+    max_seq_len: 65536
+    cache_size: 65536

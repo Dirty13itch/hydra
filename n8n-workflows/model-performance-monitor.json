@@ -1,0 +1,178 @@
+{
+  "name": "Model Performance Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.250:5000/v1/model",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "get-tabby-model",
+      "name": "Get TabbyAPI Model",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, -100],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.250:5000/v1/chat/completions",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"default\",\n  \"messages\": [{\"role\": \"user\", \"content\": \"Say 'performance test complete' and nothing else.\"}],\n  \"max_tokens\": 20,\n  \"temperature\": 0\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "test-inference",
+      "name": "Test Inference",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, 100],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.203:11434/api/tags",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "get-ollama-models",
+      "name": "Get Ollama Models",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const tabbyModel = $('Get TabbyAPI Model').first().json;\nconst inference = $('Test Inference').first().json;\nconst ollamaModels = $('Get Ollama Models').first().json;\n\n// Calculate tokens per second if available\nlet tokensPerSec = null;\nlet inferenceTime = null;\nif (inference?.usage) {\n  const totalTokens = (inference.usage.prompt_tokens || 0) + (inference.usage.completion_tokens || 0);\n  // Estimate based on typical response time\n  tokensPerSec = inference.usage.completion_tokens ? inference.usage.completion_tokens / 2 : null;\n}\n\nconst report = {\n  timestamp: new Date().toISOString(),\n  tabbyapi: {\n    status: tabbyModel?.model_name ? 'online' : 'offline',\n    model: tabbyModel?.model_name || 'none',\n    max_seq_len: tabbyModel?.max_seq_len || 0\n  },\n  ollama: {\n    status: ollamaModels?.models ? 'online' : 'offline',\n    model_count: ollamaModels?.models?.length || 0,\n    models: (ollamaModels?.models || []).map(m => m.name).slice(0, 5)\n  },\n  inference_test: {\n    success: !!inference?.choices,\n    response: inference?.choices?.[0]?.message?.content || 'no response',\n    tokens_per_sec: tokensPerSec\n  },\n  performance_status: tokensPerSec && tokensPerSec < 10 ? 'degraded' : 'normal'\n};\n\nreturn [{ json: report }];"
+      },
+      "id": "analyze-performance",
+      "name": "Analyze Performance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.performance_status }}",
+              "operation": "equals",
+              "value2": "degraded"
+            }
+          ]
+        }
+      },
+      "id": "check-degraded",
+      "name": "Performance Degraded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [720, 100]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "=⚠️ **Hydra Inference Performance Alert**\\n\\nTabbyAPI performance is degraded:\\n- Model: {{ $json.tabbyapi.model }}\\n- Tokens/sec: {{ $json.inference_test.tokens_per_sec || 'unknown' }}\\n\\nConsider checking GPU temperatures and model loading."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "alert-degraded",
+      "name": "Alert Performance Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [940, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:9091/metrics/job/model_performance",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain",
+        "body": "=# HELP hydra_inference_up Inference service availability\n# TYPE hydra_inference_up gauge\nhydra_inference_up{service=\"tabbyapi\"} {{ $json.tabbyapi.status === 'online' ? 1 : 0 }}\nhydra_inference_up{service=\"ollama\"} {{ $json.ollama.status === 'online' ? 1 : 0 }}\n\n# HELP hydra_model_count Number of loaded models\n# TYPE hydra_model_count gauge\nhydra_model_count{service=\"ollama\"} {{ $json.ollama.model_count }}",
+        "options": {}
+      },
+      "id": "push-metrics",
+      "name": "Push Metrics to Prometheus",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [940, 200],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Every Hour": {
+      "main": [
+        [
+          { "node": "Get TabbyAPI Model", "type": "main", "index": 0 },
+          { "node": "Test Inference", "type": "main", "index": 0 },
+          { "node": "Get Ollama Models", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get TabbyAPI Model": {
+      "main": [
+        [{ "node": "Analyze Performance", "type": "main", "index": 0 }]
+      ]
+    },
+    "Test Inference": {
+      "main": [
+        [{ "node": "Analyze Performance", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Ollama Models": {
+      "main": [
+        [{ "node": "Analyze Performance", "type": "main", "index": 0 }]
+      ]
+    },
+    "Analyze Performance": {
+      "main": [
+        [{ "node": "Performance Degraded?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Performance Degraded?": {
+      "main": [
+        [{ "node": "Alert Performance Issue", "type": "main", "index": 0 }],
+        [{ "node": "Push Metrics to Prometheus", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "1"
+}

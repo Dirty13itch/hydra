@@ -1,0 +1,88 @@
+{
+  "name": "Activity Logger",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "log-activity",
+        "options": {}
+      },
+      "id": "activity-webhook",
+      "name": "Activity Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "activity-logger-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: $json.source || 'n8n', source_id: $json.source_id || $json.workflowId, action: $json.action, action_type: $json.action_type || 'autonomous', target: $json.target, params: $json.params || {}, result: $json.result, result_details: $json.result_details || {}, decision_reason: $json.decision_reason, parent_id: $json.parent_id, requires_approval: $json.requires_approval || false }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "post-activity",
+      "name": "Post to Activity API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, activity_id: $json.id, status: $json.status } }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [540, 300]
+    }
+  ],
+  "connections": {
+    "Activity Webhook": {
+      "main": [
+        [
+          {
+            "node": "Post to Activity API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Activity API": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "transparency"
+    }
+  ]
+}

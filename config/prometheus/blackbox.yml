@@ -1,0 +1,104 @@
+# Blackbox Exporter Configuration
+# Deploy to hydra-storage:/mnt/user/appdata/hydra-stack/prometheus/blackbox.yml
+#
+# Used for HTTP/TCP/ICMP probing of services
+
+modules:
+  # HTTP probe - expects 2xx response
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      valid_status_codes: [200, 201, 202, 204]
+      method: GET
+      follow_redirects: true
+      fail_if_ssl: false
+      fail_if_not_ssl: false
+      tls_config:
+        insecure_skip_verify: true
+
+  # HTTP probe - accepts any 2xx/3xx
+  http_2xx_3xx:
+    prober: http
+    timeout: 10s
+    http:
+      valid_status_codes: [200, 201, 202, 204, 301, 302, 303, 307, 308]
+      method: GET
+      follow_redirects: false
+      tls_config:
+        insecure_skip_verify: true
+
+  # HTTP POST probe (for APIs that require POST)
+  http_post_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      valid_status_codes: [200, 201, 202, 204]
+      method: POST
+      tls_config:
+        insecure_skip_verify: true
+
+  # TCP connection probe
+  tcp_connect:
+    prober: tcp
+    timeout: 5s
+
+  # TCP with TLS
+  tcp_connect_tls:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      tls: true
+      tls_config:
+        insecure_skip_verify: true
+
+  # ICMP ping probe
+  icmp:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      preferred_ip_protocol: ip4
+
+  # DNS probe
+  dns_tcp:
+    prober: dns
+    timeout: 5s
+    dns:
+      transport_protocol: tcp
+      query_name: "google.com"
+      query_type: "A"
+
+  # gRPC probe (for Qdrant gRPC, etc.)
+  grpc:
+    prober: grpc
+    timeout: 5s
+    grpc:
+      tls: false
+      preferred_ip_protocol: ip4
+
+  # SSH probe
+  ssh_banner:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      query_response:
+        - expect: "SSH-"
+
+  # PostgreSQL probe
+  postgres:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      query_response:
+        - send: ""
+        # PostgreSQL sends version info on connect
+
+  # Redis probe
+  redis:
+    prober: tcp
+    timeout: 5s
+    tcp:
+      query_response:
+        - send: "PING\r\n"
+        - expect: "+PONG"

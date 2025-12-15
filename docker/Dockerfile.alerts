@@ -1,0 +1,41 @@
+# Dockerfile for hydra-alerts service
+#
+# Build: docker build -f docker/Dockerfile.alerts -t hydra-alerts .
+# Run: docker run -p 9095:9095 hydra-alerts
+
+FROM python:3.11-slim
+
+LABEL org.opencontainers.image.title="Hydra Alert Receiver"
+LABEL org.opencontainers.image.description="Webhook receiver for Alertmanager notifications"
+LABEL org.opencontainers.image.version="1.0.0"
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements-alerts.txt .
+RUN pip install --no-cache-dir -r requirements-alerts.txt
+
+# Copy application code
+COPY src/hydra_alerts/ ./hydra_alerts/
+
+# Create directories and non-root user
+RUN mkdir -p /var/log/hydra-alerts && \
+    useradd -m -u 1000 hydra && \
+    chown -R hydra:hydra /app /var/log/hydra-alerts
+USER hydra
+
+# Expose port
+EXPOSE 9095
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -sf http://localhost:9095/health || exit 1
+
+# Run the application
+CMD ["uvicorn", "hydra_alerts.webhook:app", "--host", "0.0.0.0", "--port", "9095"]

@@ -1,0 +1,232 @@
+# Hydra Cluster Desired State Configuration
+#
+# This file defines the expected state of all cluster services.
+# Used by hydra-reconcile to detect drift and auto-fix issues.
+
+nodes:
+  # ==========================================================================
+  # hydra-ai - Primary Inference Node
+  # ==========================================================================
+  - name: hydra-ai
+    ip: 192.168.1.250
+    services:
+      - name: tabbyapi
+        enabled: true
+        port: 5000
+        dependencies: []
+        config:
+          model: Llama-3.3-70B-Instruct-exl2-4.0bpw
+          max_seq_len: 8192
+
+      - name: open-webui
+        enabled: true
+        port: 3000
+        dependencies:
+          - tabbyapi
+
+  # ==========================================================================
+  # hydra-compute - Secondary Inference Node
+  # ==========================================================================
+  - name: hydra-compute
+    ip: 192.168.1.203
+    services:
+      - name: ollama
+        enabled: true
+        port: 11434
+        dependencies: []
+
+      - name: comfyui
+        enabled: true
+        port: 8188
+        dependencies: []
+
+  # ==========================================================================
+  # hydra-storage - Docker Services Node
+  # ==========================================================================
+  - name: hydra-storage
+    ip: 192.168.1.244
+    services:
+      # Core Databases (Layer 0)
+      - name: hydra-postgres
+        enabled: true
+        port: 5432
+        dependencies: []
+        config:
+          databases:
+            - hydra
+            - n8n
+            - litellm
+            - miniflux
+            - letta
+
+      - name: hydra-redis
+        enabled: true
+        port: 6379
+        dependencies: []
+
+      - name: qdrant
+        enabled: true
+        port: 6333
+        dependencies: []
+
+      # Observability (Layer 1)
+      - name: prometheus
+        enabled: true
+        port: 9090
+        dependencies:
+          - hydra-redis
+
+      - name: grafana
+        enabled: true
+        port: 3003
+        dependencies:
+          - prometheus
+
+      - name: loki
+        enabled: true
+        port: 3100
+        dependencies: []
+
+      # AI Services (Layer 2)
+      - name: litellm
+        enabled: true
+        port: 4000
+        dependencies:
+          - hydra-postgres
+          - hydra-redis
+
+      - name: searxng
+        enabled: true
+        port: 8888
+        dependencies: []
+
+      - name: firecrawl-api
+        enabled: true
+        port: 3005
+        dependencies:
+          - hydra-redis
+
+      - name: docling
+        enabled: true
+        port: 5001
+        dependencies: []
+
+      - name: n8n
+        enabled: true
+        port: 5678
+        dependencies:
+          - hydra-postgres
+          - hydra-redis
+
+      # Applications (Layer 3)
+      - name: miniflux
+        enabled: true
+        port: 8180
+        dependencies:
+          - hydra-postgres
+
+      - name: perplexica-frontend
+        enabled: true
+        port: 3030
+        dependencies:
+          - searxng
+
+      - name: sillytavern
+        enabled: true
+        port: 8000
+        dependencies: []
+
+      - name: kokoro-tts
+        enabled: true
+        port: 8880
+        dependencies: []
+
+      # Media Stack
+      - name: plex
+        enabled: true
+        port: 32400
+        dependencies: []
+
+      - name: stash
+        enabled: true
+        port: 9999
+        dependencies: []
+
+      # Download Stack
+      - name: qbittorrent
+        enabled: true
+        port: 8082
+        dependencies: []
+
+      - name: sabnzbd
+        enabled: true
+        port: 8085
+        dependencies: []
+
+      - name: prowlarr
+        enabled: true
+        port: 9696
+        dependencies: []
+
+      - name: sonarr
+        enabled: true
+        port: 8989
+        dependencies: []
+
+      - name: radarr
+        enabled: true
+        port: 7878
+        dependencies: []
+
+      - name: lidarr
+        enabled: true
+        port: 8686
+        dependencies: []
+
+      - name: bazarr
+        enabled: true
+        port: 6767
+        dependencies:
+          - sonarr
+          - radarr
+
+      # Infrastructure
+      - name: homeassistant
+        enabled: true
+        port: 8123
+        dependencies: []
+
+      - name: adguardhome
+        enabled: true
+        port: 53
+        dependencies: []
+
+      - name: portainer
+        enabled: true
+        port: 9000
+        dependencies: []
+
+      - name: homepage
+        enabled: true
+        port: 3333
+        dependencies: []
+
+      - name: vaultwarden
+        enabled: true
+        port: 8444
+        dependencies: []
+
+      - name: tailscale
+        enabled: true
+        dependencies: []
+
+      # Hydra Services
+      - name: hydra-health
+        enabled: true
+        port: 8600
+        dependencies: []
+
+      - name: hydra-alerts
+        enabled: true
+        port: 9095
+        dependencies: []

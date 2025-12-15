@@ -1,0 +1,212 @@
+{
+  "name": "Hydra Database Backup",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily at 2 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "command": "docker exec hydra-postgres pg_dumpall -U hydra | gzip > /mnt/user/backups/postgres/pg_dump_$(date +%Y%m%d_%H%M%S).sql.gz && echo 'PostgreSQL backup complete'",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "backup-postgres",
+      "name": "Backup PostgreSQL",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [220, -150],
+      "continueOnFail": true,
+      "credentials": {
+        "sshPassword": {
+          "id": "hydra-storage-ssh",
+          "name": "hydra-storage SSH"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:6333/snapshots",
+        "method": "POST",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "backup-qdrant",
+      "name": "Snapshot Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "command": "docker exec hydra-redis redis-cli BGSAVE && sleep 5 && cp /mnt/user/appdata/redis/dump.rdb /mnt/user/backups/redis/redis_$(date +%Y%m%d_%H%M%S).rdb && echo 'Redis backup complete'",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "backup-redis",
+      "name": "Backup Redis",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [220, 150],
+      "continueOnFail": true,
+      "credentials": {
+        "sshPassword": {
+          "id": "hydra-storage-ssh",
+          "name": "hydra-storage SSH"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "find /mnt/user/backups/postgres -name '*.sql.gz' -mtime +7 -delete; find /mnt/user/backups/redis -name '*.rdb' -mtime +7 -delete; echo 'Cleanup complete'",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "cleanup-old",
+      "name": "Cleanup Old Backups",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [440, 0],
+      "continueOnFail": true,
+      "credentials": {
+        "sshPassword": {
+          "id": "hydra-storage-ssh",
+          "name": "hydra-storage SSH"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const postgres = $('Backup PostgreSQL').first();\nconst qdrant = $('Snapshot Qdrant').first();\nconst redis = $('Backup Redis').first();\nconst cleanup = $('Cleanup Old Backups').first();\n\nconst results = {\n  timestamp: new Date().toISOString(),\n  postgresql: {\n    success: !postgres.error,\n    message: postgres.json?.stdout || postgres.error?.message || 'unknown'\n  },\n  qdrant: {\n    success: !qdrant.error,\n    snapshot_name: qdrant.json?.name || 'failed'\n  },\n  redis: {\n    success: !redis.error,\n    message: redis.json?.stdout || redis.error?.message || 'unknown'\n  },\n  cleanup: {\n    success: !cleanup.error,\n    message: cleanup.json?.stdout || cleanup.error?.message || 'unknown'\n  }\n};\n\nconst allSuccess = results.postgresql.success && results.qdrant.success && results.redis.success;\nresults.overall_status = allSuccess ? 'success' : 'partial_failure';\n\nreturn [{ json: results }];"
+      },
+      "id": "summarize",
+      "name": "Summarize Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.overall_status }}",
+              "operation": "notEquals",
+              "value2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-failure",
+      "name": "Any Failures?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "=❌ **Hydra Backup Alert**\\n\\nDatabase backup completed with failures:\\n- PostgreSQL: {{ $json.postgresql.success ? '✅' : '❌' }}\\n- Qdrant: {{ $json.qdrant.success ? '✅' : '❌' }}\\n- Redis: {{ $json.redis.success ? '✅' : '❌' }}\\n\\nCheck logs for details."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "alert-failure",
+      "name": "Alert Backup Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, -100],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "All database backups completed successfully"
+            }
+          ]
+        }
+      },
+      "id": "log-success",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1100, 100]
+    }
+  ],
+  "connections": {
+    "Daily at 2 AM": {
+      "main": [
+        [
+          { "node": "Backup PostgreSQL", "type": "main", "index": 0 },
+          { "node": "Snapshot Qdrant", "type": "main", "index": 0 },
+          { "node": "Backup Redis", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Backup PostgreSQL": {
+      "main": [
+        [{ "node": "Cleanup Old Backups", "type": "main", "index": 0 }]
+      ]
+    },
+    "Snapshot Qdrant": {
+      "main": [
+        [{ "node": "Cleanup Old Backups", "type": "main", "index": 0 }]
+      ]
+    },
+    "Backup Redis": {
+      "main": [
+        [{ "node": "Cleanup Old Backups", "type": "main", "index": 0 }]
+      ]
+    },
+    "Cleanup Old Backups": {
+      "main": [
+        [{ "node": "Summarize Results", "type": "main", "index": 0 }]
+      ]
+    },
+    "Summarize Results": {
+      "main": [
+        [{ "node": "Any Failures?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Any Failures?": {
+      "main": [
+        [{ "node": "Alert Backup Failure", "type": "main", "index": 0 }],
+        [{ "node": "Log Success", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "1"
+}

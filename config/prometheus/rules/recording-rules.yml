@@ -1,0 +1,232 @@
+# Prometheus Recording Rules for Hydra Cluster
+#
+# Recording rules precompute frequently-used expressions for faster
+# dashboard loading and more efficient alerting.
+#
+# Deploy to: /mnt/user/appdata/prometheus/rules/recording-rules.yml
+# Generated: December 14, 2025
+
+groups:
+  # ===========================================
+  # GPU METRICS AGGREGATIONS
+  # ===========================================
+  - name: gpu_recording_rules
+    interval: 30s
+    rules:
+      # Total VRAM used across all GPUs
+      - record: hydra:gpu:vram_used_total_gb
+        expr: sum(nvidia_gpu_memory_used_bytes or DCGM_FI_DEV_FB_USED) / 1024 / 1024 / 1024
+
+      # Total VRAM capacity across all GPUs
+      - record: hydra:gpu:vram_total_gb
+        expr: sum(nvidia_gpu_memory_total_bytes or DCGM_FI_DEV_FB_TOTAL) / 1024 / 1024 / 1024
+
+      # VRAM usage percentage cluster-wide
+      - record: hydra:gpu:vram_used_pct
+        expr: |
+          (sum(nvidia_gpu_memory_used_bytes or DCGM_FI_DEV_FB_USED) /
+           sum(nvidia_gpu_memory_total_bytes or DCGM_FI_DEV_FB_TOTAL)) * 100
+
+      # Average GPU temperature across all GPUs (Celsius)
+      - record: hydra:gpu:temp_avg_c
+        expr: avg(nvidia_gpu_temp_c or DCGM_FI_DEV_GPU_TEMP)
+
+      # Max GPU temperature (hottest GPU)
+      - record: hydra:gpu:temp_max_c
+        expr: max(nvidia_gpu_temp_c or DCGM_FI_DEV_GPU_TEMP)
+
+      # Total GPU power draw (Watts)
+      - record: hydra:gpu:power_total_w
+        expr: sum(nvidia_gpu_power_draw_watts or DCGM_FI_DEV_POWER_USAGE)
+
+      # Average GPU utilization
+      - record: hydra:gpu:utilization_avg_pct
+        expr: avg(nvidia_gpu_utilization_pct or DCGM_FI_DEV_GPU_UTIL)
+
+      # Per-node VRAM usage
+      - record: hydra:gpu:vram_used_by_node
+        expr: |
+          sum by (instance) (nvidia_gpu_memory_used_bytes or DCGM_FI_DEV_FB_USED) / 1024 / 1024 / 1024
+
+  # ===========================================
+  # NODE METRICS AGGREGATIONS
+  # ===========================================
+  - name: node_recording_rules
+    interval: 30s
+    rules:
+      # Average CPU usage across cluster
+      - record: hydra:cluster:cpu_avg_pct
+        expr: |
+          100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+      # Memory usage percentage by node
+      - record: hydra:node:memory_used_pct
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+
+      # Average memory usage across cluster
+      - record: hydra:cluster:memory_avg_pct
+        expr: |
+          avg((1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100)
+
+      # Disk usage percentage (root filesystem)
+      - record: hydra:node:disk_used_pct
+        expr: |
+          (1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100
+
+      # Network bytes received per second by node
+      - record: hydra:node:network_rx_bytes_rate
+        expr: rate(node_network_receive_bytes_total{device!~"lo|docker.*|br-.*|veth.*"}[5m])
+
+      # Network bytes transmitted per second by node
+      - record: hydra:node:network_tx_bytes_rate
+        expr: rate(node_network_transmit_bytes_total{device!~"lo|docker.*|br-.*|veth.*"}[5m])
+
+  # ===========================================
+  # CONTAINER METRICS
+  # ===========================================
+  - name: container_recording_rules
+    interval: 30s
+    rules:
+      # Total running containers
+      - record: hydra:containers:running_total
+        expr: count(container_last_seen{name!=""})
+
+      # Container CPU usage by name (1m average)
+      - record: hydra:container:cpu_usage_pct
+        expr: |
+          sum by (name) (rate(container_cpu_usage_seconds_total[1m])) * 100
+
+      # Container memory usage by name (bytes)
+      - record: hydra:container:memory_usage_bytes
+        expr: sum by (name) (container_memory_usage_bytes)
+
+      # Container restart count (last hour)
+      - record: hydra:container:restarts_1h
+        expr: |
+          increase(container_start_time_seconds[1h]) > 0
+
+  # ===========================================
+  # SERVICE HEALTH
+  # ===========================================
+  - name: service_recording_rules
+    interval: 60s
+    rules:
+      # Prometheus target up percentage
+      - record: hydra:prometheus:targets_up_pct
+        expr: (sum(up) / count(up)) * 100
+
+      # HTTP request latency by service (p50)
+      - record: hydra:http:latency_p50_ms
+        expr: |
+          histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)) * 1000
+
+      # HTTP request latency by service (p95)
+      - record: hydra:http:latency_p95_ms
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)) * 1000
+
+      # HTTP request latency by service (p99)
+      - record: hydra:http:latency_p99_ms
+        expr: |
+          histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)) * 1000
+
+  # ===========================================
+  # INFERENCE METRICS
+  # ===========================================
+  - name: inference_recording_rules
+    interval: 30s
+    rules:
+      # TabbyAPI requests per second
+      - record: hydra:inference:requests_per_sec
+        expr: rate(tabby_requests_total[5m])
+
+      # TabbyAPI average latency (if metrics available)
+      - record: hydra:inference:latency_avg_ms
+        expr: |
+          rate(tabby_request_duration_seconds_sum[5m]) /
+          rate(tabby_request_duration_seconds_count[5m]) * 1000
+
+      # Tokens generated per second (if metrics available)
+      - record: hydra:inference:tokens_per_sec
+        expr: rate(tabby_tokens_generated_total[5m])
+
+  # ===========================================
+  # STORAGE METRICS (UNRAID)
+  # ===========================================
+  - name: storage_recording_rules
+    interval: 60s
+    rules:
+      # Total storage used (Unraid array)
+      - record: hydra:storage:used_tb
+        expr: |
+          sum(node_filesystem_size_bytes{mountpoint=~"/mnt/disk.*|/mnt/user.*"} -
+              node_filesystem_avail_bytes{mountpoint=~"/mnt/disk.*|/mnt/user.*"}) / 1024 / 1024 / 1024 / 1024
+
+      # Total storage capacity
+      - record: hydra:storage:total_tb
+        expr: |
+          sum(node_filesystem_size_bytes{mountpoint=~"/mnt/disk.*|/mnt/user.*"}) / 1024 / 1024 / 1024 / 1024
+
+      # Storage usage percentage
+      - record: hydra:storage:used_pct
+        expr: |
+          (1 - (sum(node_filesystem_avail_bytes{mountpoint=~"/mnt/disk.*|/mnt/user.*"}) /
+                sum(node_filesystem_size_bytes{mountpoint=~"/mnt/disk.*|/mnt/user.*"}))) * 100
+
+  # ===========================================
+  # DATABASE METRICS
+  # ===========================================
+  - name: database_recording_rules
+    interval: 60s
+    rules:
+      # PostgreSQL active connections
+      - record: hydra:postgres:active_connections
+        expr: pg_stat_activity_count{state="active"}
+
+      # PostgreSQL database sizes
+      - record: hydra:postgres:database_size_mb
+        expr: pg_database_size_bytes / 1024 / 1024
+
+      # Redis memory usage
+      - record: hydra:redis:memory_used_mb
+        expr: redis_memory_used_bytes / 1024 / 1024
+
+      # Redis connected clients
+      - record: hydra:redis:connected_clients
+        expr: redis_connected_clients
+
+      # Qdrant collection vector counts
+      - record: hydra:qdrant:vectors_total
+        expr: sum(qdrant_collection_points_count)
+
+  # ===========================================
+  # DASHBOARD OPTIMIZATIONS
+  # ===========================================
+  - name: dashboard_recording_rules
+    interval: 60s
+    rules:
+      # Cluster health score (0-100)
+      # Based on: targets up, GPU temps, memory, disk
+      - record: hydra:cluster:health_score
+        expr: |
+          clamp_max(
+            ((sum(up) / count(up)) * 25) +
+            (clamp_max(100 - avg(nvidia_gpu_temp_c or DCGM_FI_DEV_GPU_TEMP or 0), 100) / 100 * 25) +
+            (clamp_max(100 - avg((1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100), 100) / 100 * 25) +
+            (clamp_max(100 - avg((1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100), 100) / 100 * 25),
+            100
+          )
+
+      # 5-minute average metrics for sparklines
+      - record: hydra:dashboard:cpu_5m_avg
+        expr: avg_over_time(hydra:cluster:cpu_avg_pct[5m])
+
+      - record: hydra:dashboard:memory_5m_avg
+        expr: avg_over_time(hydra:cluster:memory_avg_pct[5m])
+
+      - record: hydra:dashboard:gpu_temp_5m_avg
+        expr: avg_over_time(hydra:gpu:temp_avg_c[5m])
+
+      - record: hydra:dashboard:vram_5m_avg
+        expr: avg_over_time(hydra:gpu:vram_used_pct[5m])

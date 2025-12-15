@@ -1,0 +1,256 @@
+{
+  "name": "Morning Briefing Generator",
+  "description": "Generates a daily morning briefing with cluster status, weather, calendar, and AI insights",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "schedule-weekday",
+      "name": "Weekday 7AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 6,0"
+            }
+          ]
+        }
+      },
+      "id": "schedule-weekend",
+      "name": "Weekend 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 500]
+    },
+    {
+      "parameters": {},
+      "id": "merge-triggers",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [320, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8600/api/health"
+      },
+      "id": "get-cluster-health",
+      "name": "Get Cluster Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:9090/api/v1/alerts"
+      },
+      "id": "get-alerts",
+      "name": "Get Active Alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [540, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8600/api/gpus"
+      },
+      "id": "get-gpu-status",
+      "name": "Get GPU Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [540, 500]
+    },
+    {
+      "parameters": {},
+      "id": "merge-data",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [760, 400],
+      "mode": "combine",
+      "combinationMode": "mergeByPosition"
+    },
+    {
+      "parameters": {
+        "jsCode": "const health = $input.all()[0]?.json || {};\nconst alertsData = $input.all()[1]?.json || {};\nconst gpuData = $input.all()[2]?.json || {};\n\nconst date = new Date();\nconst dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()];\nconst dateStr = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });\nconst isWeekend = date.getDay() === 0 || date.getDay() === 6;\n\n// Parse alerts\nconst alerts = alertsData?.data?.alerts || [];\nconst firingAlerts = alerts.filter(a => a.state === 'firing');\n\n// Parse GPUs\nconst gpus = gpuData?.gpus || [];\nconst totalVram = gpus.reduce((sum, g) => sum + (g.memory_total_gb || 0), 0);\nconst usedVram = gpus.reduce((sum, g) => sum + (g.memory_used_gb || 0), 0);\nconst avgTemp = gpus.length > 0 ? Math.round(gpus.reduce((sum, g) => sum + g.temp_c, 0) / gpus.length) : 0;\nconst avgTempF = Math.round(avgTemp * 9/5 + 32);\n\n// Build briefing\nlet briefing = `# Good ${isWeekend ? 'Weekend' : ''} Morning! - ${dayOfWeek}, ${dateStr}\\n\\n`;\n\nbriefing += `## Cluster Status\\n`;\nbriefing += `- **Status**: ${health.status || 'Unknown'}\\n`;\nbriefing += `- **Uptime**: ${Math.round((health.uptime_seconds || 0) / 3600)} hours\\n`;\nbriefing += `- **Active Alerts**: ${firingAlerts.length}\\n`;\nif (firingAlerts.length > 0) {\n  briefing += `  - ${firingAlerts.map(a => a.labels?.alertname || 'Unknown').join(', ')}\\n`;\n}\nbriefing += `\\n`;\n\nbriefing += `## GPU Fleet\\n`;\nbriefing += `- **GPUs Online**: ${gpus.length}\\n`;\nbriefing += `- **VRAM**: ${usedVram.toFixed(1)}/${totalVram.toFixed(0)} GB (${Math.round(usedVram/totalVram*100)}% used)\\n`;\nbriefing += `- **Avg Temperature**: ${avgTempF}°F (${avgTemp}°C)\\n`;\nbriefing += `\\n`;\n\nbriefing += `## Today's Focus\\n`;\nif (isWeekend) {\n  briefing += `- Maintenance window available\\n`;\n  briefing += `- Good time for model experiments\\n`;\n  briefing += `- Consider storage cleanup tasks\\n`;\n} else {\n  briefing += `- Full inference capacity available\\n`;\n  briefing += `- Monitor for performance issues\\n`;\n  briefing += `- Check research queue progress\\n`;\n}\n\nreturn {\n  briefing,\n  summary: {\n    date: dateStr,\n    clusterStatus: health.status || 'unknown',\n    alertCount: firingAlerts.length,\n    gpuCount: gpus.length,\n    vramUsed: usedVram,\n    vramTotal: totalVram,\n    avgTempF\n  }\n};"
+      },
+      "id": "build-briefing",
+      "name": "Build Briefing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8283/v1/agents/hydra-steward/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"role\": \"user\",\n  \"content\": \"Morning briefing generated. Here's the status:\\n\\n{{ $json.briefing }}\\n\\nPlease note any anomalies and prepare suggestions for optimization.\"\n}"
+      },
+      "id": "notify-letta",
+      "name": "Notify Letta Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/api/activities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"morning_briefing\",\n  \"source\": \"n8n-automation\",\n  \"target\": \"steward\",\n  \"status\": \"success\",\n  \"details\": \"Generated morning briefing - {{ $json.summary.alertCount }} alerts, {{ $json.summary.gpuCount }} GPUs, {{ $json.summary.vramUsed }}/{{ $json.summary.vramTotal }}GB VRAM\"\n}"
+      },
+      "id": "log-briefing",
+      "name": "Log Briefing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 500]
+    }
+  ],
+  "connections": {
+    "Weekday 7AM": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekend 9AM": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Get Cluster Health",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Active Alerts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get GPU Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Cluster Health": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Alerts": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get GPU Status": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Build Briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Briefing": {
+      "main": [
+        [
+          {
+            "node": "Notify Letta Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Chicago"
+  }
+}

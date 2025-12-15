@@ -1,0 +1,283 @@
+{
+  "name": "Disk Cleanup Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 4 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-1",
+      "name": "Daily 4AM Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:9090/api/v1/query",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "(node_filesystem_avail_bytes{mountpoint=\"/mnt/user\"} / node_filesystem_size_bytes{mountpoint=\"/mnt/user\"}) * 100"
+            }
+          ]
+        }
+      },
+      "id": "http-disk-check",
+      "name": "Check Disk Usage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse Prometheus response and determine cleanup needs\nconst data = $input.item.json;\nconst result = data?.data?.result?.[0];\nconst availablePercent = result ? parseFloat(result.value?.[1]) : 100;\nconst usedPercent = 100 - availablePercent;\nconst timestamp = new Date().toISOString();\n\n// Define cleanup targets with their paths and cleanup commands\nconst cleanupTargets = [\n  {\n    name: 'docker_images',\n    description: 'Unused Docker images',\n    command: 'docker image prune -a --filter \"until=168h\" -f',\n    priority: 1,\n    estimatedGB: 5\n  },\n  {\n    name: 'docker_build_cache',\n    description: 'Docker build cache',\n    command: 'docker builder prune --filter \"until=168h\" -f',\n    priority: 2,\n    estimatedGB: 10\n  },\n  {\n    name: 'docker_volumes',\n    description: 'Unused Docker volumes',\n    command: 'docker volume prune -f',\n    priority: 3,\n    estimatedGB: 2\n  },\n  {\n    name: 'loki_logs',\n    description: 'Old Loki logs (>30 days)',\n    command: 'find /mnt/user/appdata/hydra-stack/loki/chunks -mtime +30 -delete 2>/dev/null || true',\n    priority: 4,\n    estimatedGB: 3\n  },\n  {\n    name: 'tmp_files',\n    description: 'Temp files in scratch space',\n    command: 'find /mnt/user/hydra_shared/tmp -mtime +7 -delete 2>/dev/null || true',\n    priority: 5,\n    estimatedGB: 1\n  }\n];\n\n// Determine severity and actions needed\nlet severity = 'ok';\nlet shouldCleanup = false;\nlet cleanupLevel = 0;  // 0=none, 1=light, 2=moderate, 3=aggressive\n\nif (usedPercent > 95) {\n  severity = 'critical';\n  cleanupLevel = 3;\n  shouldCleanup = true;\n} else if (usedPercent > 90) {\n  severity = 'warning';\n  cleanupLevel = 2;\n  shouldCleanup = true;\n} else if (usedPercent > 85) {\n  severity = 'info';\n  cleanupLevel = 1;\n  shouldCleanup = true;\n}\n\n// Filter targets based on cleanup level\nconst targetsToClean = cleanupTargets.filter(t => t.priority <= cleanupLevel);\n\nreturn {\n  json: {\n    timestamp,\n    usedPercent: usedPercent.toFixed(1),\n    availablePercent: availablePercent.toFixed(1),\n    severity,\n    shouldCleanup,\n    cleanupLevel,\n    targetsToClean,\n    message: shouldCleanup \n      ? `Disk usage at ${usedPercent.toFixed(1)}% - initiating level ${cleanupLevel} cleanup`\n      : `Disk usage at ${usedPercent.toFixed(1)}% - no cleanup needed`\n  }\n};"
+      },
+      "id": "code-analyze",
+      "name": "Analyze Disk Usage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-cleanup",
+              "leftValue": "={{ $json.shouldCleanup }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-cleanup",
+      "name": "Needs Cleanup?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "targetsToClean",
+        "options": {}
+      },
+      "id": "split-targets",
+      "name": "Split Cleanup Targets",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        980,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/exec",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"command\": \"{{ $json.command }}\", \"timeout\": 300}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "http-exec-cleanup",
+      "name": "Execute Cleanup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1200,
+        240
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Log cleanup result\nconst target = $('Split Cleanup Targets').item.json;\nconst execResult = $input.item.json;\nconst timestamp = new Date().toISOString();\n\nreturn {\n  json: {\n    action: 'cleanup_executed',\n    target: target.name,\n    description: target.description,\n    command: target.command,\n    result: execResult.status || execResult.output || 'executed',\n    success: !execResult.error,\n    timestamp\n  }\n};"
+      },
+      "id": "code-log-cleanup",
+      "name": "Log Cleanup Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/webhooks/log",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "http-log-mcp",
+      "name": "Log to MCP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1640,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Log skipped cleanup\nconst analysis = $('Analyze Disk Usage').first().json;\nconst timestamp = new Date().toISOString();\n\nreturn {\n  json: {\n    action: 'cleanup_skipped',\n    usedPercent: analysis.usedPercent,\n    message: analysis.message,\n    timestamp\n  }\n};"
+      },
+      "id": "code-skipped",
+      "name": "Log Skipped",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        360
+      ]
+    }
+  ],
+  "connections": {
+    "Daily 4AM Check": {
+      "main": [
+        [
+          {
+            "node": "Check Disk Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Disk Usage": {
+      "main": [
+        [
+          {
+            "node": "Analyze Disk Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Disk Usage": {
+      "main": [
+        [
+          {
+            "node": "Needs Cleanup?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Cleanup?": {
+      "main": [
+        [
+          {
+            "node": "Split Cleanup Targets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Cleanup Targets": {
+      "main": [
+        [
+          {
+            "node": "Execute Cleanup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Cleanup": {
+      "main": [
+        [
+          {
+            "node": "Log Cleanup Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Cleanup Result": {
+      "main": [
+        [
+          {
+            "node": "Log to MCP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Skipped": {
+      "main": [
+        [
+          {
+            "node": "Log to MCP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Chicago"
+  },
+  "versionId": "47f51e89-0aee-4f5c-b84b-4a93379fa7dc",
+  "id": "5dfc809bbfe348a89",
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

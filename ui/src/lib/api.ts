@@ -1,7 +1,8 @@
 const MCP_URL = process.env.NEXT_PUBLIC_HYDRA_MCP_URL || 'http://192.168.1.244:8600';
 const LETTA_URL = process.env.NEXT_PUBLIC_LETTA_URL || 'http://192.168.1.244:8283';
 const ALERTMANAGER_URL = process.env.NEXT_PUBLIC_ALERTMANAGER_URL || 'http://192.168.1.244:9093';
-const OLLAMA_URL = process.env.NEXT_PUBLIC_OLLAMA_URL || 'http://192.168.1.251:11434';
+const OLLAMA_URL = process.env.NEXT_PUBLIC_OLLAMA_URL || 'http://192.168.1.203:11434';
+const HYDRA_TOOLS_URL = process.env.NEXT_PUBLIC_HYDRA_TOOLS_URL || 'http://192.168.1.244:8700';
 
 export interface ClusterStatus {
   timestamp: string;
@@ -57,6 +58,40 @@ export interface AuditEntry {
   details: Record<string, any>;
   result: string;
   ip: string;
+}
+
+// Transparency Framework - Activity Types
+export interface Activity {
+  id: number;
+  timestamp: string;
+  source: 'n8n' | 'alert' | 'route' | 'letta' | 'mcp' | 'user' | 'control' | string;
+  source_id?: string;
+  action: string;
+  action_type: 'autonomous' | 'triggered' | 'manual' | 'scheduled';
+  target?: string;
+  params?: Record<string, any>;
+  result?: 'ok' | 'error' | 'pending' | 'approved' | 'rejected' | 'cancelled';
+  result_details?: Record<string, any>;
+  decision_reason?: string;
+  parent_id?: number;
+  requires_approval: boolean;
+  approved_by?: string;
+  approved_at?: string;
+}
+
+export interface ActivityResponse {
+  activities: Activity[];
+  count: number;
+}
+
+export interface PendingApproval extends Activity {
+  expires_at?: string;
+  risk_level?: 'low' | 'medium' | 'high' | 'critical';
+}
+
+export interface SystemMode {
+  mode: 'full_auto' | 'supervised' | 'notify_only' | 'safe_mode';
+  since: string;
 }
 
 export interface GpuInfo {
@@ -264,6 +299,29 @@ async function postLettaJSON<T>(path: string, body: object): Promise<T> {
   return res.json();
 }
 
+// Hydra Tools API (Transparency Framework)
+async function fetchToolsJSON<T>(path: string): Promise<T> {
+  const res = await fetch(`${HYDRA_TOOLS_URL}${path}`, {
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+async function postToolsJSON<T>(path: string, body: object): Promise<T> {
+  const res = await fetch(`${HYDRA_TOOLS_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export interface RestartResponse {
   status: string;
   message?: string;
@@ -325,6 +383,28 @@ export const api = {
     postLettaJSON<LettaSendResponse>(`/v1/agents/${agentId}/messages`, {
       messages: [{ role: 'user', content }]
     }),
+
+  // Transparency Framework - Activity API
+  activities: (params?: { source?: string; limit?: number; since?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.source) queryParams.set('source', params.source);
+    if (params?.limit) queryParams.set('limit', params.limit.toString());
+    if (params?.since) queryParams.set('since', params.since);
+    const query = queryParams.toString();
+    return fetchToolsJSON<ActivityResponse>(`/activity${query ? `?${query}` : ''}`);
+  },
+  activityById: (id: number) => fetchToolsJSON<Activity>(`/activity/${id}`),
+  pendingApprovals: () => fetchToolsJSON<{ pending: PendingApproval[]; count: number }>('/activity/pending'),
+  approveActivity: (id: number) => postToolsJSON<{ status: string }>(`/activity/${id}/approve`, { approved_by: 'user' }),
+  rejectActivity: (id: number, reason?: string) => postToolsJSON<{ status: string }>(`/activity/${id}/reject`, { approved_by: 'user', reason }),
+
+  // Transparency Framework - Control API
+  systemMode: () => fetchToolsJSON<SystemMode>('/control/mode'),
+  setSystemMode: (mode: string, durationSeconds?: number) =>
+    postToolsJSON<SystemMode>('/control/mode', { mode, duration_seconds: durationSeconds, set_by: 'user' }),
+  emergencyStop: () => postToolsJSON<{ status: string; mode: SystemMode; message: string }>('/control/emergency-stop', {}),
+  checkAction: (action: string, target?: string) =>
+    postToolsJSON<{ allowed: boolean; reason: string; requires_approval: boolean }>('/control/check-action', { action, target }),
 };
 
 export default api;

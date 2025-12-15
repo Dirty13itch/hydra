@@ -1,0 +1,63 @@
+{
+  "id": "char-mira-002",
+  "name": "mira",
+  "display_name": "Mira",
+  "role": "supporting",
+  "description": "Seraphina's devoted handmaiden who has served the queen since childhood. Practical, warm-hearted, and fiercely loyal. One of the few who can reach Seraphina during her darkest moments.",
+
+  "appearance": {
+    "age_apparent": 25,
+    "height": "average",
+    "build": "sturdy, capable",
+    "hair_color": "warm auburn",
+    "hair_style": "practical bun with loose tendrils",
+    "eye_color": "warm brown with copper highlights",
+    "skin_tone": "olive, sun-kissed",
+    "distinguishing_features": [
+      "constellation of freckles across nose and cheeks",
+      "callused hands from hard work",
+      "warm, expressive face",
+      "small dimple on left cheek when smiling"
+    ]
+  },
+
+  "wardrobe": {
+    "default": {
+      "name": "Servant Dress",
+      "description": "simple but well-made brown and cream dress with practical apron"
+    },
+    "formal": {
+      "name": "Lady's Maid Formal",
+      "description": "elegant dark green dress befitting her station near the queen"
+    },
+    "travel": {
+      "name": "Journey Clothes",
+      "description": "practical traveling cloak over sturdy dress, leather boots"
+    }
+  },
+
+  "personality_traits": [
+    "unwavering loyalty",
+    "practical wisdom",
+    "maternal warmth",
+    "hidden steel when protecting loved ones",
+    "secretly carries guilt for not preventing the curse"
+  ],
+
+  "voice_profile": {
+    "voice_id": "af_sarah",
+    "base_speed": 1.0,
+    "pitch_offset": 0.02,
+    "characteristics": {
+      "tone": "warm and comforting, occasionally stern",
+      "accent": "common folk speech but educated",
+      "quirks": "uses old sayings and proverbs"
+    }
+  },
+
+  "relationships": {
+    "seraphina": "beloved friend and charge, would die for her",
+    "vex": "suspicious of his motives but growing respect",
+    "lysander": "deep hatred, blames him for the curse"
+  }
+}

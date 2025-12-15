@@ -1,0 +1,354 @@
+{
+  "name": "Alertmanager Self-Healing Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alertmanager",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Alertmanager Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        300
+      ],
+      "webhookId": "alertmanager-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse Alertmanager webhook payload\nconst payload = $input.item.json.body || $input.item.json;\nconst alerts = payload.alerts || [payload];\nconst timestamp = new Date().toISOString();\n\nconst parsedAlerts = alerts.map(alert => {\n  const labels = alert.labels || {};\n  const annotations = alert.annotations || {};\n  \n  // Extract container name from various label formats\n  let containerName = labels.container || labels.container_name || labels.instance || labels.job || '';\n  \n  // Map common alert names to container names\n  const alertToContainer = {\n    'LettaDown': 'hydra-letta',\n    'LiteLLMDown': 'hydra-litellm',\n    'CrewAIDown': 'hydra-crewai',\n    'QdrantDown': 'hydra-qdrant',\n    'MCPDown': 'hydra-mcp',\n    'PrometheusDown': 'hydra-prometheus',\n    'GrafanaDown': 'hydra-grafana',\n    'RedisDown': 'hydra-redis',\n    'PostgresDown': 'hydra-postgres',\n    'ContainerUnhealthy': containerName\n  };\n  \n  const alertName = labels.alertname || 'Unknown';\n  if (alertToContainer[alertName] && !containerName) {\n    containerName = alertToContainer[alertName];\n  }\n  \n  return {\n    alertname: alertName,\n    severity: labels.severity || 'warning',\n    status: alert.status || 'firing',\n    containerName: containerName,\n    instance: labels.instance || '',\n    description: annotations.description || annotations.summary || '',\n    startsAt: alert.startsAt || timestamp,\n    endsAt: alert.endsAt || '',\n    fingerprint: alert.fingerprint || '',\n    shouldRestart: alert.status === 'firing' && \n                   (alertName === 'ContainerUnhealthy' || alertName.includes('Down'))\n  };\n});\n\nreturn {\n  json: {\n    timestamp,\n    alertCount: parsedAlerts.length,\n    alerts: parsedAlerts,\n    firingAlerts: parsedAlerts.filter(a => a.status === 'firing'),\n    resolvedAlerts: parsedAlerts.filter(a => a.status === 'resolved')\n  }\n};"
+      },
+      "id": "code-1",
+      "name": "Parse Alert Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.firingAlerts?.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-1",
+      "name": "Has Firing Alerts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "firingAlerts",
+        "options": {}
+      },
+      "id": "split-1",
+      "name": "Split Firing Alerts",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        920,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-2",
+              "leftValue": "={{ $json.shouldRestart }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "condition-3",
+              "leftValue": "={{ $json.containerName }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-2",
+      "name": "Should Auto-Restart?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/containers/restart",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"container\": \"{{ $json.containerName }}\"}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "http-1",
+      "name": "Restart Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1360,
+        180
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Log the self-healing action\nconst alert = $('Split Firing Alerts').item.json;\nconst restartResult = $input.first().json;\nconst timestamp = new Date().toISOString();\n\nreturn {\n  json: {\n    action: 'container_restart',\n    alertname: alert.alertname,\n    container: alert.containerName,\n    result: restartResult.status || restartResult.message || 'attempted',\n    success: restartResult.status === 'restarted' || restartResult.message?.includes('success'),\n    timestamp\n  }\n};"
+      },
+      "id": "code-2",
+      "name": "Log Restart Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1580,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/webhooks/log",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "http-2",
+      "name": "Log to MCP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1800,
+        180
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Log alert that doesn't need restart\nconst alert = $('Split Firing Alerts').item.json;\nconst timestamp = new Date().toISOString();\n\nreturn {\n  json: {\n    action: 'alert_logged',\n    alertname: alert.alertname,\n    severity: alert.severity,\n    description: alert.description,\n    reason: !alert.shouldRestart ? 'not_restartable' : 'no_container_name',\n    timestamp\n  }\n};"
+      },
+      "id": "code-3",
+      "name": "Log Non-Restart Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Log resolved alerts\nconst resolvedAlerts = $('Parse Alert Payload').first().json.resolvedAlerts || [];\nconst timestamp = new Date().toISOString();\n\nif (resolvedAlerts.length === 0) {\n  return { json: { action: 'no_resolved_alerts', timestamp } };\n}\n\nreturn {\n  json: {\n    action: 'alerts_resolved',\n    count: resolvedAlerts.length,\n    alerts: resolvedAlerts.map(a => a.alertname),\n    timestamp\n  }\n};"
+      },
+      "id": "code-4",
+      "name": "Log Resolved Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"processed\",\n  \"timestamp\": \"{{ $now.toISO() }}\",\n  \"alerts_received\": {{ $('Parse Alert Payload').first().json.alertCount }}\n}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Respond to Alertmanager",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2020,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Alertmanager Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Alert Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Alert Payload": {
+      "main": [
+        [
+          {
+            "node": "Has Firing Alerts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Firing Alerts?": {
+      "main": [
+        [
+          {
+            "node": "Split Firing Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Resolved Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Firing Alerts": {
+      "main": [
+        [
+          {
+            "node": "Should Auto-Restart?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Auto-Restart?": {
+      "main": [
+        [
+          {
+            "node": "Restart Container",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Non-Restart Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restart Container": {
+      "main": [
+        [
+          {
+            "node": "Log Restart Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Restart Action": {
+      "main": [
+        [
+          {
+            "node": "Log to MCP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to MCP": {
+      "main": [
+        [
+          {
+            "node": "Respond to Alertmanager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Non-Restart Alert": {
+      "main": [
+        [
+          {
+            "node": "Respond to Alertmanager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Resolved Alerts": {
+      "main": [
+        [
+          {
+            "node": "Respond to Alertmanager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ed48be3c-6d9a-46a6-a035-75cca4a2a3c4",
+  "id": "8f230ab06199466d8",
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

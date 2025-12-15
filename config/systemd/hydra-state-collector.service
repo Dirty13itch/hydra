@@ -1,0 +1,35 @@
+[Unit]
+Description=Hydra Cluster State Collector
+Documentation=https://github.com/shaun/hydra
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+
+# Working directory
+WorkingDirectory=/mnt/user/appdata/hydra-stack
+
+# Python script location
+ExecStart=/usr/bin/python3 /mnt/user/appdata/hydra-stack/scripts/update-state.py \
+    --output /mnt/user/appdata/hydra-stack/STATE.json \
+    --pretty
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+Environment=HOME=/root
+
+# Logging
+StandardOutput=append:/var/log/hydra-state-collector.log
+StandardError=append:/var/log/hydra-state-collector.log
+
+# Timeout (state collection can take time)
+TimeoutStartSec=120
+
+# Don't restart on failure (timer will retry)
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

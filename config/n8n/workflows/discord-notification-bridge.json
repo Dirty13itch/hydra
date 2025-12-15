@@ -1,0 +1,140 @@
+{
+  "name": "Discord Notification Bridge",
+  "description": "Sends cluster alerts and notifications to Discord webhook",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "discord-notify",
+        "options": {}
+      },
+      "id": "webhook-receiver",
+      "name": "Notification Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "discord-bridge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst severity = body.severity || 'info';\nconst title = body.title || body.alertname || 'Notification';\nconst message = body.message || body.description || body.summary || '';\nconst source = body.source || 'hydra';\nconst timestamp = body.timestamp || new Date().toISOString();\n\n// Map severity to Discord embed color\nconst colorMap = {\n  critical: 15158332,  // Red\n  warning: 16776960,   // Yellow\n  info: 3447003,       // Blue\n  success: 3066993     // Green\n};\n\nconst color = colorMap[severity.toLowerCase()] || 3447003;\n\n// Map severity to emoji\nconst emojiMap = {\n  critical: '🚨',\n  warning: '⚠️',\n  info: 'ℹ️',\n  success: '✅'\n};\nconst emoji = emojiMap[severity.toLowerCase()] || 'ℹ️';\n\nreturn {\n  embeds: [{\n    title: `${emoji} ${title}`,\n    description: message,\n    color: color,\n    fields: [\n      {\n        name: 'Severity',\n        value: severity.toUpperCase(),\n        inline: true\n      },\n      {\n        name: 'Source',\n        value: source,\n        inline: true\n      }\n    ],\n    footer: {\n      text: 'Hydra Cluster'\n    },\n    timestamp: timestamp\n  }]\n};"
+      },
+      "id": "format-discord",
+      "name": "Format Discord Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL || 'https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "send-discord",
+      "name": "Send to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "discord_notification"
+            },
+            {
+              "name": "source",
+              "value": "n8n-automation"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify({ title: $('Format Discord Message').item.json.embeds[0].title }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-notification",
+      "name": "Log Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [760, 300]
+    }
+  ],
+  "connections": {
+    "Notification Webhook": {
+      "main": [
+        [
+          {
+            "node": "Format Discord Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Discord Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Discord": {
+      "main": [
+        [
+          {
+            "node": "Log Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "notifications",
+      "id": "12"
+    },
+    {
+      "name": "integration",
+      "id": "10"
+    }
+  ]
+}

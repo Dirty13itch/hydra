@@ -149,7 +149,7 @@ export default function Home() {
 
   const nodeConfigs = [
     { key: 'hydra-ai', name: 'hydra-ai', role: 'Primary Inference', gpus: ['RTX 5090', 'RTX 4090'], ip: '192.168.1.250' },
-    { key: 'hydra-compute', name: 'hydra-compute', role: 'Secondary / Creative', gpus: ['RTX 5070 Ti', 'RTX 3060'], ip: '192.168.1.251' },
+    { key: 'hydra-compute', name: 'hydra-compute', role: 'Secondary / Creative', gpus: ['RTX 5070 Ti', 'RTX 5070 Ti'], ip: '192.168.1.203' },
     { key: 'hydra-storage', name: 'hydra-storage', role: 'Storage / Orchestration', gpus: ['Arc A380'], ip: '192.168.1.244' },
   ];
 

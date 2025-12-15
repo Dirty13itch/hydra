@@ -1,0 +1,256 @@
+{
+  "name": "CrewAI Task Dispatcher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crew-task",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Crew Task Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "crew-task"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.crew_type }}",
+              "rightValue": "research",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-research",
+      "name": "Is Research?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.crew_type }}",
+              "rightValue": "monitoring",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-monitoring",
+      "name": "Is Monitoring?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "command": "cd /mnt/user/appdata/hydra-stack && python3 -c \"\nfrom hydra_crews import ResearchCrew\ncrew = ResearchCrew()\nresult = crew.research('{{ $json.topic }}', depth='{{ $json.depth || \"standard\" }}')\nprint(result)\n\""
+      },
+      "id": "run-research-crew",
+      "name": "Run Research Crew",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [680, 100]
+    },
+    {
+      "parameters": {
+        "command": "cd /mnt/user/appdata/hydra-stack && python3 -c \"\nfrom hydra_crews import MonitoringCrew\ncrew = MonitoringCrew()\nresult = crew.{{ $json.check_type || 'full_check' }}()\nprint(result)\n\""
+      },
+      "id": "run-monitoring-crew",
+      "name": "Run Monitoring Crew",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /mnt/user/appdata/hydra-stack && python3 -c \"\nfrom hydra_crews import MaintenanceCrew\ncrew = MaintenanceCrew()\nresult = crew.run({'task': '{{ $json.task }}', 'target': '{{ $json.target || \"hydra-storage\" }}'})\nprint(result)\n\""
+      },
+      "id": "run-maintenance-crew",
+      "name": "Run Maintenance Crew",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "crew_task"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify({ crew_type: $('Crew Task Webhook').item.json.crew_type, result: $json.stdout }) }}"
+            }
+          ]
+        }
+      },
+      "id": "log-result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, crew_type: $('Crew Task Webhook').item.json.crew_type, result: $json.stdout }) }}"
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1100, 300]
+    }
+  ],
+  "connections": {
+    "Crew Task Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Research?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Monitoring?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Research?": {
+      "main": [
+        [
+          {
+            "node": "Run Research Crew",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is Monitoring?": {
+      "main": [
+        [
+          {
+            "node": "Run Monitoring Crew",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Maintenance Crew",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Research Crew": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Monitoring Crew": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Maintenance Crew": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Result": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "executionTimeout": 600
+  },
+  "tags": [
+    {
+      "name": "crewai",
+      "id": "3"
+    },
+    {
+      "name": "automation",
+      "id": "2"
+    }
+  ]
+}

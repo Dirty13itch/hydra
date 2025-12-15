@@ -1,0 +1,84 @@
+# Hydra Voice Interface Deployment
+#
+# Deploys the voice pipeline API for wake word, STT, LLM, and TTS coordination
+#
+# Usage:
+#   docker-compose -f voice-interface.yml up -d
+#
+# Ports:
+#   - 8850: Voice API
+#   - 8851: Wake word detector (if using local Porcupine)
+#
+# Generated: December 14, 2025
+
+version: "3.9"
+
+services:
+  hydra-voice:
+    build:
+      context: ../src/hydra_voice
+      dockerfile: Dockerfile
+    image: hydra-voice:latest
+    container_name: hydra-voice
+    restart: unless-stopped
+    ports:
+      - "8850:8850"
+    environment:
+      # STT Configuration (runs on hydra-compute with GPU)
+      STT_URL: "http://192.168.1.203:9001"
+      STT_MODEL: "large-v3"
+
+      # LLM Configuration
+      LLM_URL: "http://192.168.1.244:4000"
+      LETTA_URL: "http://192.168.1.244:8283"
+      DEFAULT_MODEL: "Mistral-Nemo-12B"
+
+      # TTS Configuration
+      TTS_URL: "http://192.168.1.244:8880"
+      DEFAULT_VOICE: "af_bella"
+
+      # Performance
+      TARGET_LATENCY_MS: "500"
+    networks:
+      - hydra-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8850/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      com.hydra.stack: "core"
+      com.hydra.service: "voice-interface"
+      com.hydra.layer: "6"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Porcupine wake word detector
+  # Runs on edge device but can be containerized for testing
+  hydra-wake-word:
+    image: python:3.11-slim
+    container_name: hydra-wake-word
+    restart: unless-stopped
+    profiles:
+      - wake-word
+    ports:
+      - "8851:8851"
+    environment:
+      VOICE_API_URL: "http://hydra-voice:8850"
+      WAKE_WORD: "Hey Hydra"
+      SENSITIVITY: "0.5"
+    volumes:
+      - /dev/snd:/dev/snd  # For audio access
+    devices:
+      - /dev/snd
+    networks:
+      - hydra-net
+    command: ["python", "-c", "print('Wake word detector placeholder - requires Porcupine SDK')"]
+
+networks:
+  hydra-net:
+    external: true

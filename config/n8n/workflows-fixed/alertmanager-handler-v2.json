@@ -1,0 +1,370 @@
+{
+  "name": "Alertmanager Self-Healing Handler v2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alertmanager",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Alertmanager Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        300
+      ],
+      "webhookId": "alertmanager-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse Alertmanager webhook payload\nconst payload = $input.item.json.body || $input.item.json;\nconst alerts = payload.alerts || [payload];\nconst timestamp = new Date().toISOString();\n\nconst parsedAlerts = alerts.map(alert => {\n  const labels = alert.labels || {};\n  const annotations = alert.annotations || {};\n  \n  let containerName = labels.container || labels.container_name || labels.instance || labels.job || '';\n  \n  const alertToContainer = {\n    'LettaDown': 'hydra-letta',\n    'LiteLLMDown': 'hydra-litellm',\n    'CrewAIDown': 'hydra-crewai',\n    'QdrantDown': 'hydra-qdrant',\n    'MCPDown': 'hydra-mcp',\n    'PrometheusDown': 'hydra-prometheus',\n    'GrafanaDown': 'hydra-grafana',\n    'RedisDown': 'hydra-redis',\n    'PostgresDown': 'hydra-postgres',\n    'ContainerUnhealthy': containerName\n  };\n  \n  const alertName = labels.alertname || 'Unknown';\n  if (alertToContainer[alertName] && !containerName) {\n    containerName = alertToContainer[alertName];\n  }\n  \n  return {\n    alertname: alertName,\n    severity: labels.severity || 'warning',\n    status: alert.status || 'firing',\n    containerName: containerName,\n    instance: labels.instance || '',\n    description: annotations.description || annotations.summary || '',\n    startsAt: alert.startsAt || timestamp,\n    endsAt: alert.endsAt || '',\n    fingerprint: alert.fingerprint || '',\n    shouldRestart: alert.status === 'firing' && \n                   (alertName === 'ContainerUnhealthy' || alertName.includes('Down'))\n  };\n});\n\nreturn {\n  json: {\n    timestamp,\n    alertCount: parsedAlerts.length,\n    alerts: parsedAlerts,\n    firingAlerts: parsedAlerts.filter(a => a.status === 'firing'),\n    resolvedAlerts: parsedAlerts.filter(a => a.status === 'resolved')\n  }\n};"
+      },
+      "id": "code-1",
+      "name": "Parse Alert Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.firingAlerts?.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-1",
+      "name": "Has Firing Alerts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "firingAlerts",
+        "options": {}
+      },
+      "id": "split-1",
+      "name": "Split Firing Alerts",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        920,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Rate limiting: Max 3 restarts per container per hour\n// Uses static data to track restarts across executions\n\nconst alert = $input.item.json;\nconst containerName = alert.containerName;\nconst now = Date.now();\nconst ONE_HOUR = 60 * 60 * 1000;\nconst MAX_RESTARTS = 3;\n\n// Get or initialize restart tracking from workflow static data\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.restartHistory) {\n  staticData.restartHistory = {};\n}\n\n// Clean up old entries and get recent restarts for this container\nconst recentRestarts = (staticData.restartHistory[containerName] || [])\n  .filter(ts => now - ts < ONE_HOUR);\n\nconst restartCount = recentRestarts.length;\nconst canRestart = alert.shouldRestart && \n                   containerName && \n                   restartCount < MAX_RESTARTS;\n\nlet rateLimitMessage = '';\nif (alert.shouldRestart && !canRestart && containerName) {\n  rateLimitMessage = `Rate limit exceeded for ${containerName}: ${restartCount}/${MAX_RESTARTS} restarts in last hour`;\n}\n\n// Update tracking if we're allowing restart\nif (canRestart) {\n  recentRestarts.push(now);\n  staticData.restartHistory[containerName] = recentRestarts;\n}\n\nreturn {\n  json: {\n    ...alert,\n    canRestart,\n    restartCount,\n    maxRestarts: MAX_RESTARTS,\n    rateLimitExceeded: !canRestart && alert.shouldRestart,\n    rateLimitMessage\n  }\n};"
+      },
+      "id": "code-rate-limit",
+      "name": "Check Rate Limit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-restart",
+              "leftValue": "={{ $json.canRestart }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-rate-limit",
+      "name": "Rate Limit OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/containers/restart",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"container\": \"{{ $json.containerName }}\"}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "http-restart",
+      "name": "Restart Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1580,
+        180
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Log restart action\nconst alert = $('Check Rate Limit').item.json;\nconst restartResult = $input.first().json;\nconst timestamp = new Date().toISOString();\n\nreturn {\n  json: {\n    action: 'container_restart',\n    alertname: alert.alertname,\n    container: alert.containerName,\n    restartCount: alert.restartCount + 1,\n    maxRestarts: alert.maxRestarts,\n    result: restartResult.status || restartResult.message || 'attempted',\n    success: restartResult.status === 'restarted' || restartResult.message?.includes('success'),\n    timestamp\n  }\n};"
+      },
+      "id": "code-log-restart",
+      "name": "Log Restart Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Log rate limit exceeded\nconst alert = $input.item.json;\nconst timestamp = new Date().toISOString();\n\nreturn {\n  json: {\n    action: 'rate_limit_exceeded',\n    alertname: alert.alertname,\n    container: alert.containerName,\n    restartCount: alert.restartCount,\n    maxRestarts: alert.maxRestarts,\n    message: alert.rateLimitMessage,\n    severity: 'warning',\n    timestamp\n  }\n};"
+      },
+      "id": "code-rate-exceeded",
+      "name": "Log Rate Limit Exceeded",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1580,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/webhooks/log",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "http-log",
+      "name": "Log to MCP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2020,
+        240
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Log resolved alerts\nconst resolvedAlerts = $('Parse Alert Payload').first().json.resolvedAlerts || [];\nconst timestamp = new Date().toISOString();\n\nif (resolvedAlerts.length === 0) {\n  return { json: { action: 'no_resolved_alerts', timestamp } };\n}\n\nreturn {\n  json: {\n    action: 'alerts_resolved',\n    count: resolvedAlerts.length,\n    alerts: resolvedAlerts.map(a => a.alertname),\n    timestamp\n  }\n};"
+      },
+      "id": "code-resolved",
+      "name": "Log Resolved Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"processed\",\n  \"timestamp\": \"{{ $now.toISO() }}\",\n  \"alerts_received\": {{ $('Parse Alert Payload').first().json.alertCount }},\n  \"rate_limiting\": \"enabled (3/hour/container)\"\n}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Respond to Alertmanager",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2240,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Alertmanager Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Alert Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Alert Payload": {
+      "main": [
+        [
+          {
+            "node": "Has Firing Alerts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Firing Alerts?": {
+      "main": [
+        [
+          {
+            "node": "Split Firing Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Resolved Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Firing Alerts": {
+      "main": [
+        [
+          {
+            "node": "Check Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Rate Limit": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit OK?": {
+      "main": [
+        [
+          {
+            "node": "Restart Container",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Rate Limit Exceeded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restart Container": {
+      "main": [
+        [
+          {
+            "node": "Log Restart Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Restart Action": {
+      "main": [
+        [
+          {
+            "node": "Log to MCP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Rate Limit Exceeded": {
+      "main": [
+        [
+          {
+            "node": "Log to MCP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to MCP": {
+      "main": [
+        [
+          {
+            "node": "Respond to Alertmanager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Resolved Alerts": {
+      "main": [
+        [
+          {
+            "node": "Respond to Alertmanager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "fa678ada-08ef-47ff-af7b-476750b1aab7",
+  "id": "8ae5486fbb4a42efa",
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

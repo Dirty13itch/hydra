@@ -1,0 +1,62 @@
+# Hydra Wake Word Detection Service
+# Listens for "Hey Hydra" and triggers voice pipeline
+#
+# Deploy to any node with microphone access
+# Typically runs on a dedicated listening device (RPi, mini PC)
+#
+# Usage:
+#   docker-compose -f wakeword-service.yml up -d
+#
+# Note: Requires audio device access via /dev/snd
+
+version: "3.8"
+
+services:
+  hydra-wakeword:
+    build:
+      context: ../src/hydra_wakeword
+      dockerfile: Dockerfile
+    image: hydra-wakeword:latest
+    container_name: hydra-wakeword
+    restart: unless-stopped
+
+    ports:
+      - "8860:8860"
+
+    environment:
+      # Wake word model (hey_jarvis is close to "hey hydra")
+      WAKE_WORD_MODEL: "hey_jarvis"
+      # Detection confidence threshold (0-1)
+      DETECTION_THRESHOLD: "0.5"
+      # Voice API to notify on wake word
+      VOICE_API_URL: "http://192.168.1.244:8850"
+      # Audio device index (-1 for default)
+      AUDIO_DEVICE: "-1"
+      # Cooldown between detections (seconds)
+      COOLDOWN_SECONDS: "2.0"
+
+    # Audio device access
+    devices:
+      - /dev/snd:/dev/snd
+
+    # Required for audio
+    group_add:
+      - audio
+
+    networks:
+      - hydra-net
+
+    labels:
+      - "com.hydra.service=wakeword"
+      - "com.hydra.layer=voice"
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8860/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+networks:
+  hydra-net:
+    external: true

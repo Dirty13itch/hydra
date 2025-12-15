@@ -1,0 +1,138 @@
+# Alertmanager Configuration for Hydra Cluster
+# Handles alert routing, grouping, silencing, and notifications
+#
+# Deploy to: /mnt/user/appdata/alertmanager/alertmanager.yml
+
+global:
+  # How long to wait before sending a notification again
+  resolve_timeout: 5m
+
+  # SMTP configuration (for email alerts)
+  # smtp_smarthost: 'smtp.gmail.com:587'
+  # smtp_from: 'alertmanager@hydra.local'
+  # smtp_auth_username: 'your-email@gmail.com'
+  # smtp_auth_password: 'app-password'
+
+# Route tree
+route:
+  # Default receiver
+  receiver: 'default-receiver'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'severity', 'node']
+
+  # Wait before sending initial notification
+  group_wait: 30s
+
+  # Wait before sending updated notification
+  group_interval: 5m
+
+  # Wait before re-sending same alert
+  repeat_interval: 4h
+
+  # Child routes for specific handling
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: true
+
+    # GPU alerts - specific handling
+    - match:
+        alertname: GPUTemperatureHigh
+      receiver: 'gpu-alerts'
+      group_wait: 1m
+      repeat_interval: 15m
+
+    - match:
+        alertname: GPUMemoryExhausted
+      receiver: 'gpu-alerts'
+      group_wait: 30s
+      repeat_interval: 10m
+
+    # Infrastructure alerts
+    - match_re:
+        alertname: '(NodeDown|NodeHighCPU|NodeHighMemory|NodeDiskFull)'
+      receiver: 'infra-alerts'
+      group_wait: 1m
+
+    # Service alerts
+    - match_re:
+        alertname: '(TabbyAPIDown|OllamaDown|LiteLLMDown|QdrantDown)'
+      receiver: 'service-alerts'
+      group_wait: 30s
+      repeat_interval: 30m
+
+    # Watchdog (dead man's switch) - don't notify normally
+    - match:
+        alertname: Watchdog
+      receiver: 'null'
+
+# Inhibition rules - suppress alerts when related alert is firing
+inhibit_rules:
+  # Don't alert on service issues if node is down
+  - source_match:
+      alertname: NodeDown
+    target_match_re:
+      alertname: '.+'
+    equal: ['node']
+
+  # Don't alert on high memory if disk is full (swap thrashing)
+  - source_match:
+      alertname: NodeDiskFull
+    target_match:
+      alertname: NodeHighMemory
+    equal: ['node']
+
+  # Critical suppresses warning for same alert
+  - source_match:
+      severity: critical
+    target_match:
+      severity: warning
+    equal: ['alertname', 'node']
+
+# Receivers define notification destinations
+receivers:
+  # Null receiver (drops alerts)
+  - name: 'null'
+
+  # Default receiver - logs to file
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: 'http://192.168.1.244:9095/webhook'
+        send_resolved: true
+
+  # Critical alerts - Discord webhook
+  - name: 'critical-alerts'
+    webhook_configs:
+      # Discord webhook (create in server settings)
+      - url: 'http://192.168.1.244:9095/critical'
+        send_resolved: true
+    # Optional: PagerDuty for true on-call
+    # pagerduty_configs:
+    #   - service_key: '<your-service-key>'
+
+  # GPU-specific alerts
+  - name: 'gpu-alerts'
+    webhook_configs:
+      - url: 'http://192.168.1.244:9095/gpu'
+        send_resolved: true
+
+  # Infrastructure alerts
+  - name: 'infra-alerts'
+    webhook_configs:
+      - url: 'http://192.168.1.244:9095/infra'
+        send_resolved: true
+
+  # Service alerts
+  - name: 'service-alerts'
+    webhook_configs:
+      - url: 'http://192.168.1.244:9095/services'
+        send_resolved: true
+
+# Templates for notification formatting
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

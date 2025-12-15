@@ -1,0 +1,304 @@
+{
+  "name": "Qdrant Weekly Maintenance",
+  "description": "Weekly Qdrant collection optimization and snapshot management",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * 0"
+            }
+          ]
+        }
+      },
+      "id": "schedule-weekly",
+      "name": "Weekly Sunday 3AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:6333/collections"
+      },
+      "id": "get-collections",
+      "name": "Get Collections",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst collections = data?.result?.collections || [];\n\nreturn collections.map(c => ({ name: c.name }));"
+      },
+      "id": "extract-names",
+      "name": "Extract Collection Names",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-collections",
+      "name": "Loop Collections",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://192.168.1.244:6333/collections/{{ $json.name }}/snapshots"
+      },
+      "id": "create-snapshot",
+      "name": "Create Snapshot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://192.168.1.244:6333/collections/{{ $json.name }}/snapshots"
+      },
+      "id": "get-snapshots",
+      "name": "Get Snapshots",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const collection = $('Loop Collections').item.json.name;\nconst snapshots = $input.first().json?.result || [];\nconst keepCount = 7;\n\n// Sort by creation time descending\nconst sorted = snapshots.sort((a, b) => \n  new Date(b.creation_time) - new Date(a.creation_time)\n);\n\n// Get snapshots to delete (older than keep count)\nconst toDelete = sorted.slice(keepCount);\n\nreturn toDelete.map(s => ({\n  collection: collection,\n  snapshotName: s.name,\n  creationTime: s.creation_time\n}));"
+      },
+      "id": "find-old-snapshots",
+      "name": "Find Old Snapshots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "has-old",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-old-snapshots",
+      "name": "Has Old Snapshots?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=http://192.168.1.244:6333/collections/{{ $json.collection }}/snapshots/{{ $json.snapshotName }}"
+      },
+      "id": "delete-old-snapshot",
+      "name": "Delete Old Snapshot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1860,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/api/activities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"type\": \"qdrant_maintenance\",\n  \"source\": \"n8n-automation\",\n  \"target\": \"hydra-qdrant\",\n  \"status\": \"success\",\n  \"details\": \"Weekly maintenance: snapshots created and old snapshots cleaned\"\n}"
+      },
+      "id": "log-maintenance",
+      "name": "Log Maintenance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1640,
+        450
+      ]
+    }
+  ],
+  "connections": {
+    "Weekly Sunday 3AM": {
+      "main": [
+        [
+          {
+            "node": "Get Collections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Collections": {
+      "main": [
+        [
+          {
+            "node": "Extract Collection Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Collection Names": {
+      "main": [
+        [
+          {
+            "node": "Loop Collections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Collections": {
+      "main": [
+        [
+          {
+            "node": "Create Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Maintenance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Get Snapshots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Snapshots": {
+      "main": [
+        [
+          {
+            "node": "Find Old Snapshots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Old Snapshots": {
+      "main": [
+        [
+          {
+            "node": "Has Old Snapshots?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Old Snapshots?": {
+      "main": [
+        [
+          {
+            "node": "Delete Old Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Collections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Old Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Loop Collections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Chicago"
+  },
+  "versionId": "67c3b62d-03ca-4fdf-a834-db9beaf455d0",
+  "id": "f5a2b34847b742a6b",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

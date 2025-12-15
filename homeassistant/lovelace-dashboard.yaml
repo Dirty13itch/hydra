@@ -1,0 +1,329 @@
+# Lovelace Dashboard for Hydra Cluster Monitoring
+#
+# Add as a new dashboard in Home Assistant:
+# 1. Settings > Dashboards > Add Dashboard
+# 2. Use YAML mode and paste this content
+# 3. Or use UI mode and manually recreate
+
+title: Hydra Cluster
+icon: mdi:server-network
+path: hydra
+
+views:
+  # =============================================================================
+  # Overview
+  # =============================================================================
+  - title: Overview
+    path: overview
+    icon: mdi:view-dashboard
+    cards:
+      # Cluster Status Header
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.hydra_cluster_status
+            name: Cluster Status
+            icon: mdi:server-network
+          - type: entity
+            entity: sensor.hydra_health_score
+            name: Health Score
+          - type: entity
+            entity: sensor.hydra_services_healthy
+            name: Healthy
+          - type: entity
+            entity: sensor.hydra_services_unhealthy
+            name: Unhealthy
+
+      # Critical Alert Banner
+      - type: conditional
+        conditions:
+          - entity: binary_sensor.hydra_critical_alert
+            state: "on"
+        card:
+          type: markdown
+          content: |
+            ## Critical Services Down
+            {{ state_attr('sensor.hydra_cluster_status', 'critical_down') | join(', ') }}
+          style:
+            background-color: var(--error-color)
+            color: white
+            padding: 16px
+            border-radius: 8px
+
+      # Node Status
+      - type: entities
+        title: Node Availability
+        entities:
+          - entity: binary_sensor.hydra_ai_node_available
+            name: hydra-ai (192.168.1.250)
+            secondary_info: RTX 5090 + RTX 4090
+          - entity: binary_sensor.hydra_compute_node_available
+            name: hydra-compute (192.168.1.203)
+            secondary_info: RTX 5070 Ti + RTX 3060
+          - entity: binary_sensor.hydra_storage_node_available
+            name: hydra-storage (192.168.1.244)
+            secondary_info: Unraid + Docker
+
+      # Current Model
+      - type: entities
+        title: Active Model
+        entities:
+          - entity: sensor.tabbyapi_model
+            name: TabbyAPI Model
+            icon: mdi:brain
+          - entity: sensor.ollama_models_count
+            name: Ollama Models Available
+
+      # Quick Actions
+      - type: grid
+        title: Quick Actions
+        columns: 3
+        cards:
+          - type: button
+            name: Load 70B
+            icon: mdi:rocket-launch
+            tap_action:
+              action: call-service
+              service: shell_command.hydra_load_model_default
+          - type: button
+            name: Load 8B Fast
+            icon: mdi:lightning-bolt
+            tap_action:
+              action: call-service
+              service: shell_command.hydra_load_model_fast
+          - type: button
+            name: Unload Model
+            icon: mdi:close-circle
+            tap_action:
+              action: call-service
+              service: shell_command.hydra_unload_model
+          - type: button
+            name: Restart TabbyAPI
+            icon: mdi:restart
+            tap_action:
+              action: call-service
+              service: shell_command.hydra_restart_tabbyapi
+          - type: button
+            name: Restart LiteLLM
+            icon: mdi:restart
+            tap_action:
+              action: call-service
+              service: shell_command.hydra_restart_litellm
+          - type: button
+            name: Health Check
+            icon: mdi:heart-pulse
+            tap_action:
+              action: call-service
+              service: shell_command.hydra_health_check
+
+  # =============================================================================
+  # GPU Monitoring
+  # =============================================================================
+  - title: GPUs
+    path: gpus
+    icon: mdi:expansion-card
+    cards:
+      # Temperature Gauges
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.hydra_ai_gpu_0_temperature
+            name: AI GPU 0 (5090)
+            min: 30
+            max: 95
+            severity:
+              green: 30
+              yellow: 70
+              red: 80
+          - type: gauge
+            entity: sensor.hydra_ai_gpu_1_temperature
+            name: AI GPU 1 (4090)
+            min: 30
+            max: 95
+            severity:
+              green: 30
+              yellow: 70
+              red: 80
+          - type: gauge
+            entity: sensor.hydra_compute_gpu_0_temperature
+            name: Compute GPU (5070Ti)
+            min: 30
+            max: 95
+            severity:
+              green: 30
+              yellow: 70
+              red: 80
+
+      # Power Draw
+      - type: entities
+        title: Power Draw
+        entities:
+          - entity: sensor.hydra_ai_gpu_power
+            name: hydra-ai Total GPU Power
+            icon: mdi:lightning-bolt
+
+      # VRAM Usage
+      - type: entities
+        title: VRAM Usage
+        entities:
+          - entity: sensor.hydra_ai_vram_used
+            name: hydra-ai VRAM Used
+            icon: mdi:memory
+
+      # Temperature History
+      - type: history-graph
+        title: GPU Temperature History
+        hours_to_show: 24
+        entities:
+          - entity: sensor.hydra_ai_gpu_0_temperature
+            name: AI GPU 0
+          - entity: sensor.hydra_ai_gpu_1_temperature
+            name: AI GPU 1
+          - entity: sensor.hydra_compute_gpu_0_temperature
+            name: Compute GPU
+
+      # Power History
+      - type: history-graph
+        title: Power Draw History
+        hours_to_show: 24
+        entities:
+          - entity: sensor.hydra_ai_gpu_power
+            name: AI GPU Power
+
+  # =============================================================================
+  # Services
+  # =============================================================================
+  - title: Services
+    path: services
+    icon: mdi:cog
+    cards:
+      # Core Services
+      - type: entities
+        title: Core Inference Services
+        entities:
+          - entity: sensor.tabbyapi_model
+            name: TabbyAPI
+            icon: mdi:brain
+          - entity: binary_sensor.litellm_available
+            name: LiteLLM Gateway
+          - entity: sensor.ollama_models_count
+            name: Ollama
+
+      # Database Services
+      - type: entities
+        title: Databases
+        entities:
+          - entity: binary_sensor.qdrant_available
+            name: Qdrant Vector DB
+          # Add more database sensors as configured
+
+      # Service Status (from health aggregator)
+      - type: markdown
+        title: Service Links
+        content: |
+          ### Inference
+          - [TabbyAPI](http://192.168.1.250:5000/docs)
+          - [Open WebUI](http://192.168.1.250:3000)
+          - [LiteLLM](http://192.168.1.244:4000)
+          - [Ollama](http://192.168.1.203:11434)
+
+          ### Databases
+          - [Qdrant](http://192.168.1.244:6333/dashboard)
+          - [PostgreSQL](http://192.168.1.244:5432)
+          - [Redis](http://192.168.1.244:6379)
+
+          ### Monitoring
+          - [Grafana](http://192.168.1.244:3003)
+          - [Prometheus](http://192.168.1.244:9090)
+          - [Portainer](http://192.168.1.244:9000)
+
+          ### Applications
+          - [n8n](http://192.168.1.244:5678)
+          - [SearXNG](http://192.168.1.244:8888)
+          - [Miniflux](http://192.168.1.244:8180)
+
+  # =============================================================================
+  # Controls
+  # =============================================================================
+  - title: Controls
+    path: controls
+    icon: mdi:tune
+    cards:
+      # Model Preset Selection
+      - type: entities
+        title: Model Preset
+        entities:
+          - entity: input_select.hydra_model_preset
+            name: Select Preset
+
+      # Notification Toggle
+      - type: entities
+        title: Notifications
+        entities:
+          - entity: input_boolean.hydra_notifications
+            name: Enable Cluster Alerts
+
+      # Advanced Actions
+      - type: grid
+        title: Service Management
+        columns: 2
+        cards:
+          - type: button
+            name: Restart TabbyAPI
+            icon: mdi:restart
+            tap_action:
+              action: call-service
+              service: shell_command.hydra_restart_tabbyapi
+              confirmation:
+                text: Restart TabbyAPI service?
+          - type: button
+            name: Restart Ollama
+            icon: mdi:restart
+            tap_action:
+              action: call-service
+              service: shell_command.hydra_restart_ollama
+              confirmation:
+                text: Restart Ollama service?
+          - type: button
+            name: Restart LiteLLM
+            icon: mdi:restart
+            tap_action:
+              action: call-service
+              service: shell_command.hydra_restart_litellm
+              confirmation:
+                text: Restart LiteLLM container?
+          - type: button
+            name: Restart Open WebUI
+            icon: mdi:restart
+            tap_action:
+              action: call-service
+              service: shell_command.hydra_restart_openwebui
+              confirmation:
+                text: Restart Open WebUI?
+
+      # Dangerous Actions
+      - type: vertical-stack
+        title: Node Operations (Careful!)
+        cards:
+          - type: markdown
+            content: |
+              These actions affect cluster nodes directly.
+              Use with caution!
+          - type: horizontal-stack
+            cards:
+              - type: button
+                name: Set GPU Power Limits (AI)
+                icon: mdi:lightning-bolt
+                tap_action:
+                  action: call-service
+                  service: shell_command.hydra_gpu_power_limit_ai
+                  confirmation:
+                    text: Set power limits on hydra-ai GPUs?
+              - type: button
+                name: Docker Cleanup
+                icon: mdi:broom
+                tap_action:
+                  action: call-service
+                  service: shell_command.hydra_docker_cleanup
+                  confirmation:
+                    text: Clean up Docker resources on hydra-storage?

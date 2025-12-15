@@ -1,0 +1,543 @@
+# Hydra Stack - Consolidated Docker Compose
+# Deploy on hydra-storage (Unraid 192.168.1.244)
+#
+# Usage:
+#   docker-compose -f hydra-stack.yml up -d
+#   docker-compose -f hydra-stack.yml logs -f <service>
+#   docker-compose -f hydra-stack.yml down <service>
+#
+# Requirements:
+#   - Docker Compose v2.x
+#   - /mnt/user/appdata for persistent storage
+#   - /mnt/user/databases for database volumes
+#   - Network access to hydra-ai (192.168.1.250) and hydra-compute (192.168.1.203)
+
+version: "3.9"
+
+x-common-labels: &common-labels
+  com.hydra.stack: "core"
+  com.hydra.managed: "true"
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+x-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+networks:
+  hydra-net:
+    name: hydra-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres-data:
+    name: hydra-postgres-data
+  redis-data:
+    name: hydra-redis-data
+  qdrant-data:
+    name: hydra-qdrant-data
+  meilisearch-data:
+    name: hydra-meilisearch-data
+  prometheus-data:
+    name: hydra-prometheus-data
+  grafana-data:
+    name: hydra-grafana-data
+  loki-data:
+    name: hydra-loki-data
+
+services:
+  # ===========================================
+  # DATABASES
+  # ===========================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: hydra-postgres
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "database"
+    environment:
+      POSTGRES_USER: hydra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-g9cUyFK6unpMQ8XBmeJNZJPoY6viGg6}
+      POSTGRES_DB: hydra
+    volumes:
+      - /mnt/user/databases/postgres:/var/lib/postgresql/data
+      - /mnt/user/appdata/hydra-stack/init-db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - hydra-net
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hydra"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: hydra-redis
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "cache"
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-ls32WXmttrQ6v3Jxw9bh6XmFqhCYmIC}
+      --appendonly yes
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - /mnt/user/databases/redis:/data
+    networks:
+      - hydra-net
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-ls32WXmttrQ6v3Jxw9bh6XmFqhCYmIC}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: hydra-qdrant
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "vector-db"
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    volumes:
+      - /mnt/user/databases/qdrant:/qdrant/storage
+    networks:
+      - hydra-net
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: hydra-meilisearch
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "search"
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILISEARCH_KEY:-}
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - /mnt/user/databases/meilisearch:/meili_data
+    networks:
+      - hydra-net
+    ports:
+      - "7700:7700"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7700/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================
+  # AI GATEWAY & INFERENCE
+  # ===========================================
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: hydra-litellm
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "ai-gateway"
+    environment:
+      DATABASE_URL: postgresql://hydra:${POSTGRES_PASSWORD:-g9cUyFK6unpMQ8XBmeJNZJPoY6viGg6}@postgres:5432/litellm
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-ls32WXmttrQ6v3Jxw9bh6XmFqhCYmIC}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-PyKRr5POL0tXJEMOEGnliWk6doMb31k7}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:-hydra-salt-key}
+    volumes:
+      - /mnt/user/appdata/hydra-stack/litellm/config.yaml:/app/config.yaml:ro
+    networks:
+      - hydra-net
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--num_workers", "4"]
+
+  # ===========================================
+  # SEARCH & SCRAPING
+  # ===========================================
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: hydra-searxng
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "web-search"
+    environment:
+      SEARXNG_BASE_URL: http://192.168.1.244:8888/
+    volumes:
+      - /mnt/user/appdata/hydra-stack/searxng:/etc/searxng
+    networks:
+      - hydra-net
+    ports:
+      - "8888:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  firecrawl-api:
+    image: mendableai/firecrawl:latest
+    container_name: hydra-firecrawl
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "web-scraper"
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD:-ls32WXmttrQ6v3Jxw9bh6XmFqhCYmIC}@redis:6379
+      USE_DB_AUTHENTICATION: "false"
+      PORT: 3005
+    networks:
+      - hydra-net
+    ports:
+      - "3005:3005"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ===========================================
+  # DOCUMENT PROCESSING
+  # ===========================================
+
+  docling:
+    image: ds4sd/docling-serve:latest
+    container_name: hydra-docling
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "document-parser"
+    networks:
+      - hydra-net
+    ports:
+      - "5001:5001"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5001/health"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+
+  # ===========================================
+  # AUTOMATION
+  # ===========================================
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: hydra-n8n
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "automation"
+    environment:
+      N8N_HOST: 192.168.1.244
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://192.168.1.244:5678/
+      GENERIC_TIMEZONE: America/Chicago
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: hydra
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:-g9cUyFK6unpMQ8XBmeJNZJPoY6viGg6}
+    volumes:
+      - /mnt/user/appdata/hydra-stack/n8n:/home/node/.n8n
+    networks:
+      - hydra-net
+    ports:
+      - "5678:5678"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ===========================================
+  # OBSERVABILITY
+  # ===========================================
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: hydra-prometheus
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "metrics"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - /mnt/user/appdata/hydra-stack/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    networks:
+      - hydra-net
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hydra-grafana
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "dashboards"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL: http://192.168.1.244:3003/
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-piechart-panel
+    volumes:
+      - /mnt/user/appdata/hydra-stack/grafana:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      - hydra-net
+    ports:
+      - "3003:3000"
+    depends_on:
+      - prometheus
+
+  loki:
+    image: grafana/loki:latest
+    container_name: hydra-loki
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "logs"
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - /mnt/user/appdata/hydra-stack/loki:/etc/loki:ro
+      - loki-data:/loki
+    networks:
+      - hydra-net
+    ports:
+      - "3100:3100"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================
+  # FEED & CONTENT
+  # ===========================================
+
+  miniflux:
+    image: miniflux/miniflux:latest
+    container_name: hydra-miniflux
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "rss"
+    environment:
+      DATABASE_URL: postgres://hydra:${POSTGRES_PASSWORD:-g9cUyFK6unpMQ8XBmeJNZJPoY6viGg6}@postgres:5432/miniflux?sslmode=disable
+      RUN_MIGRATIONS: "1"
+      CREATE_ADMIN: "1"
+      ADMIN_USERNAME: ${MINIFLUX_USER:-admin}
+      ADMIN_PASSWORD: ${MINIFLUX_PASSWORD:-admin}
+    networks:
+      - hydra-net
+    ports:
+      - "8180:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ===========================================
+  # AI INTERFACES
+  # ===========================================
+
+  sillytavern:
+    image: ghcr.io/sillytavern/sillytavern:latest
+    container_name: hydra-sillytavern
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "chat-ui"
+    environment:
+      ST_AUTHENTICATION_ENABLED: "false"
+    volumes:
+      - /mnt/user/appdata/hydra-stack/sillytavern/config:/home/node/app/config
+      - /mnt/user/appdata/hydra-stack/sillytavern/data:/home/node/app/data
+    networks:
+      - hydra-net
+    ports:
+      - "8000:8000"
+
+  perplexica:
+    image: ghcr.io/itzcrazykns/perplexica:latest
+    container_name: hydra-perplexica
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "ai-search"
+    environment:
+      SEARXNG_URL: http://searxng:8080
+      OLLAMA_URL: http://192.168.1.203:11434
+    volumes:
+      - /mnt/user/appdata/hydra-stack/perplexica:/home/perplexica/data
+    networks:
+      - hydra-net
+    ports:
+      - "3030:3000"
+    depends_on:
+      - searxng
+
+  # ===========================================
+  # TTS / VOICE
+  # ===========================================
+
+  kokoro-tts:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    container_name: hydra-kokoro
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "tts"
+    networks:
+      - hydra-net
+    ports:
+      - "8880:8880"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8880/health"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+
+  # ===========================================
+  # MANAGEMENT
+  # ===========================================
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: hydra-portainer
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "container-mgmt"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/user/appdata/hydra-stack/portainer:/data
+    networks:
+      - hydra-net
+    ports:
+      - "9000:9000"
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: hydra-homepage
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "dashboard"
+    volumes:
+      - /mnt/user/appdata/hydra-stack/homepage:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - hydra-net
+    ports:
+      - "3333:3000"
+
+  # ===========================================
+  # DNS
+  # ===========================================
+
+  adguard:
+    image: adguard/adguardhome:latest
+    container_name: hydra-adguard
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "dns"
+    volumes:
+      - /mnt/user/appdata/hydra-stack/adguard/work:/opt/adguardhome/work
+      - /mnt/user/appdata/hydra-stack/adguard/conf:/opt/adguardhome/conf
+    networks:
+      - hydra-net
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "3053:3000"  # Web UI (setup)
+      - "8053:80"    # Web UI (after setup)
+
+  # ===========================================
+  # SECURITY
+  # ===========================================
+
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: hydra-vaultwarden
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "passwords"
+    environment:
+      ADMIN_TOKEN: ${VAULTWARDEN_ADMIN_TOKEN:-spdDRsxcdWA6HKRpcpMDQS1nf1cldF4dKRNGpYTLTz1yrClUuszwu8H8jAMeoc}
+      SIGNUPS_ALLOWED: "false"
+      INVITATIONS_ALLOWED: "false"
+      WEBSOCKET_ENABLED: "true"
+      DOMAIN: https://192.168.1.244:8444
+    volumes:
+      - /mnt/user/appdata/hydra-stack/vaultwarden:/data
+    networks:
+      - hydra-net
+    ports:
+      - "8444:80"
+
+  # ===========================================
+  # HOME AUTOMATION
+  # ===========================================
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: hydra-homeassistant
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "home-automation"
+    network_mode: host  # Required for mDNS discovery
+    privileged: true
+    volumes:
+      - /mnt/user/appdata/homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+    # ports exposed via host networking:
+    # - 8123: Web UI

@@ -1,0 +1,131 @@
+{
+  "name": "Hydra Cluster Health Check",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:9090/api/v1/targets",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "prometheus-targets",
+      "name": "Get Prometheus Targets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const targets = $json.data?.activeTargets || [];\nconst unhealthy = targets.filter(t => t.health !== 'up');\nconst healthy = targets.filter(t => t.health === 'up');\n\nconst issues = unhealthy.map(t => ({\n  job: t.labels?.job || 'unknown',\n  instance: t.labels?.instance || 'unknown',\n  lastError: t.lastError || 'No error message'\n}));\n\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    total_targets: targets.length,\n    healthy_count: healthy.length,\n    unhealthy_count: unhealthy.length,\n    has_issues: unhealthy.length > 0,\n    issues: issues\n  }\n}];"
+      },
+      "id": "parse-targets",
+      "name": "Parse Target Health",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.has_issues }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-issues",
+      "name": "Has Issues?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "=🚨 **Hydra Cluster Alert**\\n\\n{{ $json.unhealthy_count }} service(s) down:\\n{{ $json.issues.map(i => `- **${i.job}** (${i.instance}): ${i.lastError}`).join('\\n') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "discord-alert",
+      "name": "Discord Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [880, -100],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "={{ $json.healthy_count }}/{{ $json.total_targets }} targets healthy"
+            }
+          ]
+        }
+      },
+      "id": "log-healthy",
+      "name": "Log Healthy Status",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [880, 100]
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [{ "node": "Get Prometheus Targets", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Prometheus Targets": {
+      "main": [
+        [{ "node": "Parse Target Health", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Target Health": {
+      "main": [
+        [{ "node": "Has Issues?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Has Issues?": {
+      "main": [
+        [{ "node": "Discord Alert", "type": "main", "index": 0 }],
+        [{ "node": "Log Healthy Status", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "1"
+}

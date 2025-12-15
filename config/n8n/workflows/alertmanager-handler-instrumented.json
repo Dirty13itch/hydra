@@ -1,0 +1,313 @@
+{
+  "name": "Alertmanager Handler (Instrumented)",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alertmanager",
+        "options": {}
+      },
+      "id": "alert-webhook",
+      "name": "Alertmanager Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "alertmanager-handler"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n', source_id: 'alertmanager-handler', action: 'alert_received', action_type: 'triggered', target: 'alertmanager', params: { alerts_count: $json.alerts?.length || 0, status: $json.status }, result: 'ok', decision_reason: 'Received alert webhook from Alertmanager' }) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "log-start",
+      "name": "Log Activity Start",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Process Alertmanager webhook\nconst input = $input.first().json;\nconst alerts = input.alerts || [];\nconst status = input.status; // 'firing' or 'resolved'\n\n// Filter to actionable alerts\nconst firingAlerts = alerts.filter(a => a.status === 'firing');\nconst resolvedAlerts = alerts.filter(a => a.status === 'resolved');\n\n// Check for container alerts that might need restart\nconst containerAlerts = firingAlerts.filter(a => \n  a.labels?.alertname?.includes('Container') || \n  a.labels?.alertname?.includes('Service')\n);\n\n// Determine if we should attempt auto-restart\nlet shouldRestart = false;\nlet targetContainer = null;\nlet restartReason = null;\n\nif (containerAlerts.length > 0) {\n  const alert = containerAlerts[0];\n  targetContainer = alert.labels?.container || alert.labels?.instance;\n  restartReason = `Alert: ${alert.labels?.alertname} - ${alert.annotations?.description || 'No description'}`;\n  \n  // Only auto-restart for specific alert types\n  if (alert.labels?.alertname?.includes('Unhealthy') || \n      alert.labels?.alertname?.includes('Down')) {\n    shouldRestart = true;\n  }\n}\n\nreturn {\n  json: {\n    originalPayload: input,\n    firingCount: firingAlerts.length,\n    resolvedCount: resolvedAlerts.length,\n    shouldRestart,\n    targetContainer,\n    restartReason,\n    alertSummary: firingAlerts.map(a => ({\n      name: a.labels?.alertname,\n      severity: a.labels?.severity,\n      instance: a.labels?.instance\n    }))\n  }\n};"
+      },
+      "id": "process-alerts",
+      "name": "Process Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "restart-check",
+              "leftValue": "={{ $json.shouldRestart }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-restart",
+      "name": "Should Restart?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [540, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n', source_id: 'alertmanager-handler', action: 'container_restart', action_type: 'autonomous', target: $json.targetContainer, params: { alert_count: $json.firingCount }, result: 'pending', decision_reason: $json.restartReason, requires_approval: false }) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "log-restart-decision",
+      "name": "Log Restart Decision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/docker/restart",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ container: $('Process Alerts').first().json.targetContainer }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "restart-container",
+      "name": "Restart Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n', source_id: 'alertmanager-handler', action: 'container_restart_completed', action_type: 'autonomous', target: $('Process Alerts').first().json.targetContainer, params: { response: $json }, result: $json.error ? 'error' : 'ok', result_details: $json, decision_reason: 'Completed auto-restart triggered by alert' }) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "log-restart-result",
+      "name": "Log Restart Result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n', source_id: 'alertmanager-handler', action: 'alert_processed', action_type: 'autonomous', target: 'alertmanager', params: { firing: $json.firingCount, resolved: $json.resolvedCount }, result: 'ok', decision_reason: 'No auto-restart action required' }) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "log-no-action",
+      "name": "Log No Action Needed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 500],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { received: true, processed: $('Process Alerts').first().json.firingCount, action_taken: $('Process Alerts').first().json.shouldRestart ? 'restart' : 'none' } }}"
+      },
+      "id": "respond-done",
+      "name": "Respond Complete",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 500]
+    }
+  ],
+  "connections": {
+    "Alertmanager Webhook": {
+      "main": [
+        [
+          {
+            "node": "Log Activity Start",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Process Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Activity Start": {
+      "main": [
+        []
+      ]
+    },
+    "Process Alerts": {
+      "main": [
+        [
+          {
+            "node": "Should Restart?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Restart?": {
+      "main": [
+        [
+          {
+            "node": "Log Restart Decision",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log No Action Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Restart Decision": {
+      "main": [
+        [
+          {
+            "node": "Restart Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restart Container": {
+      "main": [
+        [
+          {
+            "node": "Log Restart Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Restart Result": {
+      "main": [
+        [
+          {
+            "node": "Respond Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log No Action Needed": {
+      "main": [
+        [
+          {
+            "node": "Respond Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Chicago"
+  },
+  "tags": [
+    {
+      "name": "automation"
+    },
+    {
+      "name": "transparency"
+    }
+  ]
+}

@@ -1,0 +1,248 @@
+# LiteLLM Configuration for Hydra Cluster
+# Location: /mnt/user/appdata/hydra-stack/litellm/config.yaml
+#
+# This configuration routes requests to the appropriate inference backend
+# based on model name. All endpoints are OpenAI-compatible.
+
+# =============================================================================
+# MODEL ROUTING
+# =============================================================================
+model_list:
+  # ---------------------------------------------------------------------------
+  # PRIMARY: TabbyAPI on hydra-ai (70B models, 56GB VRAM)
+  # ---------------------------------------------------------------------------
+
+  # Main 70B model - best quality
+  - model_name: "llama-70b"
+    litellm_params:
+      model: "openai/default"
+      api_base: "http://192.168.1.250:5000/v1"
+      api_key: "not-needed"
+    model_info:
+      max_tokens: 32768
+      input_cost_per_token: 0
+      output_cost_per_token: 0
+
+  # OpenAI compatibility alias (for apps expecting gpt-4)
+  - model_name: "gpt-4"
+    litellm_params:
+      model: "openai/default"
+      api_base: "http://192.168.1.250:5000/v1"
+      api_key: "not-needed"
+    model_info:
+      max_tokens: 32768
+
+  - model_name: "gpt-4-turbo"
+    litellm_params:
+      model: "openai/default"
+      api_base: "http://192.168.1.250:5000/v1"
+      api_key: "not-needed"
+    model_info:
+      max_tokens: 32768
+
+  # Specific 70B model name for explicit routing
+  - model_name: "hydra-70b"
+    litellm_params:
+      model: "openai/default"
+      api_base: "http://192.168.1.250:5000/v1"
+      api_key: "not-needed"
+    model_info:
+      max_tokens: 32768
+
+  # ---------------------------------------------------------------------------
+  # SECONDARY: Ollama on hydra-compute (2x 5070 Ti 16GB - load balanced)
+  # Uses Nginx LB on port 11400 distributing to GPU 0 (11434) and GPU 1 (11435)
+  # ---------------------------------------------------------------------------
+
+  # Fast 7B for quick responses - LOAD BALANCED
+  - model_name: "qwen2.5-7b"
+    litellm_params:
+      model: "ollama/qwen2.5:7b"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+    model_info:
+      max_tokens: 32768
+
+  # OpenAI compatibility alias (for apps expecting gpt-3.5)
+  - model_name: "gpt-3.5-turbo"
+    litellm_params:
+      model: "ollama/qwen2.5:7b"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+    model_info:
+      max_tokens: 32768
+
+  # 14B for better reasoning while still fast
+  - model_name: "qwen2.5-14b"
+    litellm_params:
+      model: "ollama/qwen2.5:14b"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+    model_info:
+      max_tokens: 32768
+
+  # Coding specialist
+  - model_name: "qwen-coder"
+    litellm_params:
+      model: "ollama/qwen2.5-coder:7b"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+    model_info:
+      max_tokens: 32768
+
+  - model_name: "codestral"
+    litellm_params:
+      model: "ollama/codestral:22b"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+    model_info:
+      max_tokens: 32768
+
+  # Lightweight for simple tasks
+  - model_name: "llama-3b"
+    litellm_params:
+      model: "ollama/llama3.2:3b"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+    model_info:
+      max_tokens: 8192
+
+  - model_name: "mistral-7b"
+    litellm_params:
+      model: "ollama/mistral:7b"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+    model_info:
+      max_tokens: 32768
+
+  # ---------------------------------------------------------------------------
+  # FALLBACK: Ollama on hydra-storage (CPU only - EPYC 7663)
+  # ---------------------------------------------------------------------------
+
+  - model_name: "llama-7b-cpu"
+    litellm_params:
+      model: "ollama/llama3.2:latest"
+      api_base: "http://192.168.1.244:11434"
+    model_info:
+      max_tokens: 8192
+
+  - model_name: "qwen-7b-cpu"
+    litellm_params:
+      model: "ollama/qwen2.5:7b"
+      api_base: "http://192.168.1.244:11434"
+    model_info:
+      max_tokens: 8192
+
+  # ---------------------------------------------------------------------------
+  # EMBEDDINGS
+  # ---------------------------------------------------------------------------
+
+  # Primary embedding model (768 dimensions) - LOAD BALANCED
+  - model_name: "text-embedding-nomic"
+    litellm_params:
+      model: "ollama/nomic-embed-text"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+
+  # OpenAI compatibility alias
+  - model_name: "text-embedding-ada-002"
+    litellm_params:
+      model: "ollama/nomic-embed-text"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+
+  - model_name: "text-embedding-3-small"
+    litellm_params:
+      model: "ollama/nomic-embed-text"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+
+  # Alternative embedding models
+  - model_name: "bge-large"
+    litellm_params:
+      model: "ollama/bge-large"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+
+  - model_name: "mxbai-embed"
+    litellm_params:
+      model: "ollama/mxbai-embed-large"
+      api_base: "http://192.168.1.203:11400"  # Load balanced endpoint
+
+# =============================================================================
+# ROUTER SETTINGS
+# =============================================================================
+router_settings:
+  # Routing strategy
+  routing_strategy: "simple-shuffle"  # Options: simple-shuffle, least-busy, latency-based-routing
+
+  # Retry configuration
+  num_retries: 2
+  retry_after: 5  # seconds
+
+  # Timeout
+  timeout: 300  # 5 minutes for long generations
+
+  # Fallback configuration
+  fallbacks:
+    - model_name: "gpt-4"
+      fallback_models: ["qwen2.5-14b", "qwen2.5-7b", "llama-7b-cpu"]
+    - model_name: "llama-70b"
+      fallback_models: ["qwen2.5-14b", "qwen2.5-7b"]
+
+  # Model group aliases for load balancing
+  model_group_alias:
+    "fast": ["qwen2.5-7b", "mistral-7b", "llama-3b"]
+    "quality": ["llama-70b", "hydra-70b", "gpt-4"]
+    "coding": ["qwen-coder", "codestral"]
+    "embedding": ["text-embedding-nomic", "text-embedding-ada-002"]
+
+# =============================================================================
+# LITELLM SETTINGS
+# =============================================================================
+litellm_settings:
+  # Drop unsupported params (prevents errors)
+  drop_params: true
+
+  # Logging
+  set_verbose: false
+  json_logs: true
+
+  # Success/failure callbacks
+  success_callback: []
+  failure_callback: []
+
+  # Request logging to database
+  # database_url: "postgresql://hydra:password@192.168.1.244:5432/litellm"
+
+  # Cache configuration
+  cache: false  # Enable if using Redis
+  # cache_params:
+  #   type: "redis"
+  #   host: "192.168.1.244"
+  #   port: 6379
+  #   password: "your-redis-password"
+
+# =============================================================================
+# GENERAL SETTINGS
+# =============================================================================
+general_settings:
+  # Master key for API authentication
+  master_key: "${LITELLM_MASTER_KEY}"
+
+  # Database for request logging (optional)
+  # database_url: "postgresql://hydra:password@192.168.1.244:5432/litellm"
+
+  # Proxy settings
+  proxy_batch_write_at: 10  # Batch write logs every 10 requests
+
+  # Health check endpoint
+  health_check_interval: 60  # seconds
+
+  # Allow requests without API key (for internal use)
+  allow_requests_on_unset_api_key: true
+
+# =============================================================================
+# ENVIRONMENT VARIABLES REQUIRED
+# =============================================================================
+# Set these in your .env file or docker-compose environment:
+#
+# LITELLM_MASTER_KEY=sk-your-master-key-here
+# LITELLM_LOG_LEVEL=INFO
+#
+# Optional for database logging:
+# DATABASE_URL=postgresql://hydra:password@192.168.1.244:5432/litellm
+#
+# Optional for Redis caching:
+# REDIS_HOST=192.168.1.244
+# REDIS_PORT=6379
+# REDIS_PASSWORD=your-redis-password

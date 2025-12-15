@@ -16,7 +16,7 @@ PROXY_CODE = '''
 
 # Service URLs for proxying
 ALERTMANAGER_URL = os.getenv("ALERTMANAGER_URL", "http://192.168.1.244:9093")
-OLLAMA_AI_URL = os.getenv("OLLAMA_AI_URL", "http://192.168.1.251:11434")
+OLLAMA_AI_URL = os.getenv("OLLAMA_AI_URL", "http://192.168.1.203:11434")
 
 # --- Alertmanager Proxy ---
 

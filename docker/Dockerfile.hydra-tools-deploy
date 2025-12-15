@@ -1,0 +1,38 @@
+# Hydra Tools API - Self-Improvement Services
+# For deployment from /mnt/user/appdata/hydra-tools
+
+FROM python:3.11-slim
+
+LABEL maintainer="Hydra Cluster <hydra@local>"
+LABEL description="Self-improvement and optimization toolkit API"
+LABEL version="1.1.0"
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for caching
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code (adjusted path for deployment structure)
+COPY src/hydra_tools /app/hydra_tools
+
+# Create data directory
+RUN mkdir -p /data/diagnosis /data/optimization /data/knowledge /data/capabilities
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV HYDRA_DATA_DIR=/data
+ENV HYDRA_API_HOST=0.0.0.0
+ENV HYDRA_API_PORT=8700
+
+EXPOSE 8700
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8700/health || exit 1
+
+CMD ["python", "-m", "hydra_tools.api"]

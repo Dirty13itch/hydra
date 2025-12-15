@@ -1,0 +1,74 @@
+{
+  "id": "char-seraphina-001",
+  "name": "seraphina",
+  "display_name": "Queen Seraphina",
+  "role": "protagonist",
+  "description": "The Broken Queen of the Northern Reaches. Once a beloved ruler, now haunted by the curse that shattered her kingdom. Despite her fractured mind, she possesses moments of brilliant clarity and an iron will that refuses to break completely.",
+
+  "appearance": {
+    "age_apparent": 28,
+    "height": "tall",
+    "build": "elegant, regal bearing",
+    "hair_color": "silver-white",
+    "hair_style": "long flowing waves, often partially braided with small crystals",
+    "eye_color": "pale violet with occasional golden flecks",
+    "skin_tone": "porcelain pale with slight luminescence",
+    "distinguishing_features": [
+      "thin scar running from left temple to jawline",
+      "crown-shaped birthmark on right shoulder",
+      "eyes seem to glow faintly in darkness",
+      "moves with supernatural grace"
+    ]
+  },
+
+  "wardrobe": {
+    "default": {
+      "name": "Royal Mourning",
+      "description": "deep purple and black velvet gown with silver embroidery, tattered but still elegant"
+    },
+    "formal": {
+      "name": "Coronation Regalia",
+      "description": "pristine white and gold ceremonial dress with crystal crown"
+    },
+    "combat": {
+      "name": "Warrior Queen",
+      "description": "fitted black leather armor with purple accents, flowing cape"
+    },
+    "casual": {
+      "name": "Private Chambers",
+      "description": "simple lavender silk nightgown with silver trim"
+    }
+  },
+
+  "personality_traits": [
+    "regal bearing even in madness",
+    "fierce protector of her people",
+    "haunted by guilt",
+    "moments of lucidity reveal sharp intelligence",
+    "struggles between duty and despair"
+  ],
+
+  "voice_profile": {
+    "voice_id": "af_bella",
+    "base_speed": 0.95,
+    "pitch_offset": 0,
+    "characteristics": {
+      "tone": "melodic but with underlying sadness",
+      "accent": "aristocratic, formal speech patterns",
+      "quirks": "sometimes trails off mid-sentence, whispers to unseen presences"
+    }
+  },
+
+  "relationships": {
+    "lysander": "former lover, now enemy",
+    "mira": "loyal handmaiden and confidante",
+    "vex": "reluctant ally, distrusts him",
+    "the_shadow": "the curse that haunts her mind"
+  },
+
+  "story_notes": {
+    "arc": "redemption through embracing rather than fighting her broken nature",
+    "motivation": "save her remaining people, break the curse",
+    "fatal_flaw": "refuses to accept help, believes she must suffer alone"
+  }
+}

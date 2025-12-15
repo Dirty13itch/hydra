@@ -1,0 +1,26 @@
+# Hydra Cluster Code Owners
+#
+# These owners will be requested for review when PRs touch their areas
+
+# Default owner for everything
+* @shaun
+
+# Infrastructure
+/nixos-modules/ @shaun
+/docker/ @shaun
+/docker-compose/ @shaun
+
+# Core services
+/src/hydra_health/ @shaun
+/src/hydra_alerts/ @shaun
+/src/hydra_cli/ @shaun
+
+# Configuration
+/config/ @shaun
+/secrets/ @shaun
+
+# CI/CD
+/.github/ @shaun
+
+# Documentation
+/docs/ @shaun

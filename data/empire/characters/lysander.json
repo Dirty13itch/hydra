@@ -1,0 +1,64 @@
+{
+  "id": "char-lysander-003",
+  "name": "lysander",
+  "display_name": "Lord Lysander",
+  "role": "antagonist",
+  "description": "The former Royal Sorcerer who unleashed the curse that broke the queens. Once Seraphina's beloved, his obsession with forbidden magic twisted their love into tragedy. Now rules from the shadows, believing his actions were necessary for a greater purpose.",
+
+  "appearance": {
+    "age_apparent": 35,
+    "height": "tall",
+    "build": "lean, elegant, predatory grace",
+    "hair_color": "jet black with silver streaks",
+    "hair_style": "slicked back, shoulder length",
+    "eye_color": "ice blue, seem to pierce through deceptions",
+    "skin_tone": "pale, almost corpse-like",
+    "distinguishing_features": [
+      "elegant but cruel features",
+      "hands marked with arcane symbols",
+      "always impeccably dressed",
+      "cold smile that never reaches his eyes",
+      "subtle wrongness to his shadow"
+    ]
+  },
+
+  "wardrobe": {
+    "default": {
+      "name": "Shadow Lord",
+      "description": "tailored black and midnight blue robes with silver clasps"
+    },
+    "formal": {
+      "name": "Court Sorcerer",
+      "description": "elaborate ceremonial robes with constellation patterns"
+    },
+    "combat": {
+      "name": "Battlemage",
+      "description": "enchanted dark armor that seems to absorb light"
+    }
+  },
+
+  "personality_traits": [
+    "brilliant and calculating",
+    "genuinely believes ends justify means",
+    "still loves Seraphina in his twisted way",
+    "incapable of admitting he was wrong",
+    "sees himself as tragic hero, not villain"
+  ],
+
+  "voice_profile": {
+    "voice_id": "am_michael",
+    "base_speed": 0.9,
+    "pitch_offset": -0.05,
+    "characteristics": {
+      "tone": "smooth, cultured, with underlying menace",
+      "accent": "aristocratic, precise enunciation",
+      "quirks": "speaks in measured, deliberate phrases"
+    }
+  },
+
+  "relationships": {
+    "seraphina": "tragic love, obsession, sees breaking her as saving her",
+    "mira": "views as obstacle, grudging respect for loyalty",
+    "the_shadow": "his creation, bound to his will"
+  }
+}

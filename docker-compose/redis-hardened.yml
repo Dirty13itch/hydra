@@ -1,0 +1,27 @@
+# Redis Persistence Hardening Override
+#
+# Apply with: docker-compose -f hydra-stack.yml -f redis-hardened.yml up -d redis
+#
+# Enhancements:
+# - Custom redis.conf with optimized persistence settings
+# - AOF with everysec fsync policy
+# - RDB snapshots as secondary backup
+# - Memory management and defragmentation
+# - Slow query logging
+#
+# Generated: December 14, 2025
+
+version: "3.9"
+
+services:
+  redis:
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD:-ls32WXmttrQ6v3Jxw9bh6XmFqhCYmIC}"]
+    volumes:
+      - /mnt/user/databases/redis:/data
+      - /mnt/user/appdata/hydra-stack/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    deploy:
+      resources:
+        limits:
+          memory: 2.5G
+        reservations:
+          memory: 1G

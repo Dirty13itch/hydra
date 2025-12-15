@@ -1,0 +1,200 @@
+{
+  "name": "Daily Research Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily at 6 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:8180/v1/entries",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {
+          "qs": {
+            "values": [
+              {
+                "name": "status",
+                "value": "unread"
+              },
+              {
+                "name": "limit",
+                "value": "50"
+              },
+              {
+                "name": "order",
+                "value": "published_at"
+              },
+              {
+                "name": "direction",
+                "value": "desc"
+              }
+            ]
+          }
+        }
+      },
+      "id": "get-miniflux-articles",
+      "name": "Get Unread Articles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const articles = $json.entries || [];\n\n// Filter to interesting articles (has content, reasonable length)\nconst filtered = articles.filter(a => \n  a.content && a.content.length > 100 && a.content.length < 50000\n).slice(0, 20);  // Limit to 20 for API costs\n\nreturn filtered.map(article => ({\n  json: {\n    id: article.id,\n    title: article.title,\n    url: article.url,\n    feed_title: article.feed?.title || 'Unknown',\n    published: article.published_at,\n    // Truncate content for summarization\n    content: article.content.substring(0, 3000)\n  }\n}));"
+      },
+      "id": "filter-articles",
+      "name": "Filter & Prepare Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:4000/v1/chat/completions",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen2.5-7b\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a research assistant. Summarize the following article in 2-3 sentences, focusing on key insights and takeaways. Be concise and informative.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Title: {{ $json.title }}\\n\\nContent: {{ $json.content.replace(/\"/g, '\\\\\"').replace(/\\n/g, ' ') }}\"\n    }\n  ],\n  \"max_tokens\": 150,\n  \"temperature\": 0.3\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "summarize-article",
+      "name": "Summarize Article",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [660, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\n\nconst summaries = items.map((item, idx) => {\n  const original = $('Filter & Prepare Articles').all()[idx]?.json || {};\n  const summary = item.json?.choices?.[0]?.message?.content || 'Summary unavailable';\n  \n  return {\n    title: original.title,\n    url: original.url,\n    feed: original.feed_title,\n    summary: summary,\n    id: original.id\n  };\n});\n\nreturn [{ json: { summaries } }];"
+      },
+      "id": "collect-summaries",
+      "name": "Collect Summaries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:4000/v1/chat/completions",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen2.5-14b\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a research curator. Create a digest from these article summaries. Group by themes, highlight the most important insights, and identify any emerging patterns or trends. Format as markdown with sections.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Create a research digest from these articles:\\n\\n{{ $json.summaries.map(s => `**${s.title}** (${s.feed})\\n${s.summary}`).join('\\n\\n') }}\"\n    }\n  ],\n  \"max_tokens\": 1000,\n  \"temperature\": 0.5\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "generate-digest",
+      "name": "Generate Digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "=📰 **Daily Research Digest - {{ new Date().toISOString().split('T')[0] }}**\\n\\n{{ $json.choices[0].message.content.substring(0, 1900) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-digest",
+      "name": "Send to Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1320, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:8180/v1/entries",
+        "method": "PUT",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"entry_ids\": {{ JSON.stringify($('Collect Summaries').first().json.summaries.map(s => s.id)) }},\n  \"status\": \"read\"\n}",
+        "options": {}
+      },
+      "id": "mark-read",
+      "name": "Mark Articles as Read",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1540, 0],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Daily at 6 AM": {
+      "main": [
+        [{ "node": "Get Unread Articles", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Unread Articles": {
+      "main": [
+        [{ "node": "Filter & Prepare Articles", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter & Prepare Articles": {
+      "main": [
+        [{ "node": "Summarize Article", "type": "main", "index": 0 }]
+      ]
+    },
+    "Summarize Article": {
+      "main": [
+        [{ "node": "Collect Summaries", "type": "main", "index": 0 }]
+      ]
+    },
+    "Collect Summaries": {
+      "main": [
+        [{ "node": "Generate Digest", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate Digest": {
+      "main": [
+        [{ "node": "Send to Discord", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send to Discord": {
+      "main": [
+        [{ "node": "Mark Articles as Read", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "1"
+}

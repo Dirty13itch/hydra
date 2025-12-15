@@ -7,12 +7,14 @@
 /* Dark mode (default) */
 :root {
   --hydra-bg: #0a0a0f;
+  --hydra-bg-dark: #050508;
   --hydra-bg-secondary: #1a1a2e;
   --hydra-text: #e0e0e0;
   --hydra-text-muted: #888;
   --hydra-border: rgba(0, 255, 255, 0.3);
   --hydra-cyan: #00ffff;
   --hydra-magenta: #ff00ff;
+  --hydra-purple: #8b5cf6;
   --hydra-green: #00ff88;
   --hydra-red: #ff3366;
   --hydra-yellow: #ffcc00;
@@ -23,12 +25,14 @@
 /* Light mode */
 .light {
   --hydra-bg: #f5f7fa;
+  --hydra-bg-dark: #e8eaed;
   --hydra-bg-secondary: #ffffff;
   --hydra-text: #1a1a2e;
   --hydra-text-muted: #666;
   --hydra-border: rgba(0, 150, 150, 0.3);
   --hydra-cyan: #0088aa;
   --hydra-magenta: #aa0088;
+  --hydra-purple: #7c3aed;
   --hydra-green: #00aa66;
   --hydra-red: #cc2244;
   --hydra-yellow: #aa8800;

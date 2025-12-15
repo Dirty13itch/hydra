@@ -1,0 +1,35 @@
+# SOPS Configuration for Hydra Cluster
+#
+# This file defines which keys can decrypt secrets and which paths to encrypt.
+# Uses age for encryption with user-generated keypairs on each node.
+#
+# Keys generated: December 13, 2025
+#
+# Usage:
+#   Create secrets:  sops secrets/cluster.yaml
+#   Edit secrets:    sops secrets/cluster.yaml
+#   Decrypt to env:  sops -d secrets/cluster.yaml | yq -r '.env_format'
+
+creation_rules:
+  # Cluster-wide secrets (accessible by both NixOS nodes)
+  - path_regex: secrets/cluster\.yaml$
+    age: >-
+      age16d0rcvp4drh3utxj70vd2wr6vqgdtxhwfzjrxtzuy974qltkqegqrav6s7,
+      age1qmucjccuxc5zummkj3xe6n4zg4guq0se6ecj9r2yyjj6hmmk8fvsm56ves
+
+  # hydra-ai specific secrets
+  - path_regex: secrets/hydra-ai\.yaml$
+    age: age16d0rcvp4drh3utxj70vd2wr6vqgdtxhwfzjrxtzuy974qltkqegqrav6s7
+
+  # hydra-compute specific secrets
+  - path_regex: secrets/hydra-compute\.yaml$
+    age: age1qmucjccuxc5zummkj3xe6n4zg4guq0se6ecj9r2yyjj6hmmk8fvsm56ves
+
+  # Docker infrastructure secrets (decrypted on hydra-ai, deployed to storage)
+  - path_regex: secrets/docker\.yaml$
+    age: age16d0rcvp4drh3utxj70vd2wr6vqgdtxhwfzjrxtzuy974qltkqegqrav6s7
+
+# Stores configuration (for git integration)
+stores:
+  yaml:
+    indent: 2

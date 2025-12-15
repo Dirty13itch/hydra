@@ -1,0 +1,93 @@
+# MkDocs Configuration for Hydra Cluster Documentation
+
+site_name: Hydra Cluster
+site_description: AI Cluster Infrastructure Documentation
+site_author: Shaun
+site_url: https://hydra.local/docs
+
+repo_name: hydra
+repo_url: https://github.com/shaun/hydra
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Configuration: getting-started/configuration.md
+    - Quick Start: getting-started/quickstart.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Nodes: architecture/nodes.md
+    - Networking: architecture/networking.md
+  - API Reference:
+    - Overview: api/index.md
+    - Tools:
+      - Inference: api/tools/inference.md
+      - Knowledge: api/tools/knowledge.md
+      - Storage: api/tools/storage.md
+      - Cluster: api/tools/cluster.md
+    - Health API:
+      - Endpoints: api/health/endpoints.md
+    - CLI:
+      - Commands: api/cli/commands.md
+  - Operations:
+    - Deployment: operations/deployment.md
+    - Monitoring: operations/monitoring.md
+    - Backup & Restore: operations/backup.md
+    - Troubleshooting: operations/troubleshooting.md
+  - Development:
+    - Contributing: development/contributing.md
+    - Testing: development/testing.md
+    - Changelog: development/changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/shaun/hydra
+
+copyright: Copyright &copy; 2025 Shaun - Hydra Cluster

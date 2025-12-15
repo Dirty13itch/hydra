@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "hydra-cluster": {
+      "command": "python",
+      "args": [
+        "-m",
+        "hydra_mcp_server"
+      ],
+      "env": {
+        "LITELLM_URL": "http://192.168.1.244:4000",
+        "HEALTH_URL": "http://192.168.1.244:8600",
+        "QDRANT_URL": "http://192.168.1.244:6333",
+        "TABBY_URL": "http://192.168.1.250:5000",
+        "OLLAMA_URL": "http://192.168.1.203:11434"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/mnt/shared",
+        "/home/user/hydra"
+      ]
+    },
+    "fetch": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-fetch"
+      ]
+    }
+  }
+}

@@ -1,0 +1,361 @@
+{
+  "name": "Usage Tracking Aggregator",
+  "description": "Tracks inference usage, token counts, and generates cost estimates",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-trigger",
+      "name": "Daily Midnight",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:9090/api/v1/query",
+        "qs": {
+          "query": "sum(increase(litellm_llm_api_successful_requests_metric_total[24h])) by (model)"
+        },
+        "options": {}
+      },
+      "id": "get-request-counts",
+      "name": "Get Request Counts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        320,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:9090/api/v1/query",
+        "qs": {
+          "query": "sum(increase(litellm_tokens_total[24h])) by (model, token_type)"
+        },
+        "options": {}
+      },
+      "id": "get-token-counts",
+      "name": "Get Token Counts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        320,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:9090/api/v1/query",
+        "qs": {
+          "query": "avg(rate(nvidia_gpu_power_draw_watts[24h])) by (gpu)"
+        },
+        "options": {}
+      },
+      "id": "get-power-usage",
+      "name": "Get Power Usage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        320,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ {\n  requests: $('Get Request Counts').item.json,\n  tokens: $('Get Token Counts').item.json,\n  power: $('Get Power Usage').item.json\n} }}",
+        "options": {}
+      },
+      "id": "merge-metrics",
+      "name": "Merge Metrics",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        540,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json;\nconst requests = data.requests?.data?.result || [];\nconst tokens = data.tokens?.data?.result || [];\nconst power = data.power?.data?.result || [];\n\n// Parse request counts by model\nconst modelRequests = {};\nfor (const r of requests) {\n  const model = r.metric?.model || 'unknown';\n  modelRequests[model] = parseFloat(r.value?.[1] || 0);\n}\n\n// Parse token counts by model and type\nconst modelTokens = {};\nfor (const t of tokens) {\n  const model = t.metric?.model || 'unknown';\n  const type = t.metric?.token_type || 'total';\n  if (!modelTokens[model]) modelTokens[model] = {};\n  modelTokens[model][type] = parseFloat(t.value?.[1] || 0);\n}\n\n// Calculate power cost (assuming $0.12/kWh)\nconst kwhRate = 0.12;\nlet totalPowerWh = 0;\nfor (const p of power) {\n  const avgWatts = parseFloat(p.value?.[1] || 0);\n  totalPowerWh += avgWatts * 24; // 24 hours\n}\nconst powerCost = (totalPowerWh / 1000) * kwhRate;\n\n// Estimate equivalent API costs (for comparison)\n// Using approximate rates: GPT-4 $30/1M tokens, GPT-3.5 $2/1M tokens\nconst costEstimates = {};\nlet totalTokens = 0;\nlet equivalentAPICost = 0;\n\nfor (const [model, counts] of Object.entries(modelTokens)) {\n  const total = (counts.input || 0) + (counts.output || 0) + (counts.total || 0);\n  totalTokens += total;\n  \n  // Estimate what this would cost on OpenAI\n  let rate = 0.002; // Default to GPT-3.5 rate per 1K tokens\n  if (model.includes('70b') || model.includes('large')) {\n    rate = 0.03; // GPT-4 equivalent\n  } else if (model.includes('7b') || model.includes('small')) {\n    rate = 0.001; // Cheaper model\n  }\n  \n  const modelCost = (total / 1000) * rate;\n  equivalentAPICost += modelCost;\n  \n  costEstimates[model] = {\n    tokens: total,\n    equivalent_cost: modelCost.toFixed(4)\n  };\n}\n\nconst date = new Date();\ndate.setDate(date.getDate() - 1); // Yesterday's date\n\nreturn {\n  date: date.toISOString().split('T')[0],\n  summary: {\n    total_requests: Object.values(modelRequests).reduce((a, b) => a + b, 0),\n    total_tokens: totalTokens,\n    power_kwh: (totalPowerWh / 1000).toFixed(2),\n    power_cost_usd: powerCost.toFixed(2),\n    equivalent_api_cost_usd: equivalentAPICost.toFixed(2),\n    savings_usd: (equivalentAPICost - powerCost).toFixed(2)\n  },\n  by_model: {\n    requests: modelRequests,\n    cost_estimates: costEstimates\n  },\n  generated_at: new Date().toISOString()\n};"
+      },
+      "id": "calculate-costs",
+      "name": "Calculate Costs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "daily_usage_report"
+            },
+            {
+              "name": "source",
+              "value": "n8n-automation"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-usage",
+      "name": "Log Usage Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        980,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "http://192.168.1.244:6333/collections/usage_history/points",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"points\": [{\n    \"id\": \"usage_{{ $json.date.replace(/-/g, '') }}\",\n    \"vector\": [0.0],\n    \"payload\": {{ JSON.stringify($json) }}\n  }]\n}",
+        "options": {}
+      },
+      "id": "store-history",
+      "name": "Store in Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1200,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "high-usage",
+              "leftValue": "={{ parseFloat($json.summary.equivalent_api_cost_usd) }}",
+              "rightValue": 50,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-high-usage",
+      "name": "High Usage?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:5678/webhook/discord-notify",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"severity\": \"info\",\n  \"title\": \"High Usage Alert\",\n  \"message\": \"Daily usage equivalent cost: ${{ $('Calculate Costs').item.json.summary.equivalent_api_cost_usd }}. Tokens: {{ $('Calculate Costs').item.json.summary.total_tokens }}. Actual power cost: ${{ $('Calculate Costs').item.json.summary.power_cost_usd }}\",\n  \"source\": \"usage-tracker\"\n}",
+        "options": {}
+      },
+      "id": "notify-high-usage",
+      "name": "Notify High Usage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1420,
+        500
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Midnight": {
+      "main": [
+        [
+          {
+            "node": "Get Request Counts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Token Counts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Power Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Request Counts": {
+      "main": [
+        [
+          {
+            "node": "Merge Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Token Counts": {
+      "main": [
+        [
+          {
+            "node": "Merge Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Power Usage": {
+      "main": [
+        [
+          {
+            "node": "Merge Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Metrics": {
+      "main": [
+        [
+          {
+            "node": "Calculate Costs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Costs": {
+      "main": [
+        [
+          {
+            "node": "Log Usage Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Usage Report": {
+      "main": [
+        [
+          {
+            "node": "Store in Qdrant",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check High Usage?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check High Usage?": {
+      "main": [
+        [
+          {
+            "node": "Notify High Usage",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Chicago"
+  },
+  "tags": [
+    {
+      "name": "intelligence",
+      "id": "9"
+    },
+    {
+      "name": "scheduled",
+      "id": "5"
+    }
+  ],
+  "versionId": "ffdea4b8-19ed-467d-a2f0-50cac9b19f08",
+  "id": "899e6f59060b43348",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

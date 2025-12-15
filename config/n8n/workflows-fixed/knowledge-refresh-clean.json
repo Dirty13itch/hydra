@@ -1,0 +1,344 @@
+{
+  "name": "Knowledge Refresh",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "schedule-1",
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8600/health/full",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "http-1",
+      "name": "Get Full Health Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Generate updated knowledge sections based on health data\nconst health = $input.item.json;\nconst timestamp = new Date().toISOString();\n\n// Infrastructure updates\nconst infrastructureUpdates = {\n  section: 'infrastructure',\n  updates: []\n};\n\nif (health.nodes) {\n  for (const [name, node] of Object.entries(health.nodes)) {\n    infrastructureUpdates.updates.push({\n      key: `node.${name}.status`,\n      value: node.reachable ? 'online' : 'offline',\n      timestamp\n    });\n    \n    if (node.gpus?.length > 0) {\n      for (const gpu of node.gpus) {\n        infrastructureUpdates.updates.push({\n          key: `node.${name}.gpu.${gpu.name}.vram_used`,\n          value: gpu.memory_used_mb,\n          timestamp\n        });\n      }\n    }\n  }\n}\n\n// Service updates\nconst serviceUpdates = {\n  section: 'services',\n  updates: []\n};\n\nif (health.services) {\n  for (const [category, services] of Object.entries(health.services)) {\n    for (const [name, svc] of Object.entries(services)) {\n      serviceUpdates.updates.push({\n        key: `service.${name}.status`,\n        value: svc.status,\n        port: svc.port,\n        timestamp\n      });\n    }\n  }\n}\n\nreturn {\n  json: {\n    timestamp,\n    health_percentage: health.health_summary?.health_percentage,\n    infrastructure: infrastructureUpdates,\n    services: serviceUpdates\n  }\n};"
+      },
+      "id": "code-1",
+      "name": "Process Health Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/knowledge/update",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-2",
+      "name": "Update Knowledge Store",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        920,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.health_percentage }}",
+              "rightValue": 90,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-1",
+      "name": "Health Below 90%?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:9095/alert",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"title\": \"Cluster Health Below Threshold\",\n  \"severity\": \"warning\",\n  \"health_percentage\": {{ $json.health_percentage }},\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}",
+        "options": {}
+      },
+      "id": "http-3",
+      "name": "Send Health Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1360,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "log-1",
+              "name": "log",
+              "value": "=Knowledge refresh completed. Health: {{ $json.health_percentage }}%",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-1",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        1360,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "knowledge/refresh",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        520
+      ],
+      "webhookId": "knowledge-refresh-webhook"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8600/health/full",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "http-4",
+      "name": "Get Health (Manual)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        480,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Generate state summary for knowledge files\nconst state = $input.item.json;\nconst timestamp = new Date().toISOString();\nconst date = timestamp.split('T')[0];\n\nlet stateMarkdown = `# Cluster State Summary\\n\\n`;\nstateMarkdown += `**Generated:** ${timestamp}\\n\\n`;\n\n// Nodes section\nstateMarkdown += `## Nodes\\n\\n`;\nstateMarkdown += `| Node | IP | Status | GPUs |\\n`;\nstateMarkdown += `|------|-------|--------|------|\\n`;\n\nif (state.nodes) {\n  for (const [name, node] of Object.entries(state.nodes)) {\n    const gpuList = node.gpus?.map(g => g.name).join(', ') || 'N/A';\n    const status = node.reachable ? '\u2705 Online' : '\u274c Offline';\n    stateMarkdown += `| ${name} | ${node.ip} | ${status} | ${gpuList} |\\n`;\n  }\n}\n\n// Docker summary\nstateMarkdown += `\\n## Docker Containers\\n\\n`;\nif (state.docker) {\n  stateMarkdown += `- **Total:** ${state.docker.total}\\n`;\n  stateMarkdown += `- **Healthy:** ${state.docker.healthy}\\n`;\n  stateMarkdown += `- **Unhealthy:** ${state.docker.unhealthy}\\n`;\n}\n\n// Health summary\nstateMarkdown += `\\n## Health Summary\\n\\n`;\nif (state.health_summary) {\n  stateMarkdown += `- **Overall Health:** ${state.health_summary.health_percentage}%\\n`;\n  stateMarkdown += `- **Services:** ${state.health_summary.services_healthy}/${state.health_summary.services_total}\\n`;\n}\n\nreturn {\n  json: {\n    markdown: stateMarkdown,\n    timestamp,\n    date\n  }\n};"
+      },
+      "id": "code-2",
+      "name": "Generate State Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "filePath": "/data/knowledge/state-summary.md",
+        "options": {}
+      },
+      "id": "write-1",
+      "name": "Write State Summary",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        920,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Knowledge refreshed\",\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1140,
+        520
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Get Full Health Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Full Health Status": {
+      "main": [
+        [
+          {
+            "node": "Process Health Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Health Data": {
+      "main": [
+        [
+          {
+            "node": "Update Knowledge Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Knowledge Store": {
+      "main": [
+        [
+          {
+            "node": "Health Below 90%?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Health Below 90%?": {
+      "main": [
+        [
+          {
+            "node": "Send Health Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Health (Manual)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Health (Manual)": {
+      "main": [
+        [
+          {
+            "node": "Generate State Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate State Summary": {
+      "main": [
+        [
+          {
+            "node": "Write State Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write State Summary": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "123af1bf-536a-402a-b60a-306b1163b5d7",
+  "id": "a1711d5094d649258",
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

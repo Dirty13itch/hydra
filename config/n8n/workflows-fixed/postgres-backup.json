@@ -1,0 +1,277 @@
+{
+  "name": "PostgreSQL Daily Backup",
+  "description": "Automated daily backup of all PostgreSQL databases with retention management",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-backup",
+      "name": "Daily 2AM CST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const databases = ['hydra', 'litellm', 'n8n', 'letta'];\nconst date = new Date().toISOString().replace(/[:-]/g, '').split('.')[0];\nconst backupDir = '/mnt/user/backups/postgres';\n\nreturn databases.map(db => ({\n  database: db,\n  backupFile: `${backupDir}/${db}_${date}.sql.gz`,\n  date: date\n}));"
+      },
+      "id": "prepare-databases",
+      "name": "Prepare Database List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-databases",
+      "name": "Loop Databases",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=docker exec hydra-postgres pg_dump -U hydra -d {{ $json.database }} --no-password --format=plain 2>/dev/null | gzip > {{ $json.backupFile }} && echo \"success:$(du -h {{ $json.backupFile }} | cut -f1)\" || echo \"failed\""
+      },
+      "id": "backup-database",
+      "name": "Backup Database",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.all();\nconst results = input.map((item, index) => {\n  const output = item.json.stdout || '';\n  const isSuccess = output.startsWith('success:');\n  const size = isSuccess ? output.split(':')[1] : 'N/A';\n  \n  return {\n    database: $('Loop Databases').all()[index]?.json?.database || 'unknown',\n    status: isSuccess ? 'success' : 'failed',\n    size: size,\n    backupFile: $('Loop Databases').all()[index]?.json?.backupFile || 'unknown'\n  };\n});\n\nconst succeeded = results.filter(r => r.status === 'success').length;\nconst failed = results.filter(r => r.status === 'failed').length;\n\nreturn {\n  summary: {\n    total: results.length,\n    succeeded,\n    failed,\n    timestamp: new Date().toISOString()\n  },\n  results\n};"
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "find /mnt/user/backups/postgres -name '*.sql.gz' -type f -mtime +30 -delete 2>/dev/null; echo \"Cleanup complete\""
+      },
+      "id": "cleanup-old",
+      "name": "Cleanup Old Backups",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/api/activities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"postgres_backup\",\n  \"source\": \"n8n-automation\",\n  \"target\": \"hydra-postgres\",\n  \"status\": \"{{ $('Aggregate Results').item.json.summary.failed === 0 ? 'success' : 'partial' }}\",\n  \"details\": \"Daily backup: {{ $('Aggregate Results').item.json.summary.succeeded }}/{{ $('Aggregate Results').item.json.summary.total }} databases backed up successfully\"\n}"
+      },
+      "id": "log-backup",
+      "name": "Log Backup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "failed-check",
+              "leftValue": "={{ $('Aggregate Results').item.json.summary.failed }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-failures",
+      "name": "Any Failures?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:9093/api/v2/alerts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[{\n  \"labels\": {\n    \"alertname\": \"PostgresBackupFailed\",\n    \"severity\": \"warning\",\n    \"service\": \"postgres\"\n  },\n  \"annotations\": {\n    \"summary\": \"PostgreSQL backup partially failed\",\n    \"description\": \"{{ $('Aggregate Results').item.json.summary.failed }} database(s) failed to backup\"\n  }\n}]"
+      },
+      "id": "send-alert",
+      "name": "Send Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1640,
+        450
+      ]
+    }
+  ],
+  "connections": {
+    "Daily 2AM CST": {
+      "main": [
+        [
+          {
+            "node": "Prepare Database List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Database List": {
+      "main": [
+        [
+          {
+            "node": "Loop Databases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Databases": {
+      "main": [
+        [
+          {
+            "node": "Backup Database",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backup Database": {
+      "main": [
+        [
+          {
+            "node": "Loop Databases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Old Backups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Old Backups": {
+      "main": [
+        [
+          {
+            "node": "Log Backup",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Failures?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Failures?": {
+      "main": [
+        [
+          {
+            "node": "Send Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Chicago"
+  },
+  "versionId": "cab18449-3103-48dc-a5fd-c590c83958ed",
+  "id": "ea5e62f8dfbd49e59",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

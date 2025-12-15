@@ -1,0 +1,75 @@
+{
+  "_meta": {
+    "name": "Empire of Broken Queens Voice Profiles",
+    "description": "Voice configuration for TTS synthesis of character dialogue",
+    "version": "1.0.0",
+    "kokoro_url": "http://192.168.1.244:8880"
+  },
+
+  "characters": {
+    "seraphina": {
+      "voice_id": "af_bella",
+      "display_name": "Queen Seraphina",
+      "base_speed": 0.95,
+      "description": "Melodic but with underlying sadness, aristocratic speech patterns",
+      "emotion_modifiers": {
+        "neutral": {"speed": 0.95, "pitch": 1.0},
+        "happy": {"speed": 1.0, "pitch": 1.02},
+        "sad": {"speed": 0.85, "pitch": 0.98},
+        "angry": {"speed": 1.1, "pitch": 1.05},
+        "fearful": {"speed": 1.05, "pitch": 1.03},
+        "pensive": {"speed": 0.88, "pitch": 0.99},
+        "determined": {"speed": 1.0, "pitch": 1.01},
+        "loving": {"speed": 0.9, "pitch": 0.98}
+      }
+    },
+
+    "mira": {
+      "voice_id": "af_sarah",
+      "display_name": "Mira",
+      "base_speed": 1.0,
+      "description": "Warm and comforting, occasionally stern, common folk speech",
+      "emotion_modifiers": {
+        "neutral": {"speed": 1.0, "pitch": 1.0},
+        "happy": {"speed": 1.05, "pitch": 1.02},
+        "concerned": {"speed": 0.95, "pitch": 0.99},
+        "angry": {"speed": 1.1, "pitch": 1.03},
+        "loving": {"speed": 0.92, "pitch": 0.98},
+        "surprised": {"speed": 1.15, "pitch": 1.05},
+        "determined": {"speed": 1.02, "pitch": 1.01}
+      }
+    },
+
+    "lysander": {
+      "voice_id": "am_michael",
+      "display_name": "Lord Lysander",
+      "base_speed": 0.9,
+      "description": "Smooth, cultured, with underlying menace, precise enunciation",
+      "emotion_modifiers": {
+        "neutral": {"speed": 0.9, "pitch": 0.95},
+        "menacing": {"speed": 0.85, "pitch": 0.92},
+        "angry": {"speed": 1.0, "pitch": 0.98},
+        "loving": {"speed": 0.88, "pitch": 0.96},
+        "contemptuous": {"speed": 0.92, "pitch": 0.94},
+        "triumphant": {"speed": 0.95, "pitch": 0.97}
+      }
+    }
+  },
+
+  "default_settings": {
+    "format": "wav",
+    "sample_rate": 24000,
+    "default_voice": "af_sarah",
+    "default_speed": 1.0
+  },
+
+  "emotion_aliases": {
+    "worried": "concerned",
+    "scared": "fearful",
+    "thoughtful": "pensive",
+    "joyful": "happy",
+    "sorrowful": "sad",
+    "furious": "angry",
+    "tender": "loving"
+  }
+}

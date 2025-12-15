@@ -1,0 +1,322 @@
+{
+  "name": "Learnings Capture",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "learnings",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Webhook - Capture Learning",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [260, 300],
+      "webhookId": "learnings-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extract and format the learning\nconst body = $input.item.json.body || $input.item.json;\n\nconst learning = {\n  category: body.category || 'general',\n  title: body.title || 'Untitled Learning',\n  content: body.content || body.learning || '',\n  source: body.source || 'manual',\n  tags: body.tags || [],\n  timestamp: new Date().toISOString(),\n  date: new Date().toISOString().split('T')[0]\n};\n\n// Format as markdown\nconst markdown = `\n### ${learning.title}\n**Date:** ${learning.date}  \n**Category:** ${learning.category}  \n**Source:** ${learning.source}  \n${learning.tags.length > 0 ? `**Tags:** ${learning.tags.join(', ')}` : ''}\n\n${learning.content}\n\n---\n`;\n\nreturn {\n  json: {\n    ...learning,\n    markdown: markdown\n  }\n};"
+      },
+      "id": "code-1",
+      "name": "Format Learning",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "filePath": "/data/learnings/LEARNINGS.md",
+        "options": {
+          "append": true
+        }
+      },
+      "id": "write-1",
+      "name": "Append to LEARNINGS.md",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "success"
+            },
+            {
+              "name": "message",
+              "value": "Learning captured successfully"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-1",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-1",
+      "name": "Schedule - Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [260, 520]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8600/learnings/pending",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-1",
+      "name": "Fetch Pending Learnings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 520]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.learnings?.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-1",
+      "name": "Has Pending Learnings?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 520]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "learnings",
+        "options": {}
+      },
+      "id": "split-1",
+      "name": "Split Learnings",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [920, 460]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Format each learning from hydra-health\nconst learning = $input.item.json;\n\nconst markdown = `\n### ${learning.title || 'Auto-captured Learning'}\n**Date:** ${new Date().toISOString().split('T')[0]}  \n**Category:** ${learning.category || 'operations'}  \n**Source:** hydra-health (auto)  \n${learning.tags?.length > 0 ? `**Tags:** ${learning.tags.join(', ')}` : ''}\n\n${learning.content || learning.description || ''}\n\n---\n`;\n\nreturn {\n  json: {\n    id: learning.id,\n    markdown: markdown\n  }\n};"
+      },
+      "id": "code-2",
+      "name": "Format Auto Learning",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 460]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "filePath": "/data/learnings/LEARNINGS.md",
+        "options": {
+          "append": true
+        }
+      },
+      "id": "write-2",
+      "name": "Append Auto Learnings",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [1360, 460]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8600/learnings/acknowledge",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-2",
+      "name": "Acknowledge Learning",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1580, 460]
+    }
+  ],
+  "connections": {
+    "Webhook - Capture Learning": {
+      "main": [
+        [
+          {
+            "node": "Format Learning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Learning": {
+      "main": [
+        [
+          {
+            "node": "Append to LEARNINGS.md",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to LEARNINGS.md": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule - Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Learnings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pending Learnings": {
+      "main": [
+        [
+          {
+            "node": "Has Pending Learnings?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Pending Learnings?": {
+      "main": [
+        [
+          {
+            "node": "Split Learnings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Learnings": {
+      "main": [
+        [
+          {
+            "node": "Format Auto Learning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Auto Learning": {
+      "main": [
+        [
+          {
+            "node": "Append Auto Learnings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Auto Learnings": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge Learning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "automation"
+    },
+    {
+      "name": "hydra"
+    }
+  ],
+  "triggerCount": 2,
+  "pinData": {},
+  "versionId": "1"
+}

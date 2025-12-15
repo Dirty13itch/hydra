@@ -1,0 +1,215 @@
+# Docker Healthcheck Definitions for Hydra Cluster
+#
+# Use with docker-compose by extending services with these healthchecks.
+# Include with: docker-compose -f docker-compose.yml -f healthchecks.yml up
+#
+# Or copy the healthcheck blocks into your main compose files.
+
+version: "3.8"
+
+# Common healthcheck intervals
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s
+
+x-healthcheck-fast: &healthcheck-fast
+  interval: 10s
+  timeout: 5s
+  retries: 3
+  start_period: 30s
+
+x-healthcheck-slow: &healthcheck-slow
+  interval: 60s
+  timeout: 30s
+  retries: 5
+  start_period: 120s
+
+services:
+  # === DATABASES ===
+
+  postgres:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hydra} -d ${POSTGRES_DB:-hydra}"]
+
+  redis:
+    healthcheck:
+      <<: *healthcheck-fast
+      test: ["CMD", "redis-cli", "--pass", "${REDIS_PASSWORD}", "ping"]
+
+  qdrant:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:6333/health | grep -q ok || exit 1"]
+
+  meilisearch:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:7700/health | grep -q available || exit 1"]
+
+  # === INFERENCE SERVICES ===
+
+  litellm:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:4000/health || exit 1"]
+
+  ollama:
+    healthcheck:
+      <<: *healthcheck-slow
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      start_period: 180s  # Ollama can take time to load models
+
+  # === OBSERVABILITY ===
+
+  prometheus:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
+
+  grafana:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health | grep -q ok || exit 1"]
+
+  loki:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
+
+  alertmanager:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9093/-/healthy || exit 1"]
+
+  promtail:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9080/ready || exit 1"]
+
+  # === AUTOMATION ===
+
+  n8n:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:5678/healthz || exit 1"]
+
+  searxng:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:8888/healthz || exit 1"]
+
+  firecrawl:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:3005/health || exit 1"]
+
+  docling:
+    healthcheck:
+      <<: *healthcheck-slow
+      test: ["CMD-SHELL", "curl -sf http://localhost:5001/health || exit 1"]
+      start_period: 180s
+
+  # === WEB UIs ===
+
+  open-webui:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/ || exit 1"]
+
+  sillytavern:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/ || exit 1"]
+
+  perplexica:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:3030/ || exit 1"]
+
+  # === MEDIA ===
+
+  sonarr:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:8989/ping || exit 1"]
+
+  radarr:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:7878/ping || exit 1"]
+
+  prowlarr:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:9696/ping || exit 1"]
+
+  lidarr:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:8686/ping || exit 1"]
+
+  bazarr:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:6767/ping || exit 1"]
+
+  qbittorrent:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:8082/ || exit 1"]
+
+  sabnzbd:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:8085/ || exit 1"]
+
+  # === HOME AUTOMATION ===
+
+  homeassistant:
+    healthcheck:
+      <<: *healthcheck-slow
+      test: ["CMD-SHELL", "curl -sf http://localhost:8123/api/ || exit 1"]
+      start_period: 180s
+
+  # === UTILITIES ===
+
+  portainer:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9000/api/status || exit 1"]
+
+  adguard:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/ || exit 1"]
+
+  vaultwarden:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
+
+  miniflux:
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/healthcheck || exit 1"]
+
+  kokoro-tts:
+    healthcheck:
+      <<: *healthcheck-slow
+      test: ["CMD-SHELL", "curl -sf http://localhost:8880/ || exit 1"]
+      start_period: 120s
+
+  # === CUSTOM HYDRA SERVICES ===
+
+  hydra-health:
+    healthcheck:
+      <<: *healthcheck-fast
+      test: ["CMD-SHELL", "curl -sf http://localhost:8600/live || exit 1"]
+
+  hydra-alerts:
+    healthcheck:
+      <<: *healthcheck-fast
+      test: ["CMD-SHELL", "curl -sf http://localhost:9095/health || exit 1"]

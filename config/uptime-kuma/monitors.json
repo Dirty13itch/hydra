@@ -1,0 +1,393 @@
+{
+  "version": "1.23.0",
+  "notificationList": [],
+  "monitorList": [
+    {
+      "name": "TabbyAPI",
+      "type": "http",
+      "url": "http://192.168.1.250:5000/health",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["inference", "hydra-ai"]
+    },
+    {
+      "name": "Open WebUI",
+      "type": "http",
+      "url": "http://192.168.1.250:3000",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["ai", "hydra-ai"]
+    },
+    {
+      "name": "Ollama",
+      "type": "http",
+      "url": "http://192.168.1.203:11434/api/version",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["inference", "hydra-compute"]
+    },
+    {
+      "name": "ComfyUI",
+      "type": "http",
+      "url": "http://192.168.1.203:8188",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["creative", "hydra-compute"]
+    },
+    {
+      "name": "LiteLLM",
+      "type": "http",
+      "url": "http://192.168.1.244:4000/health",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["inference", "hydra-storage"]
+    },
+    {
+      "name": "PostgreSQL",
+      "type": "port",
+      "hostname": "192.168.1.244",
+      "port": 5432,
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["database", "hydra-storage"]
+    },
+    {
+      "name": "Redis",
+      "type": "port",
+      "hostname": "192.168.1.244",
+      "port": 6379,
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["database", "hydra-storage"]
+    },
+    {
+      "name": "Qdrant",
+      "type": "http",
+      "url": "http://192.168.1.244:6333/health",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["database", "hydra-storage"]
+    },
+    {
+      "name": "n8n",
+      "type": "http",
+      "url": "http://192.168.1.244:5678/healthz",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["automation", "hydra-storage"]
+    },
+    {
+      "name": "Prometheus",
+      "type": "http",
+      "url": "http://192.168.1.244:9090/-/healthy",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["monitoring", "hydra-storage"]
+    },
+    {
+      "name": "Grafana",
+      "type": "http",
+      "url": "http://192.168.1.244:3003/api/health",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["monitoring", "hydra-storage"]
+    },
+    {
+      "name": "Alertmanager",
+      "type": "http",
+      "url": "http://192.168.1.244:9093/-/healthy",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["monitoring", "hydra-storage"]
+    },
+    {
+      "name": "Loki",
+      "type": "http",
+      "url": "http://192.168.1.244:3100/ready",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["monitoring", "hydra-storage"]
+    },
+    {
+      "name": "Letta",
+      "type": "http",
+      "url": "http://192.168.1.244:8283/v1/health",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["ai", "hydra-storage"]
+    },
+    {
+      "name": "SearXNG",
+      "type": "http",
+      "url": "http://192.168.1.244:8888/healthz",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["search", "hydra-storage"]
+    },
+    {
+      "name": "Firecrawl",
+      "type": "http",
+      "url": "http://192.168.1.244:3005/health",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["search", "hydra-storage"]
+    },
+    {
+      "name": "Docling",
+      "type": "http",
+      "url": "http://192.168.1.244:5001/health",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["search", "hydra-storage"]
+    },
+    {
+      "name": "Miniflux",
+      "type": "http",
+      "url": "http://192.168.1.244:8180/healthcheck",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["media", "hydra-storage"]
+    },
+    {
+      "name": "SillyTavern",
+      "type": "http",
+      "url": "http://192.168.1.244:8000",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["creative", "hydra-storage"]
+    },
+    {
+      "name": "Kokoro TTS",
+      "type": "http",
+      "url": "http://192.168.1.244:8880/health",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["ai", "hydra-storage"]
+    },
+    {
+      "name": "Perplexica",
+      "type": "http",
+      "url": "http://192.168.1.244:3030",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["search", "hydra-storage"]
+    },
+    {
+      "name": "Home Assistant",
+      "type": "http",
+      "url": "http://192.168.1.244:8123",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["home", "hydra-storage"]
+    },
+    {
+      "name": "Plex",
+      "type": "http",
+      "url": "http://192.168.1.244:32400/identity",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["media", "hydra-storage"]
+    },
+    {
+      "name": "Stash",
+      "type": "http",
+      "url": "http://192.168.1.244:9999",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["media", "hydra-storage"]
+    },
+    {
+      "name": "qBittorrent",
+      "type": "http",
+      "url": "http://192.168.1.244:8082",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["downloads", "hydra-storage"]
+    },
+    {
+      "name": "SABnzbd",
+      "type": "http",
+      "url": "http://192.168.1.244:8085",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["downloads", "hydra-storage"]
+    },
+    {
+      "name": "Prowlarr",
+      "type": "http",
+      "url": "http://192.168.1.244:9696",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["arr", "hydra-storage"]
+    },
+    {
+      "name": "Sonarr",
+      "type": "http",
+      "url": "http://192.168.1.244:8989/ping",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["arr", "hydra-storage"]
+    },
+    {
+      "name": "Radarr",
+      "type": "http",
+      "url": "http://192.168.1.244:7878/ping",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["arr", "hydra-storage"]
+    },
+    {
+      "name": "Lidarr",
+      "type": "http",
+      "url": "http://192.168.1.244:8686/ping",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["arr", "hydra-storage"]
+    },
+    {
+      "name": "Bazarr",
+      "type": "http",
+      "url": "http://192.168.1.244:6767",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["arr", "hydra-storage"]
+    },
+    {
+      "name": "Portainer",
+      "type": "http",
+      "url": "http://192.168.1.244:9000",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["infrastructure", "hydra-storage"]
+    },
+    {
+      "name": "Homepage",
+      "type": "http",
+      "url": "http://192.168.1.244:3333",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["infrastructure", "hydra-storage"]
+    },
+    {
+      "name": "AdGuard",
+      "type": "port",
+      "hostname": "192.168.1.244",
+      "port": 53,
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["infrastructure", "hydra-storage"]
+    },
+    {
+      "name": "Vaultwarden",
+      "type": "http",
+      "url": "https://192.168.1.244:8444",
+      "ignoreTls": true,
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["security", "hydra-storage"]
+    },
+    {
+      "name": "Hydra Tools API",
+      "type": "http",
+      "url": "http://192.168.1.244:8700/health",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["core", "hydra-storage"]
+    },
+    {
+      "name": "Hydra MCP Proxy",
+      "type": "http",
+      "url": "http://192.168.1.244:8600/health",
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["core", "hydra-storage"]
+    },
+    {
+      "name": "hydra-ai Node",
+      "type": "port",
+      "hostname": "192.168.1.250",
+      "port": 22,
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["node", "hydra-ai"]
+    },
+    {
+      "name": "hydra-compute Node",
+      "type": "port",
+      "hostname": "192.168.1.203",
+      "port": 22,
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["node", "hydra-compute"]
+    },
+    {
+      "name": "hydra-storage Node",
+      "type": "port",
+      "hostname": "192.168.1.244",
+      "port": 22,
+      "interval": 60,
+      "retryInterval": 60,
+      "maxretries": 3,
+      "tags": ["node", "hydra-storage"]
+    }
+  ],
+  "tags": [
+    {"name": "inference", "color": "#dc2626"},
+    {"name": "ai", "color": "#9333ea"},
+    {"name": "creative", "color": "#ec4899"},
+    {"name": "database", "color": "#0284c7"},
+    {"name": "automation", "color": "#059669"},
+    {"name": "monitoring", "color": "#ca8a04"},
+    {"name": "search", "color": "#0891b2"},
+    {"name": "media", "color": "#7c3aed"},
+    {"name": "downloads", "color": "#475569"},
+    {"name": "arr", "color": "#f97316"},
+    {"name": "infrastructure", "color": "#64748b"},
+    {"name": "security", "color": "#ef4444"},
+    {"name": "core", "color": "#22c55e"},
+    {"name": "node", "color": "#3b82f6"},
+    {"name": "home", "color": "#14b8a6"},
+    {"name": "hydra-ai", "color": "#f43f5e"},
+    {"name": "hydra-compute", "color": "#8b5cf6"},
+    {"name": "hydra-storage", "color": "#06b6d4"}
+  ]
+}

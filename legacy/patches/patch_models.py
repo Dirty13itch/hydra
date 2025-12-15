@@ -15,7 +15,7 @@ PROMETHEUS_LINE = "PROMETHEUS_URL = "
 CONSTANTS = """
 # Model service URLs
 TABBY_API_URL = "http://192.168.1.250:5000"
-OLLAMA_COMPUTE_URL = "http://192.168.1.175:11434"
+OLLAMA_COMPUTE_URL = "http://192.168.1.203:11434"
 """
 pos = content.find(PROMETHEUS_LINE)
 if pos > 0:

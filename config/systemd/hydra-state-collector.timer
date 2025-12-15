@@ -1,0 +1,20 @@
+[Unit]
+Description=Hydra Cluster State Collector Timer
+Documentation=https://github.com/shaun/hydra
+
+[Timer]
+# Run every 15 minutes
+OnBootSec=1min
+OnUnitActiveSec=15min
+
+# Randomized delay to prevent thundering herd
+RandomizedDelaySec=30
+
+# Persistent - run immediately if a run was missed
+Persistent=true
+
+# Accuracy - allow some leeway for better batching
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

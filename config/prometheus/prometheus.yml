@@ -1,0 +1,244 @@
+# Hydra Cluster Prometheus Configuration
+# Deploy to hydra-storage:/mnt/user/appdata/hydra-stack/prometheus/prometheus.yml
+#
+# Scrapes metrics from all cluster nodes and services.
+# Alert rules are in rules/hydra-alerts.yml
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'hydra'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - '192.168.1.244:9093'
+
+# Rule files
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+# Scrape configurations
+scrape_configs:
+  # ===========================================
+  # PROMETHEUS SELF-MONITORING
+  # ===========================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          node: 'hydra-storage'
+
+  # ===========================================
+  # NODE EXPORTERS (System Metrics)
+  # ===========================================
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['192.168.1.250:9100']
+        labels:
+          node: 'hydra-ai'
+          role: 'inference-primary'
+      - targets: ['192.168.1.203:9100']
+        labels:
+          node: 'hydra-compute'
+          role: 'inference-secondary'
+      - targets: ['192.168.1.244:9100']
+        labels:
+          node: 'hydra-storage'
+          role: 'storage'
+
+  # ===========================================
+  # GPU METRICS
+  # ===========================================
+  - job_name: 'nvidia-gpu'
+    scrape_interval: 30s
+    static_configs:
+      # hydra-ai: DCGM exporter (or nvidia-smi-exporter)
+      - targets: ['192.168.1.250:9835']
+        labels:
+          node: 'hydra-ai'
+          gpus: '5090,4090'
+      # hydra-compute: nvidia-smi-exporter (Blackwell compatible)
+      - targets: ['192.168.1.203:9835']
+        labels:
+          node: 'hydra-compute'
+          gpus: '5070ti,3060'
+
+  # ===========================================
+  # INFERENCE SERVICES
+  # ===========================================
+  - job_name: 'tabbyapi'
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['192.168.1.250:5000']
+        labels:
+          service: 'tabbyapi'
+          node: 'hydra-ai'
+    # TabbyAPI may not have /metrics endpoint - use probe
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+
+  - job_name: 'ollama'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['192.168.1.203:11434']
+        labels:
+          service: 'ollama'
+          node: 'hydra-compute'
+    # Ollama doesn't expose Prometheus metrics natively
+    # Use blackbox prober or custom exporter
+
+  - job_name: 'litellm'
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['192.168.1.244:4000']
+        labels:
+          service: 'litellm'
+          node: 'hydra-storage'
+
+  # ===========================================
+  # DATABASE METRICS
+  # ===========================================
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['192.168.1.244:9187']
+        labels:
+          service: 'postgresql'
+          node: 'hydra-storage'
+
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['192.168.1.244:9121']
+        labels:
+          service: 'redis'
+          node: 'hydra-storage'
+
+  - job_name: 'qdrant'
+    scrape_interval: 30s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['192.168.1.244:6333']
+        labels:
+          service: 'qdrant'
+          node: 'hydra-storage'
+
+  # ===========================================
+  # CONTAINER METRICS
+  # ===========================================
+  - job_name: 'cadvisor'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['192.168.1.244:8080']
+        labels:
+          node: 'hydra-storage'
+
+  # ===========================================
+  # BLACKBOX PROBES (HTTP/TCP health checks)
+  # ===========================================
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        # Inference
+        - http://192.168.1.250:5000/health          # TabbyAPI
+        - http://192.168.1.203:11434/api/tags       # Ollama
+        - http://192.168.1.244:4000/health          # LiteLLM
+        # Databases
+        - http://192.168.1.244:6333/health          # Qdrant
+        - http://192.168.1.244:7700/health          # Meilisearch
+        # Services
+        - http://192.168.1.244:8888/healthz         # SearXNG
+        - http://192.168.1.244:5678/healthz         # n8n
+        - http://192.168.1.244:3003/api/health      # Grafana
+        - http://192.168.1.244:3100/ready           # Loki
+        - http://192.168.1.203:8188/system_stats    # ComfyUI
+        # Web UIs
+        - http://192.168.1.244:3000                 # Open WebUI (on hydra-ai, proxied)
+        - http://192.168.1.244:8180                 # Miniflux
+        - http://192.168.1.244:3030                 # Perplexica
+        labels:
+          probe_type: 'http'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: '192.168.1.244:9115'  # Blackbox exporter
+
+  - job_name: 'blackbox-tcp'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+        - 192.168.1.244:5432    # PostgreSQL
+        - 192.168.1.244:6379    # Redis
+        - 192.168.1.244:6334    # Qdrant gRPC
+        labels:
+          probe_type: 'tcp'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: '192.168.1.244:9115'
+
+  # ===========================================
+  # LOKI (Log aggregation)
+  # ===========================================
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['192.168.1.244:3100']
+        labels:
+          service: 'loki'
+          node: 'hydra-storage'
+
+  # ===========================================
+  # MEDIA SERVICES
+  # ===========================================
+  - job_name: 'media-services'
+    scrape_interval: 60s
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://192.168.1.244:8989/ping    # Sonarr
+        - http://192.168.1.244:7878/ping    # Radarr
+        - http://192.168.1.244:8686/ping    # Lidarr
+        - http://192.168.1.244:9696/ping    # Prowlarr
+        - http://192.168.1.244:6767/ping    # Bazarr
+        labels:
+          category: 'media'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: '192.168.1.244:9115'
+
+  # ===========================================
+  # HOME AUTOMATION
+  # ===========================================
+  - job_name: 'homeassistant'
+    scrape_interval: 60s
+    bearer_token_file: /etc/prometheus/ha_token  # Optional: for authenticated endpoints
+    static_configs:
+      - targets: ['192.168.1.244:8123']
+        labels:
+          service: 'homeassistant'
+          node: 'hydra-storage'

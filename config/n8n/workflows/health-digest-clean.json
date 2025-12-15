@@ -1,0 +1,112 @@
+{
+  "name": "Hydra Daily Health Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "cronExpression", "expression": "0 8 * * *"}]
+        }
+      },
+      "id": "schedule-1",
+      "name": "Daily 8AM CST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8600/health/full",
+        "options": {"timeout": 60000}
+      },
+      "id": "http-1",
+      "name": "Get MCP Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:9090/api/v1/query",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{"name": "query", "value": "up"}]
+        },
+        "options": {"timeout": 30000}
+      },
+      "id": "http-2",
+      "name": "Get Prometheus Targets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 500]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build comprehensive health digest\nconst mcpHealth = $('Get MCP Health').first().json || {};\nconst promData = $('Get Prometheus Targets').first().json || {};\nconst timestamp = new Date();\nconst dateStr = timestamp.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });\nconst timeStr = timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago' });\n\n// Prometheus targets\nconst promResults = promData?.data?.result || [];\nconst targetsUp = promResults.filter(r => r.value?.[1] === '1').length;\nconst targetsTotal = promResults.length;\n\n// Node status\nconst nodes = mcpHealth.nodes || {};\nlet nodeStatus = [];\nfor (const [name, node] of Object.entries(nodes)) {\n  const status = node.reachable ? '✅' : '❌';\n  nodeStatus.push(`${status} ${name}`);\n}\n\n// Docker status\nconst docker = mcpHealth.docker || {};\nconst containersHealthy = docker.healthy || 0;\nconst containersTotal = docker.total || 0;\nconst containersUnhealthy = docker.unhealthy || 0;\n\n// Health percentage\nconst healthPct = mcpHealth.health_summary?.health_percentage || 0;\n\n// Build report\nlet report = `# Hydra Daily Health Digest\\n`;\nreport += `**${dateStr}** at ${timeStr} CST\\n\\n`;\nreport += `## Overall Health: ${healthPct}%\\n\\n`;\nreport += `### Nodes\\n`;\nreport += nodeStatus.join('\\n') + '\\n\\n';\nreport += `### Containers\\n`;\nreport += `- Total: ${containersTotal}\\n`;\nreport += `- Healthy: ${containersHealthy}\\n`;\nreport += `- Unhealthy: ${containersUnhealthy}\\n\\n`;\nreport += `### Prometheus\\n`;\nreport += `- Targets UP: ${targetsUp}/${targetsTotal}\\n\\n`;\n\n// Alerts/warnings\nif (containersUnhealthy > 0 || healthPct < 90) {\n  report += `### ⚠️ Warnings\\n`;\n  if (containersUnhealthy > 0) report += `- ${containersUnhealthy} unhealthy containers\\n`;\n  if (healthPct < 90) report += `- Cluster health below 90%\\n`;\n}\n\nreturn {\n  json: {\n    report,\n    healthPct,\n    containersTotal,\n    containersHealthy,\n    containersUnhealthy,\n    targetsUp,\n    targetsTotal,\n    timestamp: timestamp.toISOString()\n  }\n};"
+      },
+      "id": "code-1",
+      "name": "Build Digest Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 400]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "filePath": "/data/health/daily-digest.md",
+        "options": {}
+      },
+      "id": "write-1",
+      "name": "Save Report",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [780, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8283/v1/agents/agent-b3fb1747-1a5b-4c94-b713-11d6403350bf/archival-memory",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "Content-Type", "value": "application/json"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `[DAILY DIGEST] Health: ${$json.healthPct}% | Containers: ${$json.containersHealthy}/${$json.containersTotal} | Targets: ${$json.targetsUp}/${$json.targetsTotal}` }) }}",
+        "options": {"timeout": 30000}
+      },
+      "id": "http-3",
+      "name": "Log to Letta Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 400],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Daily 8AM CST": {
+      "main": [[
+        {"node": "Get MCP Health", "type": "main", "index": 0},
+        {"node": "Get Prometheus Targets", "type": "main", "index": 0}
+      ]]
+    },
+    "Get MCP Health": {
+      "main": [[{"node": "Build Digest Report", "type": "main", "index": 0}]]
+    },
+    "Get Prometheus Targets": {
+      "main": [[{"node": "Build Digest Report", "type": "main", "index": 0}]]
+    },
+    "Build Digest Report": {
+      "main": [[{"node": "Save Report", "type": "main", "index": 0}]]
+    },
+    "Save Report": {
+      "main": [[{"node": "Log to Letta Memory", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Chicago"
+  }
+}

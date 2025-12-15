@@ -1,0 +1,215 @@
+# Home Assistant Configuration for Hydra Cluster Monitoring
+#
+# Add these configurations to your existing configuration.yaml
+# or include them with: !include hydra_cluster.yaml
+#
+# Prerequisites:
+# - RESTful integration enabled
+# - Command line integration enabled (for SSH sensors)
+
+# =============================================================================
+# REST Sensors for Cluster Health
+# =============================================================================
+
+rest:
+  # Cluster Health Summary
+  - resource: http://192.168.1.244:8600/health/summary
+    scan_interval: 60
+    sensor:
+      - name: "Hydra Cluster Status"
+        value_template: "{{ value_json.status }}"
+        json_attributes:
+          - healthy
+          - unhealthy
+          - degraded
+          - total
+          - critical_down
+          - timestamp
+
+      - name: "Hydra Services Healthy"
+        value_template: "{{ value_json.healthy }}"
+        unit_of_measurement: "services"
+
+      - name: "Hydra Services Unhealthy"
+        value_template: "{{ value_json.unhealthy }}"
+        unit_of_measurement: "services"
+
+  # TabbyAPI Status
+  - resource: http://192.168.1.250:5000/v1/model
+    scan_interval: 120
+    sensor:
+      - name: "TabbyAPI Model"
+        value_template: "{{ value_json.model_name | default('No model') }}"
+        json_attributes:
+          - max_seq_len
+          - cache_size
+
+  # Ollama Models
+  - resource: http://192.168.1.203:11434/api/tags
+    scan_interval: 300
+    sensor:
+      - name: "Ollama Models Count"
+        value_template: "{{ value_json.models | length }}"
+        unit_of_measurement: "models"
+
+  # LiteLLM Health
+  - resource: http://192.168.1.244:4000/health
+    scan_interval: 60
+    binary_sensor:
+      - name: "LiteLLM Available"
+        value_template: "{{ value_json.status == 'healthy' }}"
+        device_class: connectivity
+
+  # Qdrant Health
+  - resource: http://192.168.1.244:6333/health
+    scan_interval: 60
+    binary_sensor:
+      - name: "Qdrant Available"
+        value_template: "{{ 'ok' in value_json | string }}"
+        device_class: connectivity
+
+# =============================================================================
+# Template Sensors
+# =============================================================================
+
+template:
+  - sensor:
+      # Overall cluster health score
+      - name: "Hydra Health Score"
+        unit_of_measurement: "%"
+        state: >
+          {% set healthy = states('sensor.hydra_services_healthy') | int(0) %}
+          {% set total = state_attr('sensor.hydra_cluster_status', 'total') | int(1) %}
+          {{ ((healthy / total) * 100) | round(0) }}
+        icon: >
+          {% if this.state | int > 90 %}
+            mdi:check-circle
+          {% elif this.state | int > 70 %}
+            mdi:alert-circle
+          {% else %}
+            mdi:close-circle
+          {% endif %}
+
+      # Cluster status text
+      - name: "Hydra Status Text"
+        state: >
+          {% set status = states('sensor.hydra_cluster_status') %}
+          {% set unhealthy = states('sensor.hydra_services_unhealthy') | int(0) %}
+          {% if status == 'healthy' %}
+            All systems operational
+          {% elif status == 'degraded' %}
+            {{ unhealthy }} service(s) degraded
+          {% else %}
+            Critical: {{ unhealthy }} service(s) down
+          {% endif %}
+
+  - binary_sensor:
+      # Critical services down alert
+      - name: "Hydra Critical Alert"
+        state: >
+          {{ state_attr('sensor.hydra_cluster_status', 'critical_down') | length > 0 }}
+        device_class: problem
+        icon: mdi:alert-octagon
+
+      # Node availability
+      - name: "Hydra AI Node Available"
+        state: "{{ is_state('binary_sensor.hydra_ai_ping', 'on') }}"
+        device_class: connectivity
+
+      - name: "Hydra Compute Node Available"
+        state: "{{ is_state('binary_sensor.hydra_compute_ping', 'on') }}"
+        device_class: connectivity
+
+      - name: "Hydra Storage Node Available"
+        state: "{{ is_state('binary_sensor.hydra_storage_ping', 'on') }}"
+        device_class: connectivity
+
+# =============================================================================
+# Ping Sensors for Node Availability
+# =============================================================================
+
+binary_sensor:
+  - platform: ping
+    host: 192.168.1.250
+    name: "Hydra AI Ping"
+    count: 2
+    scan_interval: 30
+
+  - platform: ping
+    host: 192.168.1.203
+    name: "Hydra Compute Ping"
+    count: 2
+    scan_interval: 30
+
+  - platform: ping
+    host: 192.168.1.244
+    name: "Hydra Storage Ping"
+    count: 2
+    scan_interval: 30
+
+# =============================================================================
+# Command Line Sensors (GPU via SSH)
+# =============================================================================
+
+command_line:
+  # GPU Temperature - hydra-ai
+  - sensor:
+      name: "Hydra AI GPU 0 Temperature"
+      command: "ssh -o ConnectTimeout=5 typhon@192.168.1.250 'nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits -i 0' 2>/dev/null || echo 0"
+      unit_of_measurement: "°C"
+      scan_interval: 60
+      value_template: "{{ value | int }}"
+
+  - sensor:
+      name: "Hydra AI GPU 1 Temperature"
+      command: "ssh -o ConnectTimeout=5 typhon@192.168.1.250 'nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits -i 1' 2>/dev/null || echo 0"
+      unit_of_measurement: "°C"
+      scan_interval: 60
+      value_template: "{{ value | int }}"
+
+  # GPU Power - hydra-ai
+  - sensor:
+      name: "Hydra AI GPU Power"
+      command: "ssh -o ConnectTimeout=5 typhon@192.168.1.250 'nvidia-smi --query-gpu=power.draw --format=csv,noheader,nounits' 2>/dev/null | awk '{sum+=$1} END {print sum}' || echo 0"
+      unit_of_measurement: "W"
+      scan_interval: 30
+      value_template: "{{ value | float | round(0) }}"
+
+  # GPU VRAM - hydra-ai
+  - sensor:
+      name: "Hydra AI VRAM Used"
+      command: "ssh -o ConnectTimeout=5 typhon@192.168.1.250 'nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits' 2>/dev/null | awk '{sum+=$1} END {print sum/1024}' || echo 0"
+      unit_of_measurement: "GB"
+      scan_interval: 60
+      value_template: "{{ value | float | round(1) }}"
+
+  # GPU Temperature - hydra-compute
+  - sensor:
+      name: "Hydra Compute GPU 0 Temperature"
+      command: "ssh -o ConnectTimeout=5 typhon@192.168.1.203 'nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits -i 0' 2>/dev/null || echo 0"
+      unit_of_measurement: "°C"
+      scan_interval: 60
+      value_template: "{{ value | int }}"
+
+# =============================================================================
+# Input Helpers for Control
+# =============================================================================
+
+input_select:
+  hydra_model_preset:
+    name: "Hydra Model Preset"
+    options:
+      - llama-70b-default
+      - llama-70b-long
+      - llama-8b-fast
+      - deepseek-coder
+      - qwen-72b
+      - creative
+    initial: llama-70b-default
+    icon: mdi:brain
+
+input_boolean:
+  hydra_notifications:
+    name: "Hydra Cluster Notifications"
+    initial: true
+    icon: mdi:bell

@@ -1,0 +1,339 @@
+{
+  "name": "Scheduled Database Backup",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-trigger",
+      "name": "Daily at 3 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "docker exec hydra-postgres pg_dumpall -U hydra | gzip > /mnt/user/backups/postgres_all_$(date +%Y%m%d_%H%M%S).sql.gz && echo '{\"status\": \"success\", \"database\": \"postgresql\", \"type\": \"full\"}'"
+      },
+      "id": "backup-postgres",
+      "name": "Backup PostgreSQL",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        500,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "command": "docker exec hydra-redis redis-cli BGSAVE && sleep 3 && cp /mnt/user/appdata/redis/data/dump.rdb /mnt/user/backups/redis_$(date +%Y%m%d_%H%M%S).rdb && echo '{\"status\": \"success\", \"database\": \"redis\", \"type\": \"snapshot\"}'"
+      },
+      "id": "backup-redis",
+      "name": "Backup Redis",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        500,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "command": "curl -X POST 'http://localhost:6333/snapshots' && mkdir -p /mnt/user/backups/qdrant_$(date +%Y%m%d_%H%M%S) && cp -r /mnt/user/appdata/qdrant/snapshots/* /mnt/user/backups/qdrant_$(date +%Y%m%d_%H%M%S)/ && echo '{\"status\": \"success\", \"database\": \"qdrant\", \"type\": \"snapshot\"}'"
+      },
+      "id": "backup-qdrant",
+      "name": "Backup Qdrant",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        500,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ {\n  timestamp: new Date().toISOString(),\n  backups: [\n    $('Backup PostgreSQL').item.json,\n    $('Backup Redis').item.json,\n    $('Backup Qdrant').item.json\n  ],\n  all_success: true\n} }}",
+        "options": {}
+      },
+      "id": "collect-results",
+      "name": "Collect Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        740,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "command": "find /mnt/user/backups -type f -mtime +30 -delete && find /mnt/user/backups -type d -empty -delete && echo '{\"status\": \"cleanup_complete\", \"retention_days\": 30}'"
+      },
+      "id": "cleanup-old",
+      "name": "Cleanup Old Backups",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        960,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "scheduled_backup"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify({ backups: $('Collect Results').item.json.backups, cleanup: $json }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-activity",
+      "name": "Log Activity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1180,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Collect Results').item.json.all_success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-success",
+      "name": "All Successful?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/alerts/trigger",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "severity",
+              "value": "critical"
+            },
+            {
+              "name": "title",
+              "value": "Database Backup Failed"
+            },
+            {
+              "name": "message",
+              "value": "One or more database backups failed. Check logs for details."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "alert-failure",
+      "name": "Send Failure Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1400,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "command": "du -sh /mnt/user/backups/* | tail -10"
+      },
+      "id": "get-backup-sizes",
+      "name": "Get Backup Sizes",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        350
+      ]
+    }
+  ],
+  "connections": {
+    "Daily at 3 AM": {
+      "main": [
+        [
+          {
+            "node": "Backup PostgreSQL",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Backup Redis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Backup Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backup PostgreSQL": {
+      "main": [
+        [
+          {
+            "node": "Collect Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backup Redis": {
+      "main": [
+        [
+          {
+            "node": "Collect Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backup Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Collect Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Results": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Old Backups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Old Backups": {
+      "main": [
+        [
+          {
+            "node": "Log Activity",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Success?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Backup Sizes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Success?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "executionTimeout": 1800
+  },
+  "tags": [
+    {
+      "name": "backup",
+      "id": "6"
+    },
+    {
+      "name": "scheduled",
+      "id": "5"
+    },
+    {
+      "name": "critical",
+      "id": "7"
+    }
+  ],
+  "versionId": "51570f50-07c0-4fc6-ac64-7631483c3efb",
+  "id": "35243df5c4d7457aa",
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

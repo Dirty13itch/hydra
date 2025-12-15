@@ -1,0 +1,235 @@
+# Hydra Media Stack - Docker Compose
+# Deploy on hydra-storage (Unraid 192.168.1.244)
+#
+# This stack manages media acquisition and playback services.
+# Requires VPN (Gluetun) for torrent traffic - see download-stack.yml
+
+version: "3.9"
+
+x-common-labels: &common-labels
+  com.hydra.stack: "media"
+  com.hydra.managed: "true"
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+x-logging: &default-logging
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-common-env: &common-env
+  PUID: 1000
+  PGID: 1000
+  TZ: America/Chicago
+
+networks:
+  hydra-net:
+    external: true
+
+services:
+  # ===========================================
+  # INDEXER MANAGEMENT
+  # ===========================================
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: hydra-prowlarr
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "indexer-mgmt"
+    environment:
+      <<: *common-env
+    volumes:
+      - /mnt/user/appdata/prowlarr:/config
+    networks:
+      - hydra-net
+    ports:
+      - "9696:9696"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9696/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================
+  # MEDIA MANAGEMENT (*ARR SUITE)
+  # ===========================================
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: hydra-sonarr
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "tv-mgmt"
+    environment:
+      <<: *common-env
+    volumes:
+      - /mnt/user/appdata/sonarr:/config
+      - /mnt/user/data:/data
+    networks:
+      - hydra-net
+    ports:
+      - "8989:8989"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8989/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: hydra-radarr
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "movie-mgmt"
+    environment:
+      <<: *common-env
+    volumes:
+      - /mnt/user/appdata/radarr:/config
+      - /mnt/user/data:/data
+    networks:
+      - hydra-net
+    ports:
+      - "7878:7878"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7878/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: hydra-lidarr
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "music-mgmt"
+    environment:
+      <<: *common-env
+    volumes:
+      - /mnt/user/appdata/lidarr:/config
+      - /mnt/user/data:/data
+    networks:
+      - hydra-net
+    ports:
+      - "8686:8686"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8686/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: hydra-bazarr
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "subtitle-mgmt"
+    environment:
+      <<: *common-env
+    volumes:
+      - /mnt/user/appdata/bazarr:/config
+      - /mnt/user/data:/data
+    networks:
+      - hydra-net
+    ports:
+      - "6767:6767"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6767/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================
+  # MEDIA SERVERS
+  # ===========================================
+
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: hydra-plex
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "media-server"
+    network_mode: host  # Required for DLNA and remote access
+    environment:
+      <<: *common-env
+      VERSION: docker
+      PLEX_CLAIM: ${PLEX_CLAIM:-}
+    volumes:
+      - /mnt/user/appdata/plex:/config
+      - /mnt/user/data/media:/data/media
+    devices:
+      - /dev/dri:/dev/dri  # Intel QuickSync for Arc A380
+    # Ports via host network:
+    # - 32400: Plex Web UI
+
+  stash:
+    image: stashapp/stash:latest
+    container_name: hydra-stash
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "media-organizer"
+    environment:
+      STASH_STASH: /data/
+      STASH_GENERATED: /generated/
+      STASH_METADATA: /metadata/
+      STASH_CACHE: /cache/
+    volumes:
+      - /mnt/user/appdata/stash/config:/root/.stash
+      - /mnt/user/data/stash:/data
+      - /mnt/user/appdata/stash/metadata:/metadata
+      - /mnt/user/appdata/stash/cache:/cache
+      - /mnt/user/appdata/stash/generated:/generated
+    networks:
+      - hydra-net
+    ports:
+      - "9999:9999"
+
+  # ===========================================
+  # REQUEST MANAGEMENT
+  # ===========================================
+
+  overseerr:
+    image: lscr.io/linuxserver/overseerr:latest
+    container_name: hydra-overseerr
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "media-requests"
+    environment:
+      <<: *common-env
+    volumes:
+      - /mnt/user/appdata/overseerr:/config
+    networks:
+      - hydra-net
+    ports:
+      - "5055:5055"
+
+  # ===========================================
+  # METADATA MANAGEMENT
+  # ===========================================
+
+  tautulli:
+    image: lscr.io/linuxserver/tautulli:latest
+    container_name: hydra-tautulli
+    <<: [*restart-policy, *default-logging]
+    labels:
+      <<: *common-labels
+      com.hydra.service: "plex-stats"
+    environment:
+      <<: *common-env
+    volumes:
+      - /mnt/user/appdata/tautulli:/config
+    networks:
+      - hydra-net
+    ports:
+      - "8181:8181"

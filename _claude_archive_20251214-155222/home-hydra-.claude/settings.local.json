@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(ping:*)",
+      "Bash(__NEW_LINE__ echo \"[hydra-ai - 192.168.1.250]\")",
+      "Bash(__NEW_LINE__ echo \"\")",
+      "Bash(for i in 1 2 3 4 5 6)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(if ssh -o ConnectTimeout=10 -o BatchMode=yes typhon@192.168.1.252 \"hostname && uptime\")",
+      "Bash(then)",
+      "Bash(break)",
+      "Bash(else)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(curl:*)",
+      "Bash(python -m json.tool:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

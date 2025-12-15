@@ -36,6 +36,7 @@ export function Header({ version, uptime, refreshInterval = 5000, lastUpdate }: 
   };
 
   const quickLinks = [
+    { href: '/command', label: 'Typhon', color: 'cyan', title: 'Open Typhon Command (New UI)', internal: true },
     { href: 'http://192.168.1.244:3003', label: 'Grafana', color: 'green', title: 'Open Grafana Dashboards' },
     { href: 'http://192.168.1.244:3004', label: 'Uptime', color: 'cyan', title: 'Open Uptime Kuma' },
     { href: 'http://192.168.1.244:3001', label: 'AI Chat', color: 'magenta', title: 'Open AI Chat (Open WebUI)' },
@@ -90,12 +91,13 @@ export function Header({ version, uptime, refreshInterval = 5000, lastUpdate }: 
             <div className="flex items-center gap-1 border-l pl-4" style={{ borderColor: 'var(--hydra-border)' }}>
               {quickLinks.map((link) => {
                 const style = getLinkStyle(link.color);
+                const isInternal = 'internal' in link && link.internal;
                 return (
                   <a
                     key={link.label}
                     href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    target={isInternal ? undefined : '_blank'}
+                    rel={isInternal ? undefined : 'noopener noreferrer'}
                     className="px-2 py-1 rounded text-xs transition-colors hover:opacity-80"
                     style={{ backgroundColor: style.bg, color: style.text }}
                     title={link.title}
@@ -221,12 +223,13 @@ export function Header({ version, uptime, refreshInterval = 5000, lastUpdate }: 
             <div className="grid grid-cols-2 gap-2">
               {quickLinks.map((link) => {
                 const style = getLinkStyle(link.color);
+                const isInternal = 'internal' in link && link.internal;
                 return (
                   <a
                     key={link.label}
                     href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    target={isInternal ? undefined : '_blank'}
+                    rel={isInternal ? undefined : 'noopener noreferrer'}
                     className="p-3 rounded-lg text-sm font-medium transition-colors hover:opacity-80 text-center min-h-[48px] flex items-center justify-center"
                     style={{ backgroundColor: style.bg, color: style.text }}
                     onClick={() => setMobileMenuOpen(false)}

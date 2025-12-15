@@ -1,0 +1,245 @@
+{
+  "name": "Resource Allocation Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:8700/hardware/inventory?refresh=true",
+        "options": {}
+      },
+      "id": "get-hardware",
+      "name": "Get Hardware Inventory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Resource Allocation Policy Checker\n// Validates that resources are being used appropriately\n\nconst inventory = $input.first().json;\nconst alerts = [];\nconst warnings = [];\nconst status = { healthy: true };\n\n// === POLICY RULES ===\n\n// 1. Check hydra-ai GPU usage (should be high - running 70B models)\nconst hydraAiGpus = inventory.nodes['hydra-ai']?.gpus || [];\nfor (const gpu of hydraAiGpus) {\n  const utilization = gpu.memory?.utilization_pct || 0;\n  \n  // Warning if GPU is idle (model not loaded)\n  if (utilization < 10) {\n    warnings.push(`hydra-ai ${gpu.name} is idle (${utilization.toFixed(1)}% VRAM) - no model loaded?`);\n  }\n  \n  // Critical if VRAM is >95% (OOM risk)\n  if (utilization > 95) {\n    alerts.push(`hydra-ai ${gpu.name} VRAM critical: ${utilization.toFixed(1)}% - OOM risk!`);\n    status.healthy = false;\n  }\n  \n  // Warning if temperature is high\n  if (gpu.temperature_c && gpu.temperature_c > 80) {\n    warnings.push(`hydra-ai ${gpu.name} temperature high: ${gpu.temperature_c}\u00b0C`);\n  }\n}\n\n// 2. Check hydra-compute GPU usage\nconst hydraComputeGpus = inventory.nodes['hydra-compute']?.gpus || [];\nfor (const gpu of hydraComputeGpus) {\n  const utilization = gpu.memory?.utilization_pct || 0;\n  \n  // Critical if VRAM is >95%\n  if (utilization > 95) {\n    alerts.push(`hydra-compute GPU ${gpu.index} VRAM critical: ${utilization.toFixed(1)}%`);\n    status.healthy = false;\n  }\n  \n  // Warning if temperature is high\n  if (gpu.temperature_c && gpu.temperature_c > 80) {\n    warnings.push(`hydra-compute GPU ${gpu.index} temperature high: ${gpu.temperature_c}\u00b0C`);\n  }\n}\n\n// 3. Check hydra-storage RAM usage (orchestration hub)\nconst storageRam = inventory.nodes['hydra-storage']?.ram || {};\nconst ramUtilization = storageRam.utilization_pct || 0;\n\nif (ramUtilization > 90) {\n  alerts.push(`hydra-storage RAM critical: ${ramUtilization.toFixed(1)}% used`);\n  status.healthy = false;\n} else if (ramUtilization > 80) {\n  warnings.push(`hydra-storage RAM high: ${ramUtilization.toFixed(1)}% used`);\n}\n\n// 4. Check total VRAM utilization\nconst totalVram = inventory.totals?.vram_gb || 0;\nconst usedVram = inventory.totals?.vram_used_gb || 0;\nconst vramUtilization = inventory.totals?.vram_utilization_pct || 0;\n\nif (vramUtilization > 95) {\n  alerts.push(`Cluster VRAM critical: ${vramUtilization.toFixed(1)}% (${usedVram.toFixed(1)}/${totalVram.toFixed(1)} GB)`);\n  status.healthy = false;\n}\n\n// 5. Check for unexpected GPU activity on hydra-storage\n// (Arc A380 should only be used for Plex transcoding, not AI inference)\nconst storageGpus = inventory.nodes['hydra-storage']?.gpus || [];\nif (storageGpus.length > 0) {\n  for (const gpu of storageGpus) {\n    if (gpu.utilization_pct && gpu.utilization_pct > 50) {\n      warnings.push(`hydra-storage GPU active (${gpu.utilization_pct}%) - should only be Plex transcoding`);\n    }\n  }\n}\n\n// === BUILD RESULT ===\n\nconst result = {\n  timestamp: new Date().toISOString(),\n  status: status.healthy ? 'healthy' : 'critical',\n  alerts: alerts,\n  warnings: warnings,\n  summary: {\n    total_vram_gb: totalVram,\n    vram_used_gb: usedVram,\n    vram_utilization_pct: vramUtilization,\n    storage_ram_utilization_pct: ramUtilization,\n    gpu_count: hydraAiGpus.length + hydraComputeGpus.length,\n  },\n  should_notify: alerts.length > 0,\n  inventory: inventory\n};\n\nreturn [result];"
+      },
+      "id": "check-policy",
+      "name": "Check Resource Policy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.should_notify }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-alerts",
+      "name": "Has Alerts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action_type",
+              "value": "resource_alert"
+            },
+            {
+              "name": "source",
+              "value": "resource-monitor"
+            },
+            {
+              "name": "description",
+              "value": "={{ 'Resource allocation alerts: ' + $json.alerts.join('; ') }}"
+            },
+            {
+              "name": "severity",
+              "value": "high"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify({ alerts: $json.alerts, warnings: $json.warnings, summary: $json.summary }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-alert",
+      "name": "Log Alert to Activity API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        880,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:9093/api/v2/alerts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"labels\": {\n      \"alertname\": \"HydraResourceAllocation\",\n      \"severity\": \"critical\",\n      \"source\": \"resource-monitor\"\n    },\n    \"annotations\": {\n      \"summary\": \"Resource allocation policy violation\",\n      \"description\": \"{{ $json.alerts.join('; ') }}\"\n    }\n  }\n]",
+        "options": {}
+      },
+      "id": "send-alertmanager",
+      "name": "Send to Alertmanager",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        880,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action_type",
+              "value": "resource_check"
+            },
+            {
+              "name": "source",
+              "value": "resource-monitor"
+            },
+            {
+              "name": "description",
+              "value": "={{ 'Resource check: ' + $json.status + ' - VRAM ' + $json.summary.vram_utilization_pct.toFixed(1) + '%, RAM ' + $json.summary.storage_ram_utilization_pct.toFixed(1) + '%' }}"
+            },
+            {
+              "name": "severity",
+              "value": "info"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify($json.summary) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-healthy",
+      "name": "Log Healthy Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        880,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Hardware Inventory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Hardware Inventory": {
+      "main": [
+        [
+          {
+            "node": "Check Resource Policy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Resource Policy": {
+      "main": [
+        [
+          {
+            "node": "Has Alerts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Alerts?": {
+      "main": [
+        [
+          {
+            "node": "Log Alert to Activity API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send to Alertmanager",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Healthy Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "monitoring"
+    },
+    {
+      "name": "resources"
+    }
+  ],
+  "versionId": "674758fc-a7d0-4662-91ed-8fe249925de3",
+  "id": "7cbdb743f2f543038",
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

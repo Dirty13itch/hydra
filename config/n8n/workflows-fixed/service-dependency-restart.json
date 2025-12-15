@@ -1,0 +1,395 @@
+{
+  "name": "Service Dependency Chain Restart",
+  "description": "Intelligently restarts services in dependency order with health verification",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "restart-service",
+        "options": {}
+      },
+      "id": "trigger-restart",
+      "name": "Restart Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        100,
+        300
+      ],
+      "webhookId": "service-restart"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst targetService = body.service || body.target;\nconst restartDependents = body.restart_dependents !== false;\n\n// Service dependency graph\nconst DEPENDENCIES = {\n  'hydra-postgres': {\n    depends_on: [],\n    dependents: ['litellm', 'n8n', 'grafana', 'letta-db'],\n    priority: 1,\n    health_endpoint: null,\n    health_cmd: 'pg_isready -U hydra'\n  },\n  'hydra-redis': {\n    depends_on: [],\n    dependents: ['litellm', 'n8n'],\n    priority: 1,\n    health_endpoint: null,\n    health_cmd: 'redis-cli ping'\n  },\n  'hydra-qdrant': {\n    depends_on: [],\n    dependents: ['litellm', 'perplexica'],\n    priority: 1,\n    health_endpoint: 'http://192.168.1.244:6333/health'\n  },\n  'litellm': {\n    depends_on: ['hydra-postgres', 'hydra-redis'],\n    dependents: ['open-webui', 'hydra-voice', 'n8n'],\n    priority: 2,\n    health_endpoint: 'http://192.168.1.244:4000/health'\n  },\n  'hydra-letta': {\n    depends_on: ['letta-db'],\n    dependents: ['letta-proxy', 'hydra-voice'],\n    priority: 2,\n    health_endpoint: 'http://192.168.1.244:8283/health'\n  },\n  'letta-db': {\n    depends_on: [],\n    dependents: ['hydra-letta'],\n    priority: 1,\n    health_cmd: 'pg_isready -U letta'\n  },\n  'hydra-prometheus': {\n    depends_on: [],\n    dependents: ['grafana', 'alertmanager'],\n    priority: 1,\n    health_endpoint: 'http://192.168.1.244:9090/-/healthy'\n  },\n  'grafana': {\n    depends_on: ['hydra-prometheus', 'hydra-postgres'],\n    dependents: [],\n    priority: 3,\n    health_endpoint: 'http://192.168.1.244:3003/api/health'\n  },\n  'n8n': {\n    depends_on: ['hydra-postgres', 'hydra-redis'],\n    dependents: [],\n    priority: 3,\n    health_endpoint: 'http://192.168.1.244:5678/healthz'\n  }\n};\n\nconst service = DEPENDENCIES[targetService];\nif (!service) {\n  return {\n    error: true,\n    message: `Unknown service: ${targetService}`,\n    known_services: Object.keys(DEPENDENCIES)\n  };\n}\n\n// Build restart plan\nconst plan = [];\n\n// First, ensure dependencies are healthy\nfor (const dep of service.depends_on) {\n  plan.push({\n    action: 'verify_health',\n    service: dep,\n    config: DEPENDENCIES[dep]\n  });\n}\n\n// Restart the target service\nplan.push({\n  action: 'restart',\n  service: targetService,\n  config: service\n});\n\n// Wait for target to be healthy\nplan.push({\n  action: 'wait_healthy',\n  service: targetService,\n  config: service,\n  timeout_seconds: 60\n});\n\n// Optionally restart dependents\nif (restartDependents && service.dependents.length > 0) {\n  // Sort dependents by priority\n  const sortedDependents = service.dependents\n    .filter(d => DEPENDENCIES[d])\n    .sort((a, b) => (DEPENDENCIES[a]?.priority || 99) - (DEPENDENCIES[b]?.priority || 99));\n  \n  for (const dep of sortedDependents) {\n    plan.push({\n      action: 'restart',\n      service: dep,\n      config: DEPENDENCIES[dep]\n    });\n    plan.push({\n      action: 'wait_healthy',\n      service: dep,\n      config: DEPENDENCIES[dep],\n      timeout_seconds: 60\n    });\n  }\n}\n\nreturn {\n  target_service: targetService,\n  restart_dependents: restartDependents,\n  plan: plan,\n  started_at: new Date().toISOString()\n};"
+      },
+      "id": "build-plan",
+      "name": "Build Restart Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-error",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-error",
+      "name": "Has Error?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "return-error",
+      "name": "Return Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const plan = $json.plan;\nreturn plan.map(step => ({ json: step }));"
+      },
+      "id": "expand-plan",
+      "name": "Expand Plan Steps",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-steps",
+      "name": "Loop Steps",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        980,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-restart",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "restart",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-restart",
+      "name": "Is Restart?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=docker restart {{ $json.service }} && echo 'restarted'"
+      },
+      "id": "do-restart",
+      "name": "Execute Restart",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const step = $('Loop Steps').item.json;\nconst endpoint = step.config?.health_endpoint;\n\nif (!endpoint) {\n  // No HTTP health check, assume healthy after restart\n  return { healthy: true, method: 'assumed' };\n}\n\nreturn { \n  check_url: endpoint,\n  service: step.service,\n  timeout: step.timeout_seconds || 60\n};"
+      },
+      "id": "prepare-health-check",
+      "name": "Prepare Health Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.check_url }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "health-check",
+      "name": "Health Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1640,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "service_restart"
+            },
+            {
+              "name": "source",
+              "value": "n8n-automation"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify({ service: $('Build Restart Plan').item.json.target_service, plan_steps: $('Build Restart Plan').item.json.plan.length }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-restart",
+      "name": "Log Restart",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1200,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"service\": \"{{ $('Build Restart Plan').item.json.target_service }}\",\n  \"steps_executed\": {{ $('Build Restart Plan').item.json.plan.length }},\n  \"completed_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "return-success",
+      "name": "Return Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1420,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Restart Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Restart Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Restart Plan": {
+      "main": [
+        [
+          {
+            "node": "Check Error?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Error?": {
+      "main": [
+        [
+          {
+            "node": "Return Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Expand Plan Steps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Plan Steps": {
+      "main": [
+        [
+          {
+            "node": "Loop Steps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Steps": {
+      "main": [
+        [
+          {
+            "node": "Is Restart?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Restart",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Restart?": {
+      "main": [
+        [
+          {
+            "node": "Execute Restart",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Health Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Restart": {
+      "main": [
+        [
+          {
+            "node": "Loop Steps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Health Check": {
+      "main": [
+        [
+          {
+            "node": "Health Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Health Check": {
+      "main": [
+        [
+          {
+            "node": "Loop Steps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Restart": {
+      "main": [
+        [
+          {
+            "node": "Return Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 300
+  },
+  "tags": [
+    {
+      "name": "automation",
+      "id": "4"
+    },
+    {
+      "name": "maintenance",
+      "id": "14"
+    }
+  ],
+  "versionId": "57d361d8-5744-4594-b3a6-9dbb12bd361b",
+  "id": "e5f73cc83e4f42a69",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

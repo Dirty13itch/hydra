@@ -1,0 +1,281 @@
+{
+  "name": "RSS Feed Processor",
+  "description": "Monitors RSS feeds and ingests new articles into Qdrant for knowledge base",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "schedule-check",
+      "name": "Every 4 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// List of RSS feeds to monitor\n// Add your feeds here\nconst feeds = [\n  { name: 'Hacker News - Best', url: 'https://hnrss.org/best', category: 'tech_news' },\n  { name: 'arXiv AI', url: 'http://export.arxiv.org/rss/cs.AI', category: 'research' },\n  { name: 'GitHub Trending', url: 'https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml', category: 'github' },\n  // Add more feeds as needed\n];\n\nreturn feeds.map(f => ({ json: f }));"
+      },
+      "id": "get-feeds",
+      "name": "Get Feed List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-feeds",
+      "name": "Loop Feeds",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "fetch-rss",
+      "name": "Fetch RSS Feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst feedName = $('Loop Feeds').item.json.name;\nconst category = $('Loop Feeds').item.json.category;\n\n// Process last 10 items from feed\nconst processed = items.slice(0, 10).map(item => {\n  const data = item.json;\n  return {\n    title: data.title || '',\n    link: data.link || data.guid || '',\n    description: (data.description || data.content || '').substring(0, 2000),\n    pubDate: data.pubDate || data.isoDate || new Date().toISOString(),\n    feed: feedName,\n    category: category,\n    id: `rss_${category}_${Buffer.from(data.link || data.guid || data.title).toString('base64').substring(0, 20)}`\n  };\n});\n\nreturn processed;"
+      },
+      "id": "process-items",
+      "name": "Process Feed Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-items",
+      "name": "Loop Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:4000/embeddings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"nomic-embed-text\",\n  \"input\": \"{{ $json.title }}. {{ $json.description.substring(0, 500) }}\"\n}",
+        "options": {}
+      },
+      "id": "generate-embedding",
+      "name": "Generate Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1420, 300]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "http://192.168.1.244:6333/collections/knowledge_base/points",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"points\": [{\n    \"id\": \"{{ $('Loop Items').item.json.id }}\",\n    \"vector\": {{ JSON.stringify($json.data?.[0]?.embedding || []) }},\n    \"payload\": {\n      \"title\": \"{{ $('Loop Items').item.json.title }}\",\n      \"content\": \"{{ $('Loop Items').item.json.description.replace(/\"/g, '\\\\\"').substring(0, 1500) }}\",\n      \"url\": \"{{ $('Loop Items').item.json.link }}\",\n      \"source\": \"rss\",\n      \"feed\": \"{{ $('Loop Items').item.json.feed }}\",\n      \"category\": \"{{ $('Loop Items').item.json.category }}\",\n      \"timestamp\": \"{{ $('Loop Items').item.json.pubDate }}\"\n    }\n  }]\n}",
+        "options": {}
+      },
+      "id": "upsert-qdrant",
+      "name": "Upsert to Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1640, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "rss_ingestion"
+            },
+            {
+              "name": "source",
+              "value": "n8n-automation"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify({ feed: $('Loop Feeds').item.json.name, items_processed: $('Loop Items').context.currentRunIndex + 1 }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-ingestion",
+      "name": "Log Ingestion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1640, 450]
+    }
+  ],
+  "connections": {
+    "Every 4 Hours": {
+      "main": [
+        [
+          {
+            "node": "Get Feed List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Feed List": {
+      "main": [
+        [
+          {
+            "node": "Loop Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Feeds": {
+      "main": [
+        [
+          {
+            "node": "Fetch RSS Feed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "Process Feed Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Feed Items": {
+      "main": [
+        [
+          {
+            "node": "Loop Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Items": {
+      "main": [
+        [
+          {
+            "node": "Generate Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Embedding": {
+      "main": [
+        [
+          {
+            "node": "Upsert to Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert to Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Loop Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Chicago"
+  },
+  "tags": [
+    {
+      "name": "knowledge",
+      "id": "8"
+    },
+    {
+      "name": "scheduled",
+      "id": "5"
+    }
+  ]
+}

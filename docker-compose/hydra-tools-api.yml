@@ -1,0 +1,55 @@
+version: "3.8"
+
+# Hydra Tools API - Self-Improvement Services
+# Deploy with: docker-compose -f hydra-tools-api.yml up -d
+
+services:
+  hydra-tools-api:
+    container_name: hydra-tools-api
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.hydra-tools
+    image: hydra-tools-api:latest
+    restart: unless-stopped
+    ports:
+      - "8700:8700"
+    environment:
+      - HYDRA_API_HOST=0.0.0.0
+      - HYDRA_API_PORT=8700
+      - HYDRA_DATA_DIR=/data
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Persistent data for all tools
+      - hydra-tools-data:/data
+      # Access to cluster shared storage (optional)
+      - /mnt/user/appdata/hydra-stack/data:/mnt/data:rw
+    networks:
+      - hydra-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8700/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.hydra-tools.rule=Host(`tools.hydra.local`)"
+      - "traefik.http.services.hydra-tools.loadbalancer.server.port=8700"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+volumes:
+  hydra-tools-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/user/appdata/hydra-tools
+
+networks:
+  hydra-network:
+    external: true

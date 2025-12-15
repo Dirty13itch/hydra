@@ -22,7 +22,7 @@ const serviceDescriptions: Record<string, { description: string; category: strin
   grafana: {
     description: 'Visualization and dashboards for Prometheus metrics. GPU, CPU, memory, and storage monitoring.',
     category: 'Monitoring',
-    url: 'http://192.168.1.244:3000',
+    url: 'http://192.168.1.244:3003',
   },
   letta: {
     description: 'AI agent framework powering the hydra-steward. Provides conversational control and automation.',
@@ -32,7 +32,7 @@ const serviceDescriptions: Record<string, { description: string; category: strin
   ollama: {
     description: 'Local LLM inference server. Hosts AI models like Qwen, Llama, and Mistral on cluster GPUs.',
     category: 'AI',
-    url: 'http://192.168.1.251:11434',
+    url: 'http://192.168.1.203:11434',
   },
   litellm: {
     description: 'OpenAI-compatible API proxy. Unified interface for all AI models in the cluster.',
@@ -47,12 +47,12 @@ const serviceDescriptions: Record<string, { description: string; category: strin
   'open-webui': {
     description: 'Web interface for interacting with Ollama models. Chat UI with model selection.',
     category: 'AI',
-    url: 'http://192.168.1.244:3100',
+    url: 'http://192.168.1.250:3000',
   },
   openwebui: {
     description: 'Web interface for interacting with Ollama models. Chat UI with model selection.',
     category: 'AI',
-    url: 'http://192.168.1.244:3100',
+    url: 'http://192.168.1.250:3000',
   },
   n8n: {
     description: 'Workflow automation platform. Connects services and triggers automated tasks.',
@@ -81,7 +81,7 @@ const serviceDescriptions: Record<string, { description: string; category: strin
   comfyui: {
     description: 'Stable Diffusion workflow UI. Node-based image generation with custom pipelines.',
     category: 'AI',
-    url: 'http://192.168.1.250:8188',
+    url: 'http://192.168.1.203:8188',
   },
   'a1111': {
     description: 'AUTOMATIC1111 Stable Diffusion WebUI. Feature-rich image generation interface.',

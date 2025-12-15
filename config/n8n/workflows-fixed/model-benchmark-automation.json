@@ -1,0 +1,328 @@
+{
+  "name": "Model Benchmark Automation",
+  "description": "Automated benchmarking of LLM models with standardized prompts and metrics collection",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "benchmark-model",
+        "options": {}
+      },
+      "id": "trigger-benchmark",
+      "name": "Benchmark Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        100,
+        300
+      ],
+      "webhookId": "model-benchmark"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst model = body.model || 'tabby-primary';\nconst iterations = body.iterations || 3;\n\n// Standard benchmark prompts\nconst benchmarks = [\n  {\n    name: 'simple_qa',\n    category: 'knowledge',\n    prompt: 'What is the capital of France?',\n    expected_tokens: 20\n  },\n  {\n    name: 'reasoning',\n    category: 'logic',\n    prompt: 'If all roses are flowers and some flowers fade quickly, can we conclude that some roses fade quickly? Explain your reasoning step by step.',\n    expected_tokens: 150\n  },\n  {\n    name: 'code_generation',\n    category: 'code',\n    prompt: 'Write a Python function that finds the nth Fibonacci number using memoization.',\n    expected_tokens: 200\n  },\n  {\n    name: 'summarization',\n    category: 'comprehension',\n    prompt: 'Summarize the key differences between REST and GraphQL APIs in 3 bullet points.',\n    expected_tokens: 100\n  },\n  {\n    name: 'creative',\n    category: 'generation',\n    prompt: 'Write a haiku about artificial intelligence.',\n    expected_tokens: 30\n  }\n];\n\nreturn {\n  model: model,\n  iterations: iterations,\n  benchmarks: benchmarks,\n  started_at: new Date().toISOString()\n};"
+      },
+      "id": "prepare-benchmarks",
+      "name": "Prepare Benchmarks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $json;\nconst benchmarks = config.benchmarks;\nconst iterations = config.iterations;\n\n// Create all benchmark tasks\nconst tasks = [];\nfor (let i = 0; i < iterations; i++) {\n  for (const benchmark of benchmarks) {\n    tasks.push({\n      model: config.model,\n      iteration: i + 1,\n      benchmark_name: benchmark.name,\n      category: benchmark.category,\n      prompt: benchmark.prompt,\n      expected_tokens: benchmark.expected_tokens\n    });\n  }\n}\n\nreturn tasks;"
+      },
+      "id": "expand-tasks",
+      "name": "Expand Tasks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-benchmarks",
+      "name": "Loop Benchmarks",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:4000/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"{{ $json.model }}\",\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"{{ $json.prompt }}\"}\n  ],\n  \"max_tokens\": {{ $json.expected_tokens * 2 }},\n  \"temperature\": 0.7\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "run-inference",
+      "name": "Run Inference",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const task = $('Loop Benchmarks').item.json;\nconst response = $json;\nconst startTime = Date.now();\n\nconst usage = response.usage || {};\nconst choice = response.choices?.[0] || {};\n\nreturn {\n  model: task.model,\n  iteration: task.iteration,\n  benchmark_name: task.benchmark_name,\n  category: task.category,\n  prompt_tokens: usage.prompt_tokens || 0,\n  completion_tokens: usage.completion_tokens || 0,\n  total_tokens: usage.total_tokens || 0,\n  response_length: (choice.message?.content || '').length,\n  finish_reason: choice.finish_reason || 'unknown',\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "extract-metrics",
+      "name": "Extract Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allResults = $input.all().map(i => i.json);\n\n// Group by benchmark\nconst grouped = {};\nfor (const result of allResults) {\n  const key = result.benchmark_name;\n  if (!grouped[key]) {\n    grouped[key] = [];\n  }\n  grouped[key].push(result);\n}\n\n// Calculate statistics\nconst stats = {};\nfor (const [name, results] of Object.entries(grouped)) {\n  const tokens = results.map(r => r.completion_tokens);\n  stats[name] = {\n    category: results[0].category,\n    iterations: results.length,\n    avg_completion_tokens: tokens.reduce((a, b) => a + b, 0) / tokens.length,\n    min_tokens: Math.min(...tokens),\n    max_tokens: Math.max(...tokens)\n  };\n}\n\nconst model = allResults[0]?.model || 'unknown';\nconst totalTokens = allResults.reduce((sum, r) => sum + r.total_tokens, 0);\n\nreturn {\n  model: model,\n  benchmark_date: new Date().toISOString(),\n  total_iterations: allResults.length,\n  total_tokens_used: totalTokens,\n  benchmarks: stats,\n  raw_results: allResults\n};"
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "model_benchmark"
+            },
+            {
+              "name": "source",
+              "value": "n8n-automation"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-benchmark",
+      "name": "Log Benchmark Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1420,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8283/v1/agents/hydra-steward/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"role\": \"system\",\n  \"content\": \"Benchmark completed for model {{ $json.model }}. Total tokens: {{ $json.total_tokens_used }}. Results: {{ JSON.stringify($json.benchmarks) }}\"\n}",
+        "options": {}
+      },
+      "id": "update-letta",
+      "name": "Update Letta Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1640,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Return Results",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1860,
+        450
+      ]
+    }
+  ],
+  "connections": {
+    "Benchmark Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Benchmarks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Benchmarks": {
+      "main": [
+        [
+          {
+            "node": "Expand Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Tasks": {
+      "main": [
+        [
+          {
+            "node": "Loop Benchmarks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Benchmarks": {
+      "main": [
+        [
+          {
+            "node": "Run Inference",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Inference": {
+      "main": [
+        [
+          {
+            "node": "Extract Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Metrics": {
+      "main": [
+        [
+          {
+            "node": "Loop Benchmarks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Log Benchmark Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Benchmark Results": {
+      "main": [
+        [
+          {
+            "node": "Update Letta Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Letta Memory": {
+      "main": [
+        [
+          {
+            "node": "Return Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 600
+  },
+  "tags": [
+    {
+      "name": "intelligence",
+      "id": "9"
+    },
+    {
+      "name": "benchmark",
+      "id": "13"
+    }
+  ],
+  "versionId": "20251982-3bfc-4cd8-a428-a907e0b98bf4",
+  "id": "14b29798e92f4903a",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

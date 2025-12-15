@@ -1,0 +1,151 @@
+{
+  "updatedAt": "2025-12-13T05:46:58.341Z",
+  "createdAt": "2025-12-13T05:46:58.341Z",
+  "id": "eiTXG2Z4eC8Q19n9",
+  "name": "Hydra Daily Health Digest",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-digest",
+      "name": "Daily 8AM CST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:9090/api/v1/query",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "up"
+            }
+          ]
+        }
+      },
+      "id": "get-targets",
+      "name": "Get Prometheus Targets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst results = data?.data?.result || [];\nconst upCount = results.filter(r => r.value?.[1] === \"1\").length;\nconst totalCount = results.length;\nconst date = new Date().toLocaleDateString();\nconst report = `Hydra Health Report - ${date} | Prometheus: ${upCount}/${totalCount} targets UP`;\nreturn {report, upCount, totalCount};"
+      },
+      "id": "build-report",
+      "name": "Build Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Daily 8AM CST": {
+      "main": [
+        [
+          {
+            "node": "Get Prometheus Targets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Prometheus Targets": {
+      "main": [
+        [
+          {
+            "node": "Build Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Chicago"
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "health-digest-v1",
+  "activeVersionId": null,
+  "versionCounter": 1,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2025-12-13T05:46:58.347Z",
+      "createdAt": "2025-12-13T05:46:58.347Z",
+      "role": "workflow:owner",
+      "workflowId": "eiTXG2Z4eC8Q19n9",
+      "projectId": "UTllfRaAzX9mc7qP",
+      "project": {
+        "updatedAt": "2025-12-12T00:44:55.189Z",
+        "createdAt": "2025-12-12T00:24:51.822Z",
+        "id": "UTllfRaAzX9mc7qP",
+        "name": "shaun ulrich <shaunulrich11@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "projectRelations": [
+          {
+            "updatedAt": "2025-12-12T00:24:51.822Z",
+            "createdAt": "2025-12-12T00:24:51.822Z",
+            "userId": "41b6ace1-2cba-42e0-a389-4bbd3b571f94",
+            "projectId": "UTllfRaAzX9mc7qP",
+            "user": {
+              "updatedAt": "2025-12-13T17:43:02.000Z",
+              "createdAt": "2025-12-12T00:24:51.284Z",
+              "id": "41b6ace1-2cba-42e0-a389-4bbd3b571f94",
+              "email": "shaunulrich11@gmail.com",
+              "firstName": "shaun",
+              "lastName": "ulrich",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-12-12T00:45:13.040Z",
+                "personalization_survey_n8n_version": "1.123.5",
+                "companyType": "personal",
+                "reportedSource": "google"
+              },
+              "settings": {
+                "userActivated": false
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2025-12-13",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": null
+}

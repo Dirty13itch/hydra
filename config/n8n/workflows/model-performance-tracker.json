@@ -1,0 +1,306 @@
+{
+  "name": "Model Performance Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Hourly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.250:5000/v1/model",
+        "options": {}
+      },
+      "id": "get-tabbyapi-model",
+      "name": "Get TabbyAPI Model",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.203:11434/api/tags",
+        "options": {}
+      },
+      "id": "get-ollama-models",
+      "name": "Get Ollama Models",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:9090/api/v1/query",
+        "qs": {
+          "query": "nvidia_smi_memory_used_bytes{gpu=\"0\"} / nvidia_smi_memory_total_bytes{gpu=\"0\"} * 100"
+        },
+        "options": {}
+      },
+      "id": "get-gpu-vram",
+      "name": "Get GPU VRAM Usage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 600]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ {\n  timestamp: new Date().toISOString(),\n  tabbyapi: {\n    model: $('Get TabbyAPI Model').item.json.model_name || 'unknown',\n    loaded: $('Get TabbyAPI Model').item.json.loaded || false\n  },\n  ollama: {\n    models: $('Get Ollama Models').item.json.models?.map(m => m.name) || [],\n    count: $('Get Ollama Models').item.json.models?.length || 0\n  },\n  gpu_vram_percent: parseFloat($('Get GPU VRAM Usage').item.json.data?.result?.[0]?.value?.[1] || '0')\n} }}",
+        "options": {}
+      },
+      "id": "merge-data",
+      "name": "Merge Performance Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "model_performance_snapshot"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-to-activity",
+      "name": "Log to Activity API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "http://192.168.1.244:8283/v1/agents/hydra-steward/memory/block/model_performance",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "value",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "update-letta-memory",
+      "name": "Update Letta Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.gpu_vram_percent }}",
+              "rightValue": 95,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-vram-critical",
+      "name": "VRAM Critical?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/alerts/trigger",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "severity",
+              "value": "warning"
+            },
+            {
+              "name": "title",
+              "value": "VRAM Usage Critical"
+            },
+            {
+              "name": "message",
+              "value": "={{ 'GPU VRAM usage at ' + $json.gpu_vram_percent.toFixed(1) + '%. Model may OOM.' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-vram-alert",
+      "name": "Send VRAM Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 700]
+    }
+  ],
+  "connections": {
+    "Hourly Schedule": {
+      "main": [
+        [
+          {
+            "node": "Get TabbyAPI Model",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Ollama Models",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get GPU VRAM Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get TabbyAPI Model": {
+      "main": [
+        [
+          {
+            "node": "Merge Performance Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Ollama Models": {
+      "main": [
+        [
+          {
+            "node": "Merge Performance Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get GPU VRAM Usage": {
+      "main": [
+        [
+          {
+            "node": "Merge Performance Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Performance Data": {
+      "main": [
+        [
+          {
+            "node": "Log to Activity API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update Letta Memory",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "VRAM Critical?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VRAM Critical?": {
+      "main": [
+        [
+          {
+            "node": "Send VRAM Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true
+  },
+  "tags": [
+    {
+      "name": "monitoring",
+      "id": "4"
+    },
+    {
+      "name": "scheduled",
+      "id": "5"
+    }
+  ]
+}

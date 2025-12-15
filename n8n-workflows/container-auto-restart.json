@@ -1,0 +1,195 @@
+{
+  "name": "Hydra Container Auto-Restart",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "trigger-5min",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:8600/health/services?status=unhealthy",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "get-unhealthy",
+      "name": "Get Unhealthy Services",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-items",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-unhealthy",
+      "name": "Any Unhealthy?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const services = $input.all().map(i => i.json);\n\n// Services that can be auto-restarted (non-critical, docker-based)\nconst autoRestartable = [\n  'firecrawl',\n  'docling',\n  'searxng',\n  'perplexica',\n  'sillytavern',\n  'meilisearch',\n  'kokoro-tts',\n  'miniflux'\n];\n\n// Container name mapping (service name -> docker container name)\nconst containerMap = {\n  'Firecrawl': 'hydra-firecrawl',\n  'Docling': 'hydra-docling',\n  'SearXNG': 'hydra-searxng',\n  'Perplexica': 'hydra-perplexica',\n  'SillyTavern': 'hydra-sillytavern',\n  'Meilisearch': 'hydra-meilisearch',\n  'Kokoro TTS': 'hydra-kokoro-tts',\n  'Miniflux': 'hydra-miniflux'\n};\n\n// Check restart history from static data\nconst now = Date.now();\nconst cooldownMs = 15 * 60 * 1000; // 15 minutes\n\nconst toRestart = [];\n\nfor (const svc of services) {\n  const serviceName = svc.service;\n  const containerName = containerMap[serviceName];\n  \n  if (!containerName) {\n    continue; // Skip services we don't auto-restart\n  }\n  \n  // Check if on hydra-storage (Docker)\n  if (svc.node !== 'hydra-storage') {\n    continue;\n  }\n  \n  toRestart.push({\n    service: serviceName,\n    container: containerName,\n    node: svc.node,\n    message: svc.message\n  });\n}\n\nreturn toRestart.map(r => ({json: r}));"
+      },
+      "id": "filter-restartable",
+      "name": "Filter Auto-Restartable",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-restart",
+              "leftValue": "={{ $json.container }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-any-restart",
+      "name": "Any to Restart?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "command": "=docker restart {{ $json.container }}"
+      },
+      "id": "restart-container",
+      "name": "Restart Container",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1100, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst exitCode = input.exitCode || 0;\nconst container = input.container || 'unknown';\nconst stdout = input.stdout || '';\n\nconst success = exitCode === 0;\n\nreturn [{\n  json: {\n    container,\n    success,\n    exitCode,\n    message: success ? `Restarted ${container}` : `Failed to restart ${container}`,\n    stdout,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "log-result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:9095/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"receiver\": \"auto-restart\",\n  \"status\": \"{{ $json.success ? 'resolved' : 'firing' }}\",\n  \"alerts\": [{\n    \"status\": \"{{ $json.success ? 'resolved' : 'firing' }}\",\n    \"labels\": {\n      \"alertname\": \"ContainerAutoRestart\",\n      \"container\": \"{{ $json.container }}\",\n      \"severity\": \"info\"\n    },\n    \"annotations\": {\n      \"summary\": \"{{ $json.message }}\"\n    },\n    \"startsAt\": \"{{ $json.timestamp }}\",\n    \"fingerprint\": \"restart-{{ $json.container }}\"\n  }],\n  \"groupLabels\": {\"alertname\": \"ContainerAutoRestart\"},\n  \"commonLabels\": {\"alertname\": \"ContainerAutoRestart\"},\n  \"commonAnnotations\": {},\n  \"externalURL\": \"http://n8n:5678\",\n  \"version\": \"4\",\n  \"groupKey\": \"auto-restart\"\n}",
+        "options": {}
+      },
+      "id": "notify-webhook",
+      "name": "Notify Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {},
+      "id": "noop",
+      "name": "No Action",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [660, 200]
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [{"node": "Get Unhealthy Services", "type": "main", "index": 0}]
+      ]
+    },
+    "Get Unhealthy Services": {
+      "main": [
+        [{"node": "Any Unhealthy?", "type": "main", "index": 0}]
+      ]
+    },
+    "Any Unhealthy?": {
+      "main": [
+        [{"node": "Filter Auto-Restartable", "type": "main", "index": 0}],
+        [{"node": "No Action", "type": "main", "index": 0}]
+      ]
+    },
+    "Filter Auto-Restartable": {
+      "main": [
+        [{"node": "Any to Restart?", "type": "main", "index": 0}]
+      ]
+    },
+    "Any to Restart?": {
+      "main": [
+        [{"node": "Restart Container", "type": "main", "index": 0}],
+        [{"node": "No Action", "type": "main", "index": 0}]
+      ]
+    },
+    "Restart Container": {
+      "main": [
+        [{"node": "Log Result", "type": "main", "index": 0}]
+      ]
+    },
+    "Log Result": {
+      "main": [
+        [{"node": "Notify Webhook", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {"name": "hydra"},
+    {"name": "automation"},
+    {"name": "containers"}
+  ]
+}

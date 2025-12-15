@@ -1,0 +1,484 @@
+{
+  "name": "GitHub Webhook Handler",
+  "description": "Handles GitHub webhook events for push, PR, issues, and releases",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "github-webhook",
+        "options": {}
+      },
+      "id": "webhook-receiver",
+      "name": "GitHub Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        100,
+        300
+      ],
+      "webhookId": "github-hydra"
+    },
+    {
+      "parameters": {
+        "jsCode": "const headers = $input.first().json.headers || {};\nconst body = $input.first().json.body || {};\n\nconst event = headers['x-github-event'] || 'unknown';\nconst delivery = headers['x-github-delivery'] || 'unknown';\n\nreturn {\n  event_type: event,\n  delivery_id: delivery,\n  repository: body.repository?.full_name || 'unknown',\n  sender: body.sender?.login || 'unknown',\n  action: body.action || null,\n  payload: body\n};"
+      },
+      "id": "parse-webhook",
+      "name": "Parse Webhook",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-push",
+              "leftValue": "={{ $json.event_type }}",
+              "rightValue": "push",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-push",
+      "name": "Is Push?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        540,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-pr",
+              "leftValue": "={{ $json.event_type }}",
+              "rightValue": "pull_request",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-pr",
+      "name": "Is PR?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        540,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-release",
+              "leftValue": "={{ $json.event_type }}",
+              "rightValue": "release",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-release",
+      "name": "Is Release?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        540,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json.payload;\nconst commits = payload.commits || [];\nconst branch = (payload.ref || '').replace('refs/heads/', '');\n\nreturn {\n  event: 'push',\n  repository: $json.repository,\n  branch: branch,\n  pusher: payload.pusher?.name || $json.sender,\n  commit_count: commits.length,\n  head_commit: payload.head_commit?.message || 'No message',\n  head_sha: payload.head_commit?.id?.substring(0, 7) || 'unknown',\n  compare_url: payload.compare || null,\n  notification: `[${$json.repository}] ${commits.length} commit(s) pushed to ${branch} by ${payload.pusher?.name || $json.sender}\\n${payload.head_commit?.message || ''}`\n};"
+      },
+      "id": "handle-push",
+      "name": "Handle Push",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json.payload;\nconst pr = payload.pull_request || {};\n\nreturn {\n  event: 'pull_request',\n  action: $json.action,\n  repository: $json.repository,\n  pr_number: pr.number,\n  pr_title: pr.title,\n  pr_author: pr.user?.login,\n  pr_state: pr.state,\n  pr_url: pr.html_url,\n  base_branch: pr.base?.ref,\n  head_branch: pr.head?.ref,\n  notification: `[${$json.repository}] PR #${pr.number} ${$json.action}: ${pr.title}\\nBy: ${pr.user?.login}\\n${pr.html_url}`\n};"
+      },
+      "id": "handle-pr",
+      "name": "Handle PR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json.payload;\nconst release = payload.release || {};\n\nreturn {\n  event: 'release',\n  action: $json.action,\n  repository: $json.repository,\n  tag_name: release.tag_name,\n  release_name: release.name,\n  prerelease: release.prerelease,\n  draft: release.draft,\n  release_url: release.html_url,\n  tarball_url: release.tarball_url,\n  author: release.author?.login,\n  notification: `[${$json.repository}] Release ${release.tag_name} ${$json.action}\\n${release.name || ''}\\n${release.html_url}`\n};"
+      },
+      "id": "handle-release",
+      "name": "Handle Release",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "github_event"
+            },
+            {
+              "name": "source",
+              "value": "github-webhook"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-push",
+      "name": "Log Push Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        980,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "github_event"
+            },
+            {
+              "name": "source",
+              "value": "github-webhook"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-pr",
+      "name": "Log PR Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        980,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "github_event"
+            },
+            {
+              "name": "source",
+              "value": "github-webhook"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-release",
+      "name": "Log Release Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        980,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "main-branch",
+              "leftValue": "={{ $json.branch }}",
+              "rightValue": "main",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-main-branch",
+      "name": "Is Main Branch?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Trigger deployment or sync for main branch pushes\nreturn {\n  action: 'deploy_trigger',\n  repository: $json.repository,\n  branch: $json.branch,\n  sha: $json.head_sha,\n  message: `Deployment triggered for ${$json.repository}@${$json.head_sha}`,\n  triggered_at: new Date().toISOString()\n};"
+      },
+      "id": "prepare-deploy",
+      "name": "Prepare Deploy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "GitHub Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Push?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is PR?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Release?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Push?": {
+      "main": [
+        [
+          {
+            "node": "Handle Push",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is PR?": {
+      "main": [
+        [
+          {
+            "node": "Handle PR",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is Release?": {
+      "main": [
+        [
+          {
+            "node": "Handle Release",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Handle Push": {
+      "main": [
+        [
+          {
+            "node": "Log Push Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle PR": {
+      "main": [
+        [
+          {
+            "node": "Log PR Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Release": {
+      "main": [
+        [
+          {
+            "node": "Log Release Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Push Event": {
+      "main": [
+        [
+          {
+            "node": "Is Main Branch?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Main Branch?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Deploy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true
+  },
+  "tags": [
+    {
+      "name": "integration",
+      "id": "10"
+    },
+    {
+      "name": "github",
+      "id": "11"
+    }
+  ],
+  "versionId": "9013fdd4-3a15-4b44-88a1-1b47ab9b499c",
+  "id": "f48a7a586ac540289",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
