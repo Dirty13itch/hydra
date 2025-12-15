@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  hydra-scheduler:
+    build: .
+    container_name: hydra-scheduler
+    restart: unless-stopped
+    environment:
+      - TZ=America/Chicago
+    networks:
+      - hydra-net
+
+networks:
+  hydra-net:
+    external: true

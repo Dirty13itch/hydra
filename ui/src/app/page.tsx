@@ -16,6 +16,7 @@ import { AIModelsPanel } from '@/components/AIModelsPanel';
 import { QuickActions } from '@/components/QuickActions';
 import { ServiceDependencyGraph } from '@/components/ServiceDependencyGraph';
 import { GPUMetricsPanel } from '@/components/GPUMetricsPanel';
+import { CrewStatusPanel } from '@/components/CrewStatusPanel';
 import { StatsSkeleton, NodeCardSkeleton, ServiceListSkeleton, ContainerListSkeleton, AuditLogSkeleton, AIModelsPanelSkeleton, QuickActionsSkeleton } from '@/components/Skeleton';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { usePanelCollapse } from '@/hooks/useLocalStorage';
@@ -292,6 +293,7 @@ export default function Home() {
                 </div>
                 <AIModelsPanel gpus={gpus} />
                 <GPUMetricsPanel gpus={gpus} />
+                <CrewStatusPanel />
                 <ServiceDependencyGraph services={services} />
                 <QuickActions />
               </>

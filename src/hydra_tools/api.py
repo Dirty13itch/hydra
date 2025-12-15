@@ -33,6 +33,7 @@ from hydra_tools.knowledge_optimization import create_knowledge_router
 from hydra_tools.capability_expansion import create_capability_api as create_capabilities_router
 from hydra_tools.activity import create_activity_router, create_control_router
 from hydra_tools.hardware_discovery import create_hardware_router
+from hydra_tools.scheduler import create_scheduler_router, get_scheduler
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -70,10 +71,18 @@ async def lifespan(app: FastAPI):
     app.state.route_classifier = RouteClassifier()
     app.state.preference_learner = PreferenceLearner(user_id="hydra-default")
 
+    # Start the crew scheduler
+    scheduler = get_scheduler()
+    scheduler.start()
+    app.state.scheduler = scheduler
+    print(f"[{datetime.utcnow().isoformat()}] Crew scheduler started")
+
     yield
 
     # Shutdown
     print(f"[{datetime.utcnow().isoformat()}] Hydra Tools API shutting down...")
+    scheduler.stop()
+    print(f"[{datetime.utcnow().isoformat()}] Crew scheduler stopped")
 
 
 # Create FastAPI app
@@ -114,6 +123,9 @@ app.include_router(create_control_router())
 # Include Hardware Discovery router
 app.include_router(create_hardware_router())
 
+# Include Scheduler router
+app.include_router(create_scheduler_router())
+
 
 # Root endpoints
 @app.get("/", tags=["info"])
@@ -135,6 +147,7 @@ async def root():
             "activity": "/activity",
             "control": "/control",
             "hardware": "/hardware",
+            "scheduler": "/scheduler",
         },
     }
 

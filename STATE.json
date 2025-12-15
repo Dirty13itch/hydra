@@ -59,7 +59,19 @@
       "status": "operational",
       "crews": ["monitoring", "research", "maintenance"],
       "working_crews": ["monitoring", "research", "maintenance"],
-      "fix_applied": "2025-12-15: Rewrote crews to use native CrewAI LLM class with model='ollama/qwen2.5:7b'"
+      "fix_applied": "2025-12-15: Rewrote crews to use native CrewAI LLM class with model='ollama/qwen2.5:7b'",
+      "scheduler": {
+        "module_created": "2025-12-15",
+        "location": "src/hydra_tools/scheduler.py",
+        "schedules": {
+          "monitoring": "Daily 6:00 AM CST",
+          "research": "Monday 2:00 AM CST",
+          "maintenance": "Sunday 3:00 AM CST"
+        },
+        "deployment_status": "pending",
+        "deploy_command": "./scripts/deploy-hydra-tools.sh --build",
+        "api_endpoints_when_deployed": ["/scheduler/status", "/scheduler/trigger/{crew}", "/scheduler/enable/{crew}", "/scheduler/disable/{crew}"]
+      }
     },
     "qdrant_collections": 6
   },
@@ -260,5 +272,30 @@
     "available_models": 10,
     "gpu_vram_total_gb": 89,
     "status": "healthy"
+  },
+  "session_2025_12_15_evening": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Proactive Team Lead",
+    "completed": [
+      "Fixed HOME variable for claude user (.bash_profile, .bashrc)",
+      "Created global identity at /home/claude/.claude/CLAUDE.md",
+      "Verified all 3 crews work (monitoring, research, maintenance)",
+      "Created scheduler module (src/hydra_tools/scheduler.py)",
+      "Updated api.py to include scheduler",
+      "Added CrewStatusPanel to Control Plane UI"
+    ],
+    "pending_deployment": {
+      "scheduler": {
+        "reason": "No Docker socket access or root SSH",
+        "solution": "Run: ./scripts/deploy-hydra-tools.sh --build",
+        "from": "Any machine with SSH access to root@192.168.1.244"
+      }
+    },
+    "gaps_identified": [
+      "Crews work but not scheduled automatically",
+      "Control Plane UI needs rebuild to show CrewStatusPanel",
+      "Letta not connected to Open WebUI",
+      "No visible task queue for autonomous operations"
+    ]
   }
 }
