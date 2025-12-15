@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-12-15T05:35:00Z",
+  "generated_at": "2025-12-15T06:35:00Z",
   "version": "2.3.5",
   "phase": "12-COMPLETE",
   "cluster": {
@@ -56,8 +56,10 @@
       "agents": ["hydra-steward"]
     },
     "crewai": {
-      "status": "ok",
-      "crews": ["monitoring", "research", "maintenance"]
+      "status": "operational",
+      "crews": ["monitoring", "research", "maintenance"],
+      "working_crews": ["monitoring", "research", "maintenance"],
+      "fix_applied": "2025-12-15: Rewrote crews to use native CrewAI LLM class with model='ollama/qwen2.5:7b'"
     },
     "qdrant_collections": 6
   },
@@ -75,20 +77,23 @@
     "hydra-mcp": "up"
   },
   "n8n_workflows": {
-    "total": 5,
-    "active": 4,
+    "total": 8,
+    "active": 8,
     "api_key": "n8n_api_hydra_cluster_2024",
     "admin_email": "admin@hydra.local",
-    "last_validated": "2025-12-15T05:17:00Z",
+    "last_validated": "2025-12-15T09:45:00Z",
     "parsing_bugs_fixed": true,
     "webhooks_fixed": true,
-    "notes": "2025-12-15: Removed broken workflows (Knowledge Refresh, Research Agent, Empire Processor) that had structural issues causing WorkflowHasIssuesError. Core operational workflows working correctly.",
+    "notes": "2025-12-15: Imported 3 new workflows via direct PostgreSQL. All 8 workflows now activated.",
     "workflows": [
       {"id": "learnings-new-001", "name": "Learnings Capture", "active": true, "webhook": "/webhook/learnings", "status": "verified"},
       {"id": "cJA5gkMfkwQ0RoOn", "name": "Alertmanager Self-Healing Handler", "active": true, "webhook": "/webhook/alertmanager", "status": "verified"},
       {"id": "letta-memory-fixed-001", "name": "Letta Memory Update (Fixed)", "active": true, "webhook": "/webhook/letta-memory", "status": "verified"},
       {"id": "9hHaupQyL94tQ99S", "name": "Hydra Daily Health Digest", "active": true, "trigger": "schedule", "note": "Runs daily at 8 AM CST"},
-      {"id": "5dfc809bbfe348a89", "name": "Disk Cleanup Automation", "active": false, "trigger": "schedule", "note": "Replaced by cron script for direct Docker access"}
+      {"id": "5dfc809bbfe348a89", "name": "Disk Cleanup Automation", "active": true, "trigger": "schedule", "note": "Runs daily at 4 AM"},
+      {"id": "container-restart-001", "name": "Container Restart with Rate Limiting", "active": true, "webhook": "/webhook/container-failed", "status": "needs-config", "note": "HTTP request target needs fixing"},
+      {"id": "crewai-dispatch-001", "name": "CrewAI Task Dispatcher", "active": true, "webhook": "/webhook/crew-task", "status": "verified", "note": "All 3 crews working: monitoring, research, maintenance"},
+      {"id": "model-perf-001", "name": "Model Performance Tracker", "active": true, "trigger": "schedule", "note": "Runs hourly"}
     ],
     "removed_workflows": [
       {"id": "knowledge-refresh-fixed-001", "reason": "Structural issues - WorkflowHasIssuesError"},
