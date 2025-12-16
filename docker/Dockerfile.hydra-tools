@@ -6,7 +6,7 @@ FROM python:3.11-slim
 
 LABEL maintainer="Hydra Cluster <hydra@local>"
 LABEL description="Self-improvement and optimization toolkit API"
-LABEL version="1.1.0"
+LABEL version="1.5.0"
 
 # Set working directory
 WORKDIR /app
@@ -22,6 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
 COPY src/hydra_tools /app/hydra_tools
+COPY src/hydra_search /app/hydra_search
 
 # Create data directory
 RUN mkdir -p /data/diagnosis /data/optimization /data/knowledge /data/capabilities

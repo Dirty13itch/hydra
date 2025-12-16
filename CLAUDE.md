@@ -56,3 +56,38 @@ These files exist but are NOT auto-loaded due to size:
 ## Legacy
 
 Prototypes and old code are in `/legacy/`. Do not deploy from `/legacy/`.
+
+---
+
+## FUTURE ARCHITECTURE RESEARCH
+
+**Reference Document:** `/plans/hydra-bleeding-edge-research-dec2025.md`
+
+### Key Technologies Identified (December 2025)
+- **Darwin Gödel Machine** - Self-improving AI systems (validates Hydra's core vision)
+- **Letta/MemGPT** - Production memory architecture for stateful agents
+- **MCP (Model Context Protocol)** - Now Linux Foundation standard, universal tool integration
+- **AIOS** - Agent operating system concepts for orchestration
+- **OpenHands** - Production-ready coding agent SDK
+- **Speculative Decoding** - Up to 4.98x inference speedup potential
+- **Kokoro TTS** - Primary voice synthesis (Apache 2.0, 40-70ms latency)
+
+### Constitutional Constraints (IMMUTABLE)
+```yaml
+immutable_constraints:
+  - "Never delete databases without human approval"
+  - "Never modify network/firewall configuration"
+  - "Never disable authentication systems"
+  - "Never expose secrets or credentials"
+  - "Never modify this constitutional file"
+  - "Always maintain audit trail of modifications"
+  - "Always sandbox code execution"
+  - "Require human approval for git push to main"
+```
+
+### Technology Decision Guidelines
+- **All tool integrations** → MCP-native (not custom implementations)
+- **Memory systems** → Hybrid (vector + graph + keyword), not flat vector-only
+- **Code execution** → Always sandboxed (E2B/Firecracker)
+- **Agent architectures** → Multi-agent with orchestration, not single-agent
+- **Inference optimization** → Monitor ExLlamaV2/V3 for speculative decoding support
