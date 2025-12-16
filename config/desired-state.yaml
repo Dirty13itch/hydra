@@ -15,8 +15,9 @@ nodes:
         port: 5000
         dependencies: []
         config:
-          model: Llama-3.3-70B-Instruct-exl2-4.0bpw
+          model: Midnight-Miqu-70B-v1.5-exl2-2.5bpw
           max_seq_len: 8192
+          # Note: Can also use Llama-3.3-70B-Instruct-exl2-4.0bpw
 
       - name: open-webui
         enabled: true

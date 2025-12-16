@@ -57,7 +57,7 @@ export function StorageView({ storagePools }: StorageViewProps) {
               Total Capacity
             </div>
             <div className="text-lg font-bold" style={{ color: 'var(--hydra-cyan)' }}>
-              {storagePools?.total_capacity_tb?.toFixed(1) || '150'} TB
+              {storagePools?.summary?.total_bytes ? (storagePools.summary.total_bytes / 1e12).toFixed(1) : '150'} TB
             </div>
             <div className="text-xs" style={{ color: 'var(--hydra-text-muted)' }}>
               Across all pools
@@ -71,10 +71,10 @@ export function StorageView({ storagePools }: StorageViewProps) {
               Used
             </div>
             <div className="text-lg font-bold" style={{ color: 'var(--hydra-yellow)' }}>
-              {storagePools?.used_tb?.toFixed(1) || '95'} TB
+              {storagePools?.summary?.used_bytes ? (storagePools.summary.used_bytes / 1e12).toFixed(1) : '95'} TB
             </div>
             <div className="text-xs" style={{ color: 'var(--hydra-text-muted)' }}>
-              {storagePools?.used_percent?.toFixed(0) || '63'}% utilized
+              {storagePools?.summary?.percent_used?.toFixed(0) || '63'}% utilized
             </div>
           </div>
           <div
@@ -85,7 +85,7 @@ export function StorageView({ storagePools }: StorageViewProps) {
               Free
             </div>
             <div className="text-lg font-bold" style={{ color: 'var(--hydra-green)' }}>
-              {storagePools?.free_tb?.toFixed(1) || '55'} TB
+              {storagePools?.summary?.free_bytes ? (storagePools.summary.free_bytes / 1e12).toFixed(1) : '55'} TB
             </div>
             <div className="text-xs" style={{ color: 'var(--hydra-text-muted)' }}>
               Available

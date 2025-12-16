@@ -72,10 +72,10 @@ export function InferenceView({ gpus }: InferenceViewProps) {
               VRAM Used
             </div>
             <div className="text-lg font-bold" style={{ color: 'var(--hydra-magenta)' }}>
-              {gpus.reduce((sum, g) => sum + g.memory_used_gb, 0).toFixed(1)} GB
+              {gpus.reduce((sum, g) => sum + (g.memory_used_gb || 0), 0).toFixed(1)} GB
             </div>
             <div className="text-xs" style={{ color: 'var(--hydra-text-muted)' }}>
-              of {gpus.reduce((sum, g) => sum + g.memory_total_gb, 0).toFixed(0)} GB total
+              of {gpus.reduce((sum, g) => sum + (g.memory_total_gb || 0), 0).toFixed(0)} GB total
             </div>
           </div>
           <div
@@ -109,10 +109,10 @@ export function InferenceView({ gpus }: InferenceViewProps) {
               Power Draw
             </div>
             <div className="text-lg font-bold" style={{ color: 'var(--hydra-yellow)' }}>
-              {gpus.reduce((sum, g) => sum + g.power_draw_w, 0).toFixed(0)} W
+              {gpus.reduce((sum, g) => sum + (g.power_w || 0), 0).toFixed(0)} W
             </div>
             <div className="text-xs" style={{ color: 'var(--hydra-text-muted)' }}>
-              of {gpus.reduce((sum, g) => sum + g.power_limit_w, 0).toFixed(0)} W limit
+              across {gpus.length} GPUs
             </div>
           </div>
         </div>

@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import api, { LettaMessage, LettaSendResponse } from '@/lib/api';
 
-const AGENT_ID = 'agent-b3fb1747-1a5b-4c94-b713-11d6403350bf';
-const AGENT_NAME = 'hydra-steward';
+const AGENT_ID = 'agent-24d7d80f-2576-457c-be55-9cbf5390576c';
+const AGENT_NAME = 'hydra-steward-v2';
 
 interface ChatMessage {
   id: string;

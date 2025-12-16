@@ -17,6 +17,7 @@ import { QuickActions } from '@/components/QuickActions';
 import { ServiceDependencyGraph } from '@/components/ServiceDependencyGraph';
 import { GPUMetricsPanel } from '@/components/GPUMetricsPanel';
 import { CrewStatusPanel } from '@/components/CrewStatusPanel';
+import { TaskQueuePanel } from '@/components/TaskQueuePanel';
 import { StatsSkeleton, NodeCardSkeleton, ServiceListSkeleton, ContainerListSkeleton, AuditLogSkeleton, AIModelsPanelSkeleton, QuickActionsSkeleton } from '@/components/Skeleton';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { usePanelCollapse } from '@/hooks/useLocalStorage';
@@ -314,6 +315,16 @@ export default function Home() {
               <span className="text-hydra-yellow">&#9632;</span> Activity
             </h2>
             {isLoading ? <AuditLogSkeleton /> : <AuditLog entries={auditLog} />}
+          </div>
+        </div>
+
+        {/* Autonomous Operations Section */}
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span className="text-hydra-magenta">&#9632;</span> Autonomous Operations
+            </h2>
+            <TaskQueuePanel />
           </div>
         </div>
 

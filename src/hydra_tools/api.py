@@ -34,6 +34,13 @@ from hydra_tools.capability_expansion import create_capability_api as create_cap
 from hydra_tools.activity import create_activity_router, create_control_router
 from hydra_tools.hardware_discovery import create_hardware_router
 from hydra_tools.scheduler import create_scheduler_router, get_scheduler
+from hydra_tools.letta_bridge import create_letta_bridge_router
+from hydra_tools.search_api import create_search_router, create_ingest_router, create_research_router
+from hydra_tools.crews_api import create_crews_router
+from hydra_tools.alerts_api import create_alerts_router
+from hydra_tools.health_api import create_health_router
+from hydra_tools.voice_api import create_voice_router
+from hydra_tools.reconcile_api import create_reconcile_router
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -55,8 +62,16 @@ Self-improvement and optimization toolkit for the Hydra cluster.
 * **Preference Learning** - Track user preferences and model performance
 * **Activity Logging** - Unified activity log for all autonomous actions
 * **System Control** - Control modes, emergency stop, workflow toggles
+* **Hybrid Search** - Combined semantic + keyword search (Qdrant + Meilisearch)
+* **Document Ingestion** - Index documents and URLs to knowledge base
+* **Web Research** - Search web and crawl pages (SearXNG + Firecrawl)
+* **CrewAI Orchestration** - Multi-agent crews for research, monitoring, maintenance
+* **Cluster Health** - Unified health monitoring across all nodes
+* **Voice Pipeline** - STT, LLM, TTS voice interaction
+* **Alert Routing** - Notification routing to Discord, Slack
+* **State Reconciliation** - Drift detection and auto-remediation
 """
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.4.0"
 
 
 # Startup/shutdown lifecycle
@@ -126,6 +141,29 @@ app.include_router(create_hardware_router())
 # Include Scheduler router
 app.include_router(create_scheduler_router())
 
+# Include Letta-OpenAI Bridge router
+app.include_router(create_letta_bridge_router())
+
+# Include Search, Ingest, and Research routers
+app.include_router(create_search_router())
+app.include_router(create_ingest_router())
+app.include_router(create_research_router())
+
+# Include Crews API router (CrewAI multi-agent orchestration)
+app.include_router(create_crews_router())
+
+# Include Alerts API router (notification routing)
+app.include_router(create_alerts_router())
+
+# Include Health API router (cluster health aggregation)
+app.include_router(create_health_router())
+
+# Include Voice API router (voice interaction pipeline)
+app.include_router(create_voice_router())
+
+# Include Reconcile API router (state management)
+app.include_router(create_reconcile_router())
+
 
 # Root endpoints
 @app.get("/", tags=["info"])
@@ -148,6 +186,15 @@ async def root():
             "control": "/control",
             "hardware": "/hardware",
             "scheduler": "/scheduler",
+            "letta-bridge": "/letta-bridge",
+            "search": "/search",
+            "ingest": "/ingest",
+            "research": "/research",
+            "crews": "/crews",
+            "alerts": "/alerts",
+            "cluster-health": "/health",
+            "voice": "/voice",
+            "reconcile": "/reconcile",
         },
     }
 

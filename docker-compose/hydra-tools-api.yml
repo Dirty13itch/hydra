@@ -18,6 +18,8 @@ services:
       - HYDRA_API_PORT=8700
       - HYDRA_DATA_DIR=/data
       - PYTHONUNBUFFERED=1
+      - LETTA_DEFAULT_AGENT=agent-24d7d80f-2576-457c-be55-9cbf5390576c
+      - LETTA_URL=http://192.168.1.244:8283
     volumes:
       # Persistent data for all tools
       - hydra-tools-data:/data

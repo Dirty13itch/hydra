@@ -63,7 +63,7 @@ export function OverviewView({
     return gpus.filter((gpu) => gpu.node === name);
   };
 
-  const activeAlerts = alerts.filter((a) => a.state === 'firing');
+  const activeAlerts = alerts.filter((a) => a.status === 'firing');
 
   return (
     <DomainView
