@@ -102,6 +102,7 @@ from hydra_tools.face_detection import create_face_detection_router
 from hydra_tools.graphiti_memory import create_graphiti_router
 from hydra_tools.reranker import create_reranker_router
 from hydra_tools.conversation_cache import create_conversation_cache_router
+from hydra_tools.agentic_rag import create_agentic_rag_router
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -593,6 +594,9 @@ app.include_router(create_reranker_router())
 # Include Conversation Cache router (High-performance context caching)
 app.include_router(create_conversation_cache_router())
 
+# Include Agentic RAG router (Self-reflective retrieval augmented generation)
+app.include_router(create_agentic_rag_router())
+
 
 # Root endpoints
 @app.get("/", tags=["info"])
@@ -641,6 +645,7 @@ async def root():
             "graphiti": "/graphiti",
             "rerank": "/rerank",
             "conversation-cache": "/conversation-cache",
+            "agentic-rag": "/agentic-rag",
         },
     }
 
