@@ -105,6 +105,7 @@ from hydra_tools.conversation_cache import create_conversation_cache_router
 from hydra_tools.agentic_rag import create_agentic_rag_router
 from hydra_tools.vision import create_vision_router
 from hydra_tools.research_queue import create_research_queue_router, get_research_queue
+from hydra_tools.unified_ingest import create_ingest_router, get_ingest_pipeline
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -318,7 +319,7 @@ Self-improvement and optimization toolkit for the Hydra cluster.
 * **Discovery Archive** - Cross-session learning and improvement tracking
 * **Dashboard API** - Real-time SSE streaming for Command Center
 """
-APP_VERSION = "2.8.0"  # Research queue, Vision integration, Agentic RAG, Graphiti
+APP_VERSION = "2.9.0"  # Unified ingest, Research queue, Vision, Agentic RAG
 
 
 # Startup/shutdown lifecycle
@@ -605,6 +606,9 @@ app.include_router(create_vision_router())
 # Include Research Queue router (External research ingestion pipeline)
 app.include_router(create_research_queue_router())
 
+# Include Unified Ingest router (Drag & drop, clipboard, file upload)
+app.include_router(create_ingest_router())
+
 
 # Root endpoints
 @app.get("/", tags=["info"])
@@ -656,6 +660,7 @@ async def root():
             "agentic-rag": "/agentic-rag",
             "vision": "/vision",
             "research-queue": "/research/queue",
+            "ingest": "/ingest",
         },
     }
 

@@ -37,6 +37,9 @@ numpy>=1.24.0
 # Hybrid Memory - Graph + Vector + Keyword Search
 graphiti-core>=0.5.0
 
+# PDF Text Extraction
+PyMuPDF>=1.24.0
+
 # Optional: Agent integration
 # langchain>=0.1.0
 # langchain-community>=0.0.1
