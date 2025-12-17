@@ -99,6 +99,7 @@ from hydra_tools.clients.unraid_client import close_unraid_client
 from hydra_tools.asset_quality import create_quality_router
 from hydra_tools.semantic_cache import create_semantic_cache_router
 from hydra_tools.face_detection import create_face_detection_router
+from hydra_tools.graphiti_memory import create_graphiti_router
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -581,6 +582,9 @@ app.include_router(create_semantic_cache_router())
 # Include Face Detection router (Phase 12: face analysis for quality scoring)
 app.include_router(create_face_detection_router())
 
+# Include Graphiti Memory router (Hybrid graph + vector + keyword search)
+app.include_router(create_graphiti_router())
+
 
 # Root endpoints
 @app.get("/", tags=["info"])
@@ -626,6 +630,7 @@ async def root():
             "comfyui": "/comfyui",
             "cache": "/cache",
             "faces": "/faces",
+            "graphiti": "/graphiti",
         },
     }
 
