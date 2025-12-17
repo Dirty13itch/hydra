@@ -4,33 +4,35 @@
   "phase": "12-ACTIVE",
   "last_session": {
     "date": "2025-12-17",
-    "focus": "Extended Autonomous Session - Full Continuation",
+    "focus": "API Authentication and Prometheus Metrics",
     "accomplishments": [
-      "ULTRATHINK comprehensive analysis of Hydra autonomous system",
-      "Deep research on control plane architectures (Portainer, Rancher, Homarr, Ray Dashboard)",
-      "Deep research on Unraid GraphQL API integration (official 7.2+ API)",
-      "Created control-plane-dashboard-architecture-2025.md (60+ pages, 50+ sources)",
-      "Created control-plane-executive-summary.md with tech stack recommendations",
-      "Created unraid-api-integration.md knowledge file",
-      "Fixed hydra-command-center UI crash - created AuthContext and DashboardDataContext",
-      "Created Unraid GraphQL client (clients/unraid_client.py) - 500+ lines",
-      "Created Unraid FastAPI router (routers/unraid.py) - 30+ endpoints",
-      "Created SSE streaming endpoint (routers/events.py) - real-time updates",
-      "Created hydraService.ts frontend API client",
-      "Wired all new routers into api.py v2.2.0",
-      "Key architecture decisions: SSE over WebSockets, BFF pattern, embedded Grafana"
+      "Added API key authentication layer (X-API-Key header, api_key query param)",
+      "Created APIKeyAuthMiddleware with exempt paths for health, docs, metrics",
+      "Added /auth/status and /auth/generate-key endpoints",
+      "Added Prometheus metrics for auth tracking (hydra_api_auth_requests_total, hydra_api_auth_latency_seconds)",
+      "Added HTTP request metrics (hydra_api_http_requests_total, hydra_api_http_request_latency_seconds)",
+      "Created RequestMetricsMiddleware for request timing",
+      "Added /metrics endpoint for Prometheus scraping",
+      "Created auth_metrics.py module with Counter, Histogram, Gauge metrics",
+      "Added 25 unit tests for auth and metrics (all passing)",
+      "Documented speculative decoding hardware limitation",
+      "Created autonomous task list for continued development"
     ],
-    "api_version": "2.2.0",
+    "api_version": "2.6.0",
     "new_endpoints": [
-      "/api/v1/unraid/* (array, disks, containers, VMs, system)",
-      "/api/v1/events/stream (SSE real-time)"
+      "/auth/status - Check authentication status",
+      "/auth/generate-key - Generate new API keys",
+      "/metrics - Prometheus scrape endpoint"
     ],
-    "research_completed": [
-      "Control plane best practices 2025",
-      "Unraid GraphQL API capabilities",
-      "SSE vs WebSockets for dashboards",
-      "Multi-agent orchestration patterns"
-    ]
+    "metrics_added": [
+      "hydra_api_auth_requests_total (by result, path_prefix)",
+      "hydra_api_auth_latency_seconds (histogram)",
+      "hydra_api_auth_enabled (gauge)",
+      "hydra_api_auth_keys_configured (gauge)",
+      "hydra_api_http_requests_total (by method, endpoint, status_code)",
+      "hydra_api_http_request_latency_seconds (histogram)"
+    ],
+    "tests_added": 25
   },
   "cluster": {
     "nodes": {
@@ -1850,7 +1852,11 @@
       "sse_streaming": {
         "status": "operational",
         "endpoint": "/api/v1/events/stream",
-        "events_received": ["connected", "cluster_health", "gpu_metrics"]
+        "events_received": [
+          "connected",
+          "cluster_health",
+          "gpu_metrics"
+        ]
       },
       "inference_stack": {
         "tabbyapi": {
@@ -1866,7 +1872,11 @@
       "hardware": {
         "total_vram_gb": 86.7,
         "vram_used_gb": 64.4,
-        "gpus": ["RTX 5090 (37C)", "RTX 4090 (30C)", "2x RTX 5070 Ti (43C, 40C)"]
+        "gpus": [
+          "RTX 5090 (37C)",
+          "RTX 4090 (30C)",
+          "2x RTX 5070 Ti (43C, 40C)"
+        ]
       },
       "memory_architecture": {
         "status": "operational",
@@ -1882,7 +1892,13 @@
       "sandbox_execution": {
         "status": "operational",
         "isolation_tests": "5/5 passed",
-        "tests": ["network", "memory", "filesystem", "execution", "non-root"]
+        "tests": [
+          "network",
+          "memory",
+          "filesystem",
+          "execution",
+          "non-root"
+        ]
       },
       "agent_scheduler": {
         "status": "running",
@@ -2007,6 +2023,96 @@
       "containers_healthy": 36,
       "containers_total": 36,
       "container_health_rate": 100
+    }
+  },
+  "api_version": "2.5.0",
+  "session_2025_12_17_api_auth": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Autonomous Development",
+    "timestamp": "2025-12-17T18:27:00Z",
+    "api_version": "2.5.0",
+    "completed_tasks": [
+      "Implemented API key authentication middleware",
+      "Added /auth/status endpoint for checking auth status",
+      "Added /auth/generate-key endpoint for key generation",
+      "Added auth_enabled field to /health endpoint",
+      "Authentication supports both X-API-Key header and api_key query parameter",
+      "Exempt paths configured: /, /health, /docs, /redoc, /openapi.json, /auth/*",
+      "Auth disabled by default - enable by setting HYDRA_API_KEY env var",
+      "End-to-end chapter automation (/automate-chapter) deployed",
+      "Morning briefing system (/discord/briefing/morning) deployed"
+    ],
+    "new_endpoints": [
+      "GET /auth/status - Check auth status and validate keys",
+      "POST /auth/generate-key - Generate secure random API key",
+      "POST /characters/automate-chapter - End-to-end chapter automation",
+      "GET /characters/pipeline-status/{chapter} - Check pipeline progress",
+      "POST /discord/briefing/morning - Send morning briefing to Discord",
+      "GET /discord/briefing/preview - Preview briefing without sending"
+    ],
+    "auth_features": {
+      "methods": [
+        "X-API-Key header",
+        "api_key query parameter"
+      ],
+      "env_vars": [
+        "HYDRA_API_KEY (single)",
+        "HYDRA_API_KEYS (comma-separated)"
+      ],
+      "exempt_paths": [
+        "/",
+        "/health",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/auth/*"
+      ],
+      "error_codes": {
+        "401": "Missing API key",
+        "403": "Invalid API key"
+      }
+    }
+  },
+  "session_2025_12_17_late": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Autonomous Development",
+    "timestamp": "2025-12-17T19:30:00Z",
+    "completed_tasks": [
+      "API key authentication middleware deployed",
+      "Container health fixed (hydra-network connection)",
+      "Draft models downloaded (Llama-3.2-1B 4.0bpw and 8.0bpw)",
+      "Speculative decoding tested and documented as hardware-limited",
+      "Knowledge files updated with spec decode findings",
+      "Autonomous task list created"
+    ],
+    "new_features": {
+      "api_auth": {
+        "endpoints": [
+          "/auth/status",
+          "/auth/generate-key"
+        ],
+        "methods": [
+          "X-API-Key header",
+          "api_key query parameter"
+        ],
+        "env_vars": [
+          "HYDRA_API_KEY",
+          "HYDRA_API_KEYS"
+        ],
+        "exempt_paths": [
+          "/",
+          "/health",
+          "/docs",
+          "/redoc",
+          "/openapi.json",
+          "/auth/*"
+        ]
+      }
+    },
+    "blocked_tasks": {
+      "speculative_decoding": "70B + 1B + cache exceeds 56GB VRAM on heterogeneous GPUs",
+      "home_assistant": "Needs HA_TOKEN from user",
+      "discord_webhook": "Needs webhook URL from user"
     }
   }
 }

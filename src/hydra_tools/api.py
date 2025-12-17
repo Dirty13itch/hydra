@@ -21,10 +21,26 @@ Or via Docker:
 from contextlib import asynccontextmanager
 from datetime import datetime
 import os
+import secrets
+import hashlib
+import time
+from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, Security, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader, APIKeyQuery
+from starlette.middleware.base import BaseHTTPMiddleware
+
+# Prometheus metrics
+from hydra_tools.auth_metrics import (
+    record_auth_result,
+    record_auth_latency,
+    update_auth_status,
+    record_http_request,
+    metrics_endpoint,
+    HTTP_REQUESTS_IN_PROGRESS,
+)
 
 # Import router creators
 from hydra_tools.self_diagnosis import create_diagnosis_router
@@ -37,6 +53,7 @@ from hydra_tools.scheduler import create_scheduler_router, get_scheduler
 from hydra_tools.letta_bridge import create_letta_bridge_router
 from hydra_tools.search_api import create_search_router, create_ingest_router, create_research_router
 from hydra_tools.crews_api import create_crews_router
+from hydra_tools.story_crew import create_story_crew_router
 from hydra_tools.alerts_api import create_alerts_router
 from hydra_tools.health_api import create_health_router
 from hydra_tools.voice_api import create_voice_router
@@ -72,7 +89,148 @@ from hydra_tools.routellm import RouteClassifier, ModelTier
 from hydra_tools.preference_learning import PreferenceLearner, FeedbackType, TaskType
 
 
+# =============================================================================
+# API Key Authentication
+# =============================================================================
+
+# Security scheme definitions
+API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
+API_KEY_QUERY = APIKeyQuery(name="api_key", auto_error=False)
+
+# Paths that don't require authentication
+EXEMPT_PATHS = {
+    "/",
+    "/health",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+    "/metrics",  # Prometheus scrape endpoint
+    "/api/v1/events/stream",  # SSE stream needs to work without auth header
+    "/auth/status",  # Allow checking auth status without auth
+    "/auth/generate-key",  # Allow generating keys without auth
+}
+
+# Path prefixes that don't require authentication
+EXEMPT_PREFIXES = (
+    "/docs",
+    "/redoc",
+)
+
+
+def get_api_keys() -> set:
+    """Get valid API keys from environment."""
+    keys = set()
+
+    # Primary API key
+    primary_key = os.environ.get("HYDRA_API_KEY", "")
+    if primary_key:
+        keys.add(primary_key)
+
+    # Additional keys (comma-separated)
+    additional = os.environ.get("HYDRA_API_KEYS", "")
+    if additional:
+        for key in additional.split(","):
+            key = key.strip()
+            if key:
+                keys.add(key)
+
+    return keys
+
+
+def is_auth_enabled() -> bool:
+    """Check if authentication is enabled."""
+    # Auth is enabled if any API keys are configured
+    return bool(get_api_keys())
+
+
+class APIKeyAuthMiddleware(BaseHTTPMiddleware):
+    """Middleware to validate API key authentication."""
+
+    async def dispatch(self, request: Request, call_next):
+        auth_start = time.perf_counter()
+        path = request.url.path
+
+        # Skip auth if not enabled
+        if not is_auth_enabled():
+            record_auth_result("disabled", path)
+            record_auth_latency(time.perf_counter() - auth_start)
+            return await call_next(request)
+
+        # Check if path is exempt
+        if path in EXEMPT_PATHS:
+            record_auth_result("exempt", path)
+            record_auth_latency(time.perf_counter() - auth_start)
+            return await call_next(request)
+
+        # Check if path starts with exempt prefix
+        for prefix in EXEMPT_PREFIXES:
+            if path.startswith(prefix):
+                record_auth_result("exempt", path)
+                record_auth_latency(time.perf_counter() - auth_start)
+                return await call_next(request)
+
+        # Get API key from header or query parameter
+        api_key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
+
+        if not api_key:
+            record_auth_result("missing_key", path)
+            record_auth_latency(time.perf_counter() - auth_start)
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "error": "Missing API key",
+                    "detail": "Provide API key via X-API-Key header or api_key query parameter",
+                },
+            )
+
+        # Validate API key
+        valid_keys = get_api_keys()
+        if api_key not in valid_keys:
+            record_auth_result("invalid_key", path)
+            record_auth_latency(time.perf_counter() - auth_start)
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "error": "Invalid API key",
+                    "detail": "The provided API key is not valid",
+                },
+            )
+
+        # Key is valid, proceed
+        record_auth_result("success", path)
+        record_auth_latency(time.perf_counter() - auth_start)
+        return await call_next(request)
+
+
+class RequestMetricsMiddleware(BaseHTTPMiddleware):
+    """Middleware to track request metrics (latency, count, status codes)."""
+
+    async def dispatch(self, request: Request, call_next):
+        method = request.method
+        path = request.url.path
+
+        # Track in-progress requests
+        HTTP_REQUESTS_IN_PROGRESS.labels(method=method).inc()
+        request_start = time.perf_counter()
+
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+        except Exception as e:
+            status_code = 500
+            raise
+        finally:
+            # Record metrics
+            duration = time.perf_counter() - request_start
+            record_http_request(method, path, status_code, duration)
+            HTTP_REQUESTS_IN_PROGRESS.labels(method=method).dec()
+
+        return response
+
+
+# =============================================================================
 # Application metadata
+# =============================================================================
 APP_TITLE = "Hydra Tools API"
 APP_DESCRIPTION = """
 Self-improvement and optimization toolkit for the Hydra cluster.
@@ -126,7 +284,7 @@ Self-improvement and optimization toolkit for the Hydra cluster.
 * **Discovery Archive** - Cross-session learning and improvement tracking
 * **Dashboard API** - Real-time SSE streaming for Command Center
 """
-APP_VERSION = "2.3.0"  # Added Asset Quality scoring for Phase 12 character generation pipeline
+APP_VERSION = "2.6.0"  # Prometheus auth/request metrics, API key auth, chapter automation
 
 
 # Startup/shutdown lifecycle
@@ -136,6 +294,11 @@ async def lifespan(app: FastAPI):
     # Startup
     print(f"[{datetime.utcnow().isoformat()}] Hydra Tools API starting...")
     print(f"  Data directory: {os.environ.get('HYDRA_DATA_DIR', '/mnt/user/appdata/hydra-stack/data')}")
+
+    # Initialize auth status metrics
+    auth_keys = get_api_keys()
+    update_auth_status(bool(auth_keys), len(auth_keys))
+    print(f"  Auth enabled: {bool(auth_keys)}, Keys configured: {len(auth_keys)}")
 
     # Initialize shared instances
     app.state.route_classifier = RouteClassifier()
@@ -258,6 +421,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# API Key Authentication middleware (only active when HYDRA_API_KEY is set)
+app.add_middleware(APIKeyAuthMiddleware)
+
+# Request metrics middleware (must be added after auth to capture accurate status codes)
+app.add_middleware(RequestMetricsMiddleware)
+
 
 # Include Phase 11 routers
 app.include_router(create_diagnosis_router())
@@ -285,6 +454,9 @@ app.include_router(create_research_router())
 
 # Include Crews API router (CrewAI multi-agent orchestration)
 app.include_router(create_crews_router())
+
+# Include Story Crew router (story generation)
+app.include_router(create_story_crew_router())
 
 # Include Alerts API router (notification routing)
 app.include_router(create_alerts_router())
@@ -424,7 +596,81 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "version": APP_VERSION,
+        "auth_enabled": is_auth_enabled(),
     }
+
+
+@app.get("/auth/status", tags=["auth"])
+async def auth_status(request: Request):
+    """
+    Check authentication status.
+
+    Returns whether auth is enabled and if the provided key is valid.
+    This endpoint works both with and without authentication.
+    """
+    auth_enabled = is_auth_enabled()
+    api_key = request.headers.get("X-API-Key") or request.query_params.get("api_key")
+
+    if not auth_enabled:
+        return {
+            "auth_enabled": False,
+            "message": "Authentication is disabled. Set HYDRA_API_KEY to enable.",
+            "key_provided": bool(api_key),
+        }
+
+    if not api_key:
+        return {
+            "auth_enabled": True,
+            "authenticated": False,
+            "message": "No API key provided",
+        }
+
+    valid_keys = get_api_keys()
+    is_valid = api_key in valid_keys
+
+    return {
+        "auth_enabled": True,
+        "authenticated": is_valid,
+        "message": "API key is valid" if is_valid else "API key is invalid",
+    }
+
+
+@app.post("/auth/generate-key", tags=["auth"])
+async def generate_api_key():
+    """
+    Generate a new random API key.
+
+    Note: This just generates a key - you must add it to your environment
+    variables (HYDRA_API_KEY or HYDRA_API_KEYS) to use it.
+    """
+    # Generate a secure random key
+    key = secrets.token_urlsafe(32)
+
+    return {
+        "api_key": key,
+        "instructions": [
+            "Add this key to your environment configuration:",
+            "  HYDRA_API_KEY=<key>  (for single key)",
+            "  HYDRA_API_KEYS=key1,key2,key3  (for multiple keys)",
+            "",
+            "Then restart the API container to apply changes.",
+        ],
+    }
+
+
+# Prometheus metrics endpoint
+@app.get("/metrics", tags=["monitoring"], include_in_schema=False)
+async def prometheus_metrics():
+    """
+    Prometheus metrics endpoint.
+
+    Exposes:
+    - hydra_api_auth_requests_total: Auth request counts by result
+    - hydra_api_auth_latency_seconds: Auth check latency histogram
+    - hydra_api_http_requests_total: HTTP request counts
+    - hydra_api_http_request_latency_seconds: Request latency histogram
+    """
+    return await metrics_endpoint()
 
 
 # Routing endpoints

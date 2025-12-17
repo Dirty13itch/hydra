@@ -93,6 +93,10 @@ DEFAULT_HEALTHCHECKS = [
     ContainerHealthConfig("hydra-docling", "http", "http://hydra-docling:5001/health"),
     ContainerHealthConfig("hydra-crewai", "http", "http://hydra-crewai:8500/"),
     ContainerHealthConfig("hydra-uptime-kuma", "http", f"http://{HOST_IP}:3001"),
+    ContainerHealthConfig("hydra-meilisearch", "http", "http://hydra-meilisearch:7700/health"),
+    ContainerHealthConfig("hydra-tools-api", "http", "http://hydra-tools-api:8700/health"),
+    # hydra-command-center uses host IP (different network)
+    ContainerHealthConfig("hydra-command-center", "http", f"http://{HOST_IP}:3210/"),
 
     # Firecrawl stack (port 3005 on host)
     ContainerHealthConfig("hydra-firecrawl-api", "http", f"http://{HOST_IP}:3005/"),
@@ -131,6 +135,10 @@ DEFAULT_HEALTHCHECKS = [
     ContainerHealthConfig("node-exporter", "http", f"http://{HOST_IP}:9100/metrics"),
     ContainerHealthConfig("homepage", "http", f"http://{HOST_IP}:3000"),
     ContainerHealthConfig("Plex-Media-Server", "http", f"http://{HOST_IP}:32400/identity"),
+    ContainerHealthConfig("stash", "http", f"http://{HOST_IP}:9999"),
+    ContainerHealthConfig("whisparr", "http", f"http://{HOST_IP}:6969/ping"),
+    # vaultwarden behind caddy proxy at port 8444 (HTTPS)
+    # Skip health check for now as it requires HTTPS
 ]
 
 

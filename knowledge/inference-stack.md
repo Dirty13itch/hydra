@@ -143,6 +143,42 @@ curl -X POST http://192.168.1.250:5000/v1/model/unload
 | Dark Champion 70B | 3.5 | ~45GB | 32K | Uncensored |
 | Qwen3-235B-A22B | 3.0 | ~50GB | 16K | MoE, 22B active |
 
+### Speculative Decoding (Hardware Limitation)
+
+**Status**: Not feasible with current heterogeneous GPU setup (5090 + 4090)
+
+Speculative decoding uses a small "draft" model to predict tokens, verified by the main model.
+Can provide 30-100% speedup with minimal quality loss.
+
+**Available Draft Models** (downloaded 2025-12-17):
+- `/mnt/models/Llama-3.2-1B-Instruct-exl2-8.0bpw` (~1.7GB)
+- `/mnt/models/Llama-3.2-1B-Instruct-exl2-4.0bpw` (~1.2GB)
+
+**Why It Doesn't Work**:
+With heterogeneous GPUs (32GB + 24GB = 56GB), ExLlamaV2's autosplit must distribute both
+models across both GPUs. The 70B main model (~45GB) + draft model (~1.2GB) + KV cache
+exceeds available VRAM when accounting for GPU split overhead.
+
+Testing showed "Insufficient VRAM for model and cache" even with:
+- Smallest main model: Midnight-Miqu-70B-v1.5-exl2-2.5bpw
+- Smallest draft model: Llama-3.2-1B-Instruct-exl2-4.0bpw
+- Minimal cache: 4096 tokens, Q4 mode
+- Maximum reserve: 4GB per GPU
+
+**Future Solutions**:
+1. **Upgrade to matched GPUs** - Two 5090s (64GB total, tensor parallel)
+2. **Use smaller main model** - 32B models would fit with draft
+3. **Wait for ExLlamaV3 tensor parallel** - May handle this better
+
+**Config for Reference** (when/if hardware allows):
+```yaml
+draft_model:
+  draft_model_dir: /mnt/models
+  draft_model_name: Llama-3.2-1B-Instruct-exl2-4.0bpw
+  draft_cache_mode: Q4
+  draft_gpu_split_auto: true
+```
+
 ## LiteLLM (API Gateway)
 
 ### Purpose
