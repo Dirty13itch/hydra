@@ -104,6 +104,7 @@ from hydra_tools.reranker import create_reranker_router
 from hydra_tools.conversation_cache import create_conversation_cache_router
 from hydra_tools.agentic_rag import create_agentic_rag_router
 from hydra_tools.vision import create_vision_router
+from hydra_tools.research_queue import create_research_queue_router, get_research_queue
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -317,7 +318,7 @@ Self-improvement and optimization toolkit for the Hydra cluster.
 * **Discovery Archive** - Cross-session learning and improvement tracking
 * **Dashboard API** - Real-time SSE streaming for Command Center
 """
-APP_VERSION = "2.7.0"  # Vision integration, Agentic RAG, Graphiti memory, Reranker
+APP_VERSION = "2.8.0"  # Research queue, Vision integration, Agentic RAG, Graphiti
 
 
 # Startup/shutdown lifecycle
@@ -601,6 +602,9 @@ app.include_router(create_agentic_rag_router())
 # Include Vision router (Multi-modal image understanding)
 app.include_router(create_vision_router())
 
+# Include Research Queue router (External research ingestion pipeline)
+app.include_router(create_research_queue_router())
+
 
 # Root endpoints
 @app.get("/", tags=["info"])
@@ -651,6 +655,7 @@ async def root():
             "conversation-cache": "/conversation-cache",
             "agentic-rag": "/agentic-rag",
             "vision": "/vision",
+            "research-queue": "/research/queue",
         },
     }
 
