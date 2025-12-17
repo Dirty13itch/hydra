@@ -1,0 +1,258 @@
+{
+  "name": "Hydra DGM Self-Improvement Cycle",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "cronExpression", "expression": "0 2 * * *"}]
+        }
+      },
+      "id": "schedule-dgm",
+      "name": "Daily 2AM CST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "cronExpression", "expression": "0 * * * *"}]
+        }
+      },
+      "id": "schedule-benchmark",
+      "name": "Hourly Quick Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/self-improvement/quick-health-check",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-API-Key", "value": "sk-hydra-master-key"}]
+        },
+        "options": {"timeout": 30000}
+      },
+      "id": "http-quick-check",
+      "name": "Quick Health Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/self-improvement/dgm-cycle",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "X-API-Key", "value": "sk-hydra-master-key"}]
+        },
+        "options": {"timeout": 180000}
+      },
+      "id": "http-dgm-cycle",
+      "name": "Run DGM Cycle",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Process DGM cycle results\nconst result = $input.first().json || {};\nconst timestamp = new Date();\n\n// Extract metrics\nconst cycleId = result.cycle_id || 'unknown';\nconst overallScore = result.steps?.[0]?.overall_score || 0;\nconst categories = result.steps?.[0]?.categories || {};\nconst weakAreas = result.weak_areas || [];\nconst proposals = result.approved_proposals || result.proposals || [];\nconst durationMs = result.duration_ms || 0;\n\n// Build summary\nlet summary = `## DGM Cycle ${cycleId}\\n`;\nsummary += `**Time:** ${timestamp.toISOString()}\\n`;\nsummary += `**Overall Score:** ${overallScore.toFixed(1)}%\\n`;\nsummary += `**Duration:** ${(durationMs / 1000).toFixed(1)}s\\n\\n`;\n\n// Category scores\nsummary += `### Category Scores\\n`;\nfor (const [cat, score] of Object.entries(categories)) {\n  const emoji = score >= 90 ? '✅' : score >= 70 ? '⚠️' : '❌';\n  summary += `- ${emoji} ${cat}: ${typeof score === 'number' ? score.toFixed(1) : score}%\\n`;\n}\nsummary += '\\n';\n\n// Weak areas\nif (weakAreas.length > 0) {\n  summary += `### Weak Areas (${weakAreas.length})\\n`;\n  for (const area of weakAreas) {\n    summary += `- **${area.name}**: ${area.score?.toFixed(1) || 0}% (${area.category})\\n`;\n  }\n  summary += '\\n';\n}\n\n// Proposals\nif (proposals.length > 0) {\n  summary += `### Proposals (${proposals.length})\\n`;\n  for (const prop of proposals) {\n    summary += `- **${prop.title || 'Untitled'}**: ${prop.description || ''}\\n`;\n  }\n} else {\n  summary += `### No New Proposals\\n`;\n  summary += `System is performing optimally.\\n`;\n}\n\n// Prometheus push data\nconst promMetrics = [];\nconst labels = 'job=\"dgm_cycle\"';\npromMetrics.push(`hydra_dgm_overall_score{${labels}} ${overallScore}`);\npromMetrics.push(`hydra_dgm_weak_areas_count{${labels}} ${weakAreas.length}`);\npromMetrics.push(`hydra_dgm_proposals_count{${labels}} ${proposals.length}`);\npromMetrics.push(`hydra_dgm_duration_seconds{${labels}} ${durationMs / 1000}`);\nfor (const [cat, score] of Object.entries(categories)) {\n  promMetrics.push(`hydra_dgm_category_score{${labels},category=\"${cat}\"} ${typeof score === 'number' ? score : 0}`);\n}\n\nreturn {\n  json: {\n    cycleId,\n    overallScore,\n    categories,\n    weakAreasCount: weakAreas.length,\n    weakAreas,\n    proposalsCount: proposals.length,\n    proposals,\n    durationMs,\n    summary,\n    promMetrics: promMetrics.join('\\n'),\n    timestamp: timestamp.toISOString(),\n    hasImprovements: proposals.length > 0,\n    needsAttention: weakAreas.length > 0 || overallScore < 90\n  }\n};"
+      },
+      "id": "code-process",
+      "name": "Process DGM Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Process quick health check results\nconst result = $input.first().json || {};\nconst timestamp = new Date();\n\nconst status = result.status || 'unknown';\nconst healthy = result.healthy || 0;\nconst total = result.total || 0;\nconst checks = result.checks || [];\n\n// Build Prometheus metrics\nconst promMetrics = [];\nconst labels = 'job=\"dgm_health_check\"';\npromMetrics.push(`hydra_dgm_quick_health_score{${labels}} ${total > 0 ? (healthy / total) * 100 : 0}`);\npromMetrics.push(`hydra_dgm_quick_health_checks_total{${labels}} ${total}`);\npromMetrics.push(`hydra_dgm_quick_health_checks_healthy{${labels}} ${healthy}`);\n\nfor (const check of checks) {\n  const isHealthy = check.status === 'healthy' ? 1 : 0;\n  promMetrics.push(`hydra_dgm_service_health{${labels},service=\"${check.service}\"} ${isHealthy}`);\n}\n\nreturn {\n  json: {\n    status,\n    healthy,\n    total,\n    checks,\n    promMetrics: promMetrics.join('\\n'),\n    timestamp: timestamp.toISOString()\n  }\n};"
+      },
+      "id": "code-quick",
+      "name": "Process Quick Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:9091/metrics/job/dgm_cycle",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain",
+        "body": "={{ $json.promMetrics }}",
+        "options": {"timeout": 10000}
+      },
+      "id": "http-prom-push",
+      "name": "Push to Prometheus",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [780, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:9091/metrics/job/dgm_health_check",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/plain",
+        "body": "={{ $json.promMetrics }}",
+        "options": {"timeout": 10000}
+      },
+      "id": "http-prom-push-quick",
+      "name": "Push Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [780, 100],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "filePath": "=/data/dgm/cycle-{{ $json.cycleId }}.md",
+        "options": {}
+      },
+      "id": "write-report",
+      "name": "Save Cycle Report",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [1000, 300],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+          "conditions": [
+            {
+              "id": "has-proposals",
+              "leftValue": "={{ $json.hasImprovements }}",
+              "rightValue": true,
+              "operator": {"type": "boolean", "operation": "equals"}
+            }
+          ]
+        }
+      },
+      "id": "if-proposals",
+      "name": "Has Proposals?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1220, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8283/v1/agents/agent-b3fb1747-1a5b-4c94-b713-11d6403350bf/archival-memory",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{"name": "Content-Type", "value": "application/json"}]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `[DGM CYCLE ${$json.cycleId}] Score: ${$json.overallScore.toFixed(1)}% | Weak: ${$json.weakAreasCount} | Proposals: ${$json.proposalsCount} | Duration: ${($json.durationMs / 1000).toFixed(1)}s` }) }}",
+        "options": {"timeout": 30000}
+      },
+      "id": "http-letta",
+      "name": "Log to Letta Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 500],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/discoveries/archive",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "X-API-Key", "value": "sk-hydra-master-key"},
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'improvement_proposal', title: 'DGM Improvement Proposals - Cycle ' + $json.cycleId, description: $json.proposals.map(p => p.title + ': ' + (p.description || '')).join('; ') || 'No proposals', benchmark_after: $json.overallScore, tags: ['dgm', 'improvement', 'automated', 'proposals'] }) }}",
+        "options": {"timeout": 30000}
+      },
+      "id": "http-archive-proposals",
+      "name": "Archive Proposals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 220],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "no_proposals",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "set-no-proposals",
+      "name": "No Proposals",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1440, 380]
+    }
+  ],
+  "connections": {
+    "Daily 2AM CST": {
+      "main": [[{"node": "Run DGM Cycle", "type": "main", "index": 0}]]
+    },
+    "Hourly Quick Check": {
+      "main": [[{"node": "Quick Health Check", "type": "main", "index": 0}]]
+    },
+    "Quick Health Check": {
+      "main": [[{"node": "Process Quick Check", "type": "main", "index": 0}]]
+    },
+    "Process Quick Check": {
+      "main": [[{"node": "Push Metrics", "type": "main", "index": 0}]]
+    },
+    "Run DGM Cycle": {
+      "main": [[{"node": "Process DGM Results", "type": "main", "index": 0}]]
+    },
+    "Process DGM Results": {
+      "main": [[
+        {"node": "Push to Prometheus", "type": "main", "index": 0},
+        {"node": "Save Cycle Report", "type": "main", "index": 0},
+        {"node": "Log to Letta Memory", "type": "main", "index": 0}
+      ]]
+    },
+    "Push to Prometheus": {
+      "main": [[]]
+    },
+    "Save Cycle Report": {
+      "main": [[{"node": "Has Proposals?", "type": "main", "index": 0}]]
+    },
+    "Has Proposals?": {
+      "main": [
+        [{"node": "Archive Proposals", "type": "main", "index": 0}],
+        [{"node": "No Proposals", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Chicago"
+  },
+  "pinData": {},
+  "tags": [
+    {"name": "self-improvement"},
+    {"name": "dgm"},
+    {"name": "autonomous"}
+  ]
+}

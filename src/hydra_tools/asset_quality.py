@@ -14,6 +14,7 @@ Quality Metrics:
 import hashlib
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -23,6 +24,14 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
+
+# PIL for image info extraction (optional but improves scoring)
+try:
+    from PIL import Image
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+    Image = None
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +163,69 @@ class AssetQualityScorer:
         """Generate a unique ID for an asset."""
         hash_input = f"{asset_path}:{datetime.utcnow().isoformat()}"
         return hashlib.sha256(hash_input.encode()).hexdigest()[:16]
+
+    def score_image(
+        self,
+        image_path: str,
+        reference_embedding: Optional[List[float]] = None,
+        character_embedding: Optional[List[float]] = None,
+        expected_emotion: Optional[str] = None,
+    ) -> "AssetQualityReport":
+        """
+        Convenience method to score an image file directly.
+
+        Extracts image metadata and calls evaluate_asset.
+        This is the simple entry point for basic quality scoring.
+
+        Args:
+            image_path: Path to the image file
+            reference_embedding: Optional style reference embedding
+            character_embedding: Optional character face embedding
+            expected_emotion: Optional expected emotion tag
+
+        Returns:
+            AssetQualityReport with scores and recommendations
+        """
+        path = Path(image_path)
+        if not path.exists():
+            raise ValueError(f"Image not found: {image_path}")
+
+        # Extract basic image info
+        image_info: Dict[str, Any] = {
+            "format": path.suffix.lower().lstrip('.'),
+            "file_size_kb": path.stat().st_size / 1024,
+        }
+
+        # Try to get resolution using PIL if available
+        if HAS_PIL and Image is not None:
+            try:
+                with Image.open(path) as img:
+                    image_info["resolution"] = {
+                        "width": img.width,
+                        "height": img.height,
+                    }
+                    image_info["aspect_ratio"] = img.width / img.height if img.height > 0 else 1.0
+                    # Get actual format from PIL
+                    if img.format:
+                        image_info["format"] = img.format.lower()
+            except Exception as e:
+                logger.warning(f"Failed to read image with PIL: {e}")
+                # Use default resolution for scoring
+                image_info["resolution"] = {"width": 1024, "height": 1024}
+                image_info["aspect_ratio"] = 1.0
+        else:
+            # Default resolution when PIL not available
+            image_info["resolution"] = {"width": 1024, "height": 1024}
+            image_info["aspect_ratio"] = 1.0
+
+        # Call the full evaluate_asset method
+        return self.evaluate_asset(
+            asset_path=str(path),
+            image_info=image_info,
+            reference_embedding=reference_embedding,
+            character_embedding=character_embedding,
+            expected_emotion=expected_emotion,
+        )
 
     def score_technical(self, image_info: Dict[str, Any]) -> QualityScore:
         """
