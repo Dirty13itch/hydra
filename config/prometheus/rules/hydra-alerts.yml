@@ -312,6 +312,155 @@ groups:
           summary: "No GPUs detected on {{ $labels.instance }}"
           description: "nvidia-smi/DCGM reports no GPUs. Driver issue or hardware failure."
 
+      # GPU Utilization alerts - detect idle GPUs when expecting workload
+      - alert: GPUUnderutilized
+        expr: nvidia_gpu_utilization_percent < 10
+        for: 30m
+        labels:
+          severity: info
+          team: ai
+        annotations:
+          summary: "GPU underutilized on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} utilization is {{ $value }}%. Consider consolidating workloads."
+
+      - alert: GPUUnderutilizedDCGM
+        expr: DCGM_FI_DEV_GPU_UTIL < 10
+        for: 30m
+        labels:
+          severity: info
+          team: ai
+        annotations:
+          summary: "GPU underutilized on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} utilization is {{ $value }}%. Consider consolidating workloads."
+
+      # GPU fully saturated - might need load balancing
+      - alert: GPUFullySaturated
+        expr: nvidia_gpu_utilization_percent > 98
+        for: 15m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "GPU fully saturated on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} at {{ $value }}% utilization. Consider load balancing or queuing."
+
+      - alert: GPUFullySaturatedDCGM
+        expr: DCGM_FI_DEV_GPU_UTIL > 98
+        for: 15m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "GPU fully saturated on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} at {{ $value }}% utilization. Consider load balancing or queuing."
+
+      # ECC Memory Error alerts (data corruption risk)
+      - alert: GPUECCErrorsDetected
+        expr: DCGM_FI_DEV_ECC_SBE_VOL_TOTAL > 0 or DCGM_FI_DEV_ECC_DBE_VOL_TOTAL > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "GPU ECC memory errors on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} has detected ECC memory errors. Monitor for increase."
+
+      - alert: GPUECCErrorsCritical
+        expr: increase(DCGM_FI_DEV_ECC_DBE_VOL_TOTAL[1h]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: ai
+        annotations:
+          summary: "GPU double-bit ECC errors on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} has uncorrectable memory errors. Inference may be corrupted!"
+
+      # Fan Speed alerts (thermal management)
+      - alert: GPUFanSpeedHigh
+        expr: nvidia_gpu_fan_speed_percent > 90
+        for: 5m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "GPU fan at maximum on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} fan at {{ $value }}%. Check cooling and ambient temperature."
+
+      - alert: GPUFanSpeedZero
+        expr: nvidia_gpu_fan_speed_percent == 0 and nvidia_gpu_temperature_celsius > 50
+        for: 2m
+        labels:
+          severity: critical
+          team: ai
+        annotations:
+          summary: "GPU fan stopped on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} fan at 0% but temp is {{ $externalLabels.nvidia_gpu_temperature_celsius }}°C. Fan failure!"
+
+      # PCIe Link alerts (bandwidth bottleneck detection)
+      - alert: GPUPCIeLinkDegraded
+        expr: DCGM_FI_DEV_PCIE_LINK_WIDTH < 16
+        for: 5m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "GPU PCIe link degraded on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} running at x{{ $value }} instead of x16. Check slot/riser."
+
+      # Total Cluster Power (UPS capacity protection - 2000W limit)
+      - alert: ClusterPowerWarning
+        expr: sum(nvidia_gpu_power_draw_watts) > 1400
+        for: 5m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "High total cluster GPU power draw"
+          description: "Total GPU power: {{ $value | printf \"%.0f\" }}W. Approaching 2000W UPS limit."
+
+      - alert: ClusterPowerCritical
+        expr: sum(nvidia_gpu_power_draw_watts) > 1700
+        for: 2m
+        labels:
+          severity: critical
+          team: ai
+        annotations:
+          summary: "Critical cluster GPU power draw"
+          description: "Total GPU power: {{ $value | printf \"%.0f\" }}W. UPS overload imminent! Consider power limits."
+          runbook_url: "https://github.com/hydra/docs/runbooks/gpu-power-limits.md"
+
+      # Thermal Throttling detection
+      - alert: GPUThermalThrottling
+        expr: DCGM_FI_DEV_CLOCK_THROTTLE_REASONS{reason="thermal"} > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "GPU thermal throttling on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} is throttling due to temperature. Performance degraded."
+
+      - alert: GPUPowerThrottling
+        expr: DCGM_FI_DEV_CLOCK_THROTTLE_REASONS{reason="power"} > 0
+        for: 5m
+        labels:
+          severity: info
+          team: ai
+        annotations:
+          summary: "GPU power throttling on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} is power-limited. Consider adjusting power cap."
+
+      # SM (Streaming Multiprocessor) Clock alerts
+      - alert: GPUClockUnstable
+        expr: abs(delta(DCGM_FI_DEV_SM_CLOCK[5m])) > 500
+        for: 10m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "GPU clock unstable on {{ $labels.instance }}"
+          description: "GPU {{ $labels.gpu }} SM clock fluctuating significantly. Check thermal/power."
+
   # =============================================================================
   # INFERENCE SERVICE ALERTS
   # =============================================================================

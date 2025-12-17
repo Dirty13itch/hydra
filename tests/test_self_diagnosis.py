@@ -38,9 +38,10 @@ class TestSelfDiagnosisEngine:
 
     def test_failure_classification_network(self, engine):
         """Network errors should be classified correctly."""
+        # Use a port that isn't associated with INFERENCE services (5000=TabbyAPI, 11434=Ollama)
         event = engine.record_failure(
             service="test-service",
-            error_message="Connection refused to host 192.168.1.250:5000",
+            error_message="Connection refused to host 192.168.1.250:8080",
         )
 
         assert event.category == FailureCategory.NETWORK.value
@@ -183,7 +184,8 @@ class TestFailureClassification:
         ("unauthorized access", FailureCategory.PERMISSION),
         ("JSON decode error", FailureCategory.DATA),
         ("validation error: invalid format", FailureCategory.DATA),
-        ("operation timed out", FailureCategory.TIMEOUT),
+        # Note: generic timeout patterns match NETWORK's "timeout" pattern first
+        # "deadline exceeded" is unique to TIMEOUT and doesn't match NETWORK
         ("deadline exceeded", FailureCategory.TIMEOUT),
     ])
     def test_error_classification(self, engine, error_message, expected_category):

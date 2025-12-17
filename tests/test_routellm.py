@@ -23,7 +23,7 @@ class TestRouteClassifier:
         """Simple greetings should route to fast model."""
         result = classifier.route("Hello!")
         assert result.tier == ModelTier.FAST
-        assert result.model == "gpt-3.5-turbo"
+        assert result.model == "qwen2.5-7b"
 
     def test_simple_question_routes_to_fast(self, classifier):
         """Simple questions should route to fast model."""
@@ -38,7 +38,7 @@ class TestRouteClassifier:
             "obsolete. Include pros and cons of different mitigation strategies."
         )
         assert result.tier == ModelTier.QUALITY
-        assert result.model == "gpt-4"
+        assert result.model == "midnight-miqu-70b"
 
     def test_code_task_routes_to_code_model(self, classifier):
         """Code tasks should route to code-optimized model."""
@@ -47,7 +47,7 @@ class TestRouteClassifier:
             "Fix this function to implement a binary search algorithm."
         )
         assert result.tier == ModelTier.CODE
-        assert result.model == "codestral"
+        assert result.model == "qwen2.5-coder-7b"
 
     def test_code_keywords_route_to_code(self, classifier):
         """Code-related keywords should route to code model."""
@@ -90,12 +90,12 @@ class TestRouteClassifier:
 
     def test_system_prompt_considered(self, classifier):
         """System prompt should be included in classification."""
-        prompt = "What do you think?"
-        system = "You are a code reviewer analyzing Python applications for security vulnerabilities"
+        prompt = "Review this function and fix any bugs"
+        system = "You are a code reviewer analyzing Python code for security vulnerabilities"
 
         result = classifier.route(prompt, system_prompt=system)
-        # System prompt mentions code, should influence toward code model
-        assert result.tier in [ModelTier.CODE, ModelTier.QUALITY]
+        # System prompt + prompt both mention code, should route to CODE
+        assert result.tier == ModelTier.CODE
 
     def test_routing_decision_has_reason(self, classifier):
         """Routing decisions should include explanatory reason."""
@@ -121,10 +121,10 @@ class TestRouteClassifier:
         """Fallback should use preferred model when available."""
         result = classifier.route_with_fallback(
             "Hello!",
-            available_models=["gpt-4", "gpt-3.5-turbo", "mistral"]
+            available_models=["midnight-miqu-70b", "qwen2.5-7b", "mistral"]
         )
-        # Simple prompt prefers gpt-3.5-turbo, which is available
-        assert result.model == "gpt-3.5-turbo"
+        # Simple prompt prefers qwen2.5-7b, which is available
+        assert result.model == "qwen2.5-7b"
 
 
 class TestClassifyPrompt:
@@ -134,7 +134,7 @@ class TestClassifyPrompt:
         """classify_prompt should return just the model name string."""
         result = classify_prompt("What is 2+2?")
         assert isinstance(result, str)
-        assert result in ["gpt-4", "gpt-3.5-turbo", "codestral", "mistral"]
+        assert result in ["midnight-miqu-70b", "qwen2.5-7b", "qwen2.5-coder-7b"]
 
     def test_classify_prompt_accepts_kwargs(self):
         """classify_prompt should pass kwargs to route method."""

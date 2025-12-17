@@ -114,13 +114,16 @@ class TestPreferenceLearner:
     def test_get_preferred_model_default(self, learner):
         """Without history, should return sensible default."""
         model = learner.get_preferred_model(task_type=TaskType.GENERAL)
-        assert model in ["gpt-3.5-turbo", "gpt-4", "codestral", "mistral"]
+        # Can be either OpenAI or local Hydra model names
+        assert model in ["gpt-3.5-turbo", "gpt-4", "codestral", "mistral",
+                        "qwen2.5-7b", "qwen2.5-coder-7b", "midnight-miqu-70b"]
 
     def test_get_preferred_model_from_prompt(self, learner):
         """Should detect task type from prompt."""
         model = learner.get_preferred_model(prompt="Debug this Python code")
-        # Code task should get code-appropriate model
-        assert model in ["codestral", "gpt-4", "gpt-3.5-turbo"]
+        # Code task should get code-appropriate model (OpenAI or local)
+        assert model in ["codestral", "gpt-4", "gpt-3.5-turbo",
+                        "qwen2.5-coder-7b", "qwen2.5-7b", "midnight-miqu-70b"]
 
     def test_get_preferred_model_respects_history(self, learner):
         """Model with good history should be preferred."""

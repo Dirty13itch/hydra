@@ -32,6 +32,9 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+# LiteLLM Authentication
+LITELLM_API_KEY = os.environ.get("LITELLM_API_KEY", "sk-PyKRr5POL0tXJEMOEGnliWk6doMb31k7")
+
 # =============================================================================
 # Enums and Data Classes
 # =============================================================================
@@ -671,6 +674,10 @@ async def llm_agent_handler(task: AgentTask) -> Dict[str, Any]:
 
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
+            headers = {"Content-Type": "application/json"}
+            # Add auth header for LiteLLM backend
+            if backend == "litellm":
+                headers["Authorization"] = f"Bearer {LITELLM_API_KEY}"
             llm_response = await client.post(
                 f"{base_url}/v1/chat/completions",
                 json={
@@ -681,7 +688,7 @@ async def llm_agent_handler(task: AgentTask) -> Dict[str, Any]:
                     ],
                     "max_tokens": max_tokens,
                 },
-                headers={"Content-Type": "application/json"}
+                headers=headers
             )
 
             if llm_response.status_code == 200:

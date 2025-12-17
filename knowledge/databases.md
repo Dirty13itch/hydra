@@ -301,7 +301,7 @@ def hybrid_search(query, alpha=0.7):
 **Status:** DEPLOYED (2025-12-10)
 **Container:** hydra-neo4j
 **Version:** 5.26.0-community
-**Credentials:** neo4j / HydraNeo4j2024!
+**Credentials:** neo4j / HydraNeo4jPass2024
 
 ### Docker Setup
 ```yaml
@@ -312,7 +312,7 @@ hydra-neo4j:
     - 7474:7474  # HTTP/Browser
     - 7687:7687  # Bolt
   environment:
-    NEO4J_AUTH: neo4j/HydraNeo4j2024!
+    NEO4J_AUTH: neo4j/HydraNeo4jPass2024
     NEO4J_PLUGINS: ["apoc"]
   volumes:
     - /mnt/user/appdata/neo4j/data:/data
@@ -326,7 +326,7 @@ hydra-neo4j:
 
 # Python
 from neo4j import GraphDatabase
-driver = GraphDatabase.driver("bolt://192.168.1.244:7687", auth=("neo4j", "HydraNeo4j2024!"))
+driver = GraphDatabase.driver("bolt://192.168.1.244:7687", auth=("neo4j", "HydraNeo4jPass2024"))
 ```
 
 ### Use Cases

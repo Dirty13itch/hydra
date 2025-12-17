@@ -42,6 +42,20 @@ from hydra_tools.auth_metrics import (
     HTTP_REQUESTS_IN_PROGRESS,
 )
 
+# Structured logging - configure at import time before FastAPI starts
+from hydra_tools.logging_config import (
+    setup_logging,
+    get_logger,
+    generate_request_id,
+    set_request_id,
+    log_request,
+)
+
+# Initialize structured logging at module import
+# This ensures JSON formatting is set up before uvicorn configures its loggers
+_use_json = os.environ.get("HYDRA_LOG_JSON", "true").lower() == "true"
+setup_logging(json_format=_use_json)
+
 # Import router creators
 from hydra_tools.self_diagnosis import create_diagnosis_router
 from hydra_tools.resource_optimization import create_optimization_router
@@ -209,6 +223,10 @@ class RequestMetricsMiddleware(BaseHTTPMiddleware):
         method = request.method
         path = request.url.path
 
+        # Generate and set request ID for tracing
+        request_id = generate_request_id()
+        set_request_id(request_id)
+
         # Track in-progress requests
         HTTP_REQUESTS_IN_PROGRESS.labels(method=method).inc()
         request_start = time.perf_counter()
@@ -216,14 +234,22 @@ class RequestMetricsMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             status_code = response.status_code
+            # Add request ID to response headers
+            response.headers["X-Request-ID"] = request_id
         except Exception as e:
             status_code = 500
             raise
         finally:
             # Record metrics
             duration = time.perf_counter() - request_start
+            duration_ms = duration * 1000
             record_http_request(method, path, status_code, duration)
             HTTP_REQUESTS_IN_PROGRESS.labels(method=method).dec()
+
+            # Log request (skip noisy endpoints)
+            if path not in ("/health", "/metrics"):
+                logger = get_logger("hydra_tools.api")
+                log_request(logger, method, path, status_code, duration_ms)
 
         return response
 
@@ -291,9 +317,14 @@ APP_VERSION = "2.6.0"  # Prometheus auth/request metrics, API key auth, chapter 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle handler."""
+    # Logging already configured at module import time
+    logger = get_logger("hydra_tools.api")
+
     # Startup
-    print(f"[{datetime.utcnow().isoformat()}] Hydra Tools API starting...")
-    print(f"  Data directory: {os.environ.get('HYDRA_DATA_DIR', '/mnt/user/appdata/hydra-stack/data')}")
+    logger.info("Hydra Tools API starting", extra={
+        "version": APP_VERSION,
+        "data_dir": os.environ.get('HYDRA_DATA_DIR', '/mnt/user/appdata/hydra-stack/data'),
+    })
 
     # Initialize auth status metrics
     auth_keys = get_api_keys()
@@ -880,9 +911,14 @@ async def global_exception_handler(request: Request, exc: Exception):
 def main():
     """Run the API server."""
     import uvicorn
+    from hydra_tools.logging_config import get_uvicorn_log_config
 
     host = os.environ.get("HYDRA_API_HOST", "0.0.0.0")
     port = int(os.environ.get("HYDRA_API_PORT", "8700"))
+    use_json = os.environ.get("HYDRA_LOG_JSON", "true").lower() == "true"
+
+    # Get uvicorn log config that matches our structured logging
+    log_config = get_uvicorn_log_config(json_format=use_json)
 
     uvicorn.run(
         "hydra_tools.api:app",
@@ -890,6 +926,8 @@ def main():
         port=port,
         reload=False,
         log_level="info",
+        log_config=log_config,
+        access_log=False,  # Disable uvicorn access log, use our middleware instead
     )
 
 

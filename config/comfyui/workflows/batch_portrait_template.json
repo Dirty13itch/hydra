@@ -1,0 +1,71 @@
+{
+  "_meta": {
+    "name": "Batch Portrait Generator",
+    "description": "Generate multiple portrait variations with consistent style",
+    "version": "1.0.0",
+    "variables": {
+      "POSITIVE_PROMPT": "Character and style description",
+      "NEGATIVE_PROMPT": "Quality negatives",
+      "BATCH_SIZE": "Number of variations (1-8)",
+      "OUTPUT_PREFIX": "Output filename prefix"
+    },
+    "use_case": "Generating multiple options for character design"
+  },
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "NoobAI-XL-v1.0.safetensors"
+    }
+  },
+  "2": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": "{{BATCH_SIZE}}"
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "{{POSITIVE_PROMPT}}, masterpiece, best quality, highres, detailed face, detailed eyes, anime illustration, visual novel style",
+      "clip": ["1", 1]
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "{{NEGATIVE_PROMPT}}, lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, blurry",
+      "clip": ["1", 1]
+    }
+  },
+  "5": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["1", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["2", 0],
+      "seed": "{{SEED}}",
+      "steps": 30,
+      "cfg": 7.5,
+      "sampler_name": "dpmpp_2m_sde",
+      "scheduler": "karras",
+      "denoise": 1.0
+    }
+  },
+  "6": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["5", 0],
+      "vae": ["1", 2]
+    }
+  },
+  "7": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["6", 0],
+      "filename_prefix": "{{OUTPUT_PREFIX}}"
+    }
+  }
+}

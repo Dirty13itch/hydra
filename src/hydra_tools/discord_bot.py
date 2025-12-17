@@ -284,6 +284,170 @@ def create_discord_router() -> APIRouter:
         else:
             raise HTTPException(status_code=400, detail=f"Unknown command: {command}")
 
+    # =========================================================================
+    # MORNING BRIEFING SYSTEM
+    # =========================================================================
+
+    class MorningBriefingConfig(BaseModel):
+        """Configuration for morning briefing."""
+        include_health: bool = True
+        include_containers: bool = True
+        include_alerts: bool = True
+        include_gpu: bool = True
+        include_memory: bool = True
+        include_tasks: bool = True
+        send_to_discord: bool = True
+
+    @router.post("/briefing/morning")
+    async def send_morning_briefing(config: MorningBriefingConfig = MorningBriefingConfig()):
+        """
+        Generate and send a comprehensive morning briefing.
+
+        Gathers:
+        - Cluster health status
+        - Container health summary
+        - Recent alerts
+        - GPU utilization
+        - Memory system status
+        - Pending tasks
+
+        Sends formatted briefing to Discord if configured.
+        """
+        handler = get_command_handler()
+        briefing_sections = []
+        overall_status = "healthy"
+        issues = []
+
+        # Gather all data
+        try:
+            # 1. System Health
+            if config.include_health:
+                health_resp = await handler.client.get(f"{handler.hydra_api_url}/health")
+                if health_resp.status_code == 200:
+                    health = health_resp.json()
+                    briefing_sections.append(
+                        f"**System Status:** {health.get('status', 'unknown').upper()}"
+                    )
+                    if health.get('status') != 'healthy':
+                        overall_status = "degraded"
+                        issues.append("API health check not healthy")
+
+            # 2. Container Health
+            if config.include_containers:
+                containers_resp = await handler.client.get(
+                    f"{handler.hydra_api_url}/container-health/status",
+                    timeout=30,
+                )
+                if containers_resp.status_code == 200:
+                    containers = containers_resp.json()
+                    summary = containers.get("summary", {})
+                    health_rate = summary.get("health_rate", 0)
+                    healthy = summary.get("healthy", 0)
+                    total = summary.get("total", 0)
+                    unhealthy = summary.get("unhealthy", 0)
+
+                    briefing_sections.append(
+                        f"**Containers:** {healthy}/{total} healthy ({health_rate:.0f}%)"
+                    )
+
+                    if unhealthy > 0:
+                        overall_status = "degraded"
+                        issues.append(f"{unhealthy} container(s) unhealthy")
+
+            # 3. Recent Alerts
+            if config.include_alerts:
+                alerts_resp = await handler.client.get(
+                    f"{handler.hydra_api_url}/alerts/recent?limit=5"
+                )
+                if alerts_resp.status_code == 200:
+                    alerts_data = alerts_resp.json()
+                    alert_count = alerts_data.get("count", 0)
+                    if alert_count > 0:
+                        briefing_sections.append(f"**Recent Alerts:** {alert_count} in last 24h")
+                        # Check for critical alerts
+                        alerts = alerts_data.get("alerts", [])
+                        critical_count = sum(1 for a in alerts if a.get("severity") == "critical")
+                        if critical_count > 0:
+                            overall_status = "critical"
+                            issues.append(f"{critical_count} critical alert(s)")
+                    else:
+                        briefing_sections.append("**Alerts:** None in last 24h")
+
+            # 4. GPU Status (via SSH or endpoint)
+            if config.include_gpu:
+                try:
+                    # Try to get GPU info if available
+                    gpu_resp = await handler.client.get(
+                        f"{handler.hydra_api_url}/gpu/status",
+                        timeout=5,
+                    )
+                    if gpu_resp.status_code == 200:
+                        gpu_data = gpu_resp.json()
+                        gpu_info = []
+                        for gpu in gpu_data.get("gpus", []):
+                            name = gpu.get("name", "GPU")
+                            util = gpu.get("utilization", 0)
+                            mem_used = gpu.get("memory_used_mb", 0)
+                            mem_total = gpu.get("memory_total_mb", 1)
+                            gpu_info.append(f"{name}: {util}% util, {mem_used}/{mem_total}MB")
+                        if gpu_info:
+                            briefing_sections.append("**GPUs:**\n" + "\n".join(gpu_info))
+                except Exception:
+                    briefing_sections.append("**GPUs:** Status unavailable")
+
+            # 5. Memory System
+            if config.include_memory:
+                try:
+                    mem_resp = await handler.client.get(f"{handler.hydra_api_url}/memory/stats")
+                    if mem_resp.status_code == 200:
+                        mem_data = mem_resp.json()
+                        total_memories = mem_data.get("total_memories", 0)
+                        briefing_sections.append(f"**Memory System:** {total_memories} memories stored")
+                except Exception:
+                    pass
+
+            # Build the full briefing message
+            timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+            status_emoji = {"healthy": "🟢", "degraded": "🟡", "critical": "🔴"}.get(overall_status, "⚪")
+
+            briefing_text = "\n".join(briefing_sections)
+
+            if issues:
+                briefing_text += "\n\n**Issues:**\n" + "\n".join(f"• {i}" for i in issues)
+
+            # Send to Discord
+            discord_sent = False
+            if config.send_to_discord:
+                colors = {"healthy": 0x00FF00, "degraded": 0xFFFF00, "critical": 0xFF0000}
+                discord_sent = await handler.webhook.send_embed(
+                    title=f"{status_emoji} Morning Briefing - {timestamp}",
+                    description=briefing_text,
+                    color=colors.get(overall_status, 0x808080),
+                    fields=[
+                        {"name": "Overall Status", "value": overall_status.upper(), "inline": True},
+                        {"name": "Issues", "value": str(len(issues)), "inline": True},
+                    ],
+                )
+
+            return {
+                "status": "success",
+                "overall_status": overall_status,
+                "issues": issues,
+                "sections": briefing_sections,
+                "discord_sent": discord_sent,
+                "timestamp": timestamp,
+            }
+
+        except Exception as e:
+            logger.error(f"Morning briefing error: {e}")
+            return {"status": "error", "message": str(e)}
+
+    @router.get("/briefing/preview")
+    async def preview_briefing():
+        """Preview what the morning briefing would contain without sending."""
+        config = MorningBriefingConfig(send_to_discord=False)
+        return await send_morning_briefing(config)
+
     @router.post("/webhook/interaction")
     async def discord_interaction(request: Request):
         """

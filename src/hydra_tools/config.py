@@ -7,7 +7,72 @@ Override with environment variables for flexibility.
 
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict, Any
+
+
+# Node definitions for the cluster
+NODES: Dict[str, Dict[str, Any]] = {
+    "hydra-ai": {
+        "ip": "192.168.1.250",
+        "user": "typhon",
+        "role": "Primary inference (TabbyAPI)",
+        "gpus": ["RTX 5090", "RTX 4090"],
+    },
+    "hydra-compute": {
+        "ip": "192.168.1.203",
+        "user": "typhon",
+        "role": "Ollama, ComfyUI",
+        "gpus": ["RTX 5070 Ti", "RTX 5070 Ti"],
+    },
+    "hydra-storage": {
+        "ip": "192.168.1.244",
+        "user": "root",
+        "role": "Docker services, NFS",
+        "gpus": [],
+    },
+}
+
+# Service definitions
+SERVICES: Dict[str, Dict[str, Any]] = {
+    "tabbyapi": {"port": 5000, "node": "hydra-ai", "health": "/v1/model"},
+    "ollama": {"port": 11434, "node": "hydra-compute", "health": "/"},
+    "litellm": {"port": 4000, "node": "hydra-storage", "health": "/health/liveliness"},
+    "qdrant": {"port": 6333, "node": "hydra-storage", "health": "/"},
+    "postgres": {"port": 5432, "node": "hydra-storage", "health": None},
+    "redis": {"port": 6379, "node": "hydra-storage", "health": None},
+    "comfyui": {"port": 8188, "node": "hydra-compute", "health": "/"},
+    "meilisearch": {"port": 7700, "node": "hydra-storage", "health": "/health"},
+    "searxng": {"port": 8888, "node": "hydra-storage", "health": "/"},
+    "grafana": {"port": 3003, "node": "hydra-storage", "health": "/api/health"},
+    "prometheus": {"port": 9090, "node": "hydra-storage", "health": "/-/healthy"},
+}
+
+
+def get_node_ip(node_name: str) -> str:
+    """Get IP address for a node name. Returns input if not found."""
+    if node_name in NODES:
+        return NODES[node_name]["ip"]
+    return node_name
+
+
+def get_service_url(service_name: str) -> Optional[str]:
+    """Get URL for a service. Returns None if not found."""
+    if service_name not in SERVICES:
+        return None
+    svc = SERVICES[service_name]
+    node_ip = get_node_ip(svc["node"])
+    return f"http://{node_ip}:{svc['port']}"
+
+
+# Alias for backward compatibility
+class ClusterConfig:
+    """Configuration for cluster endpoints. Alias for HydraConfig."""
+
+    def __init__(self):
+        self.litellm_url = os.getenv("LITELLM_URL", "http://192.168.1.244:4000")
+        self.qdrant_url = os.getenv("QDRANT_URL", "http://192.168.1.244:6333")
+        self.ollama_url = os.getenv("OLLAMA_URL", "http://192.168.1.203:11434")
+        self.tabby_url = os.getenv("TABBY_URL", "http://192.168.1.250:5000")
 
 
 @dataclass

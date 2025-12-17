@@ -79,12 +79,13 @@ class RouteClassifier:
     # Patterns indicating code tasks (use codestral)
     CODE_PATTERNS = [
         r"```[\w]*\n",  # Code blocks
-        r"(def |class |function |const |let |var )",
-        r"(import |from |require\(|include )",
-        r"\b(python|javascript|typescript|rust|go|java|c\+\+|sql)\b",
-        r"(debug|fix|refactor|optimize|review) (this |the |my )?(code|function|class)",
+        r"(def |class |function\s*\(|const |let |var )",
+        r"(import \w+|from \w+ import|require\(['\"]|#include )",  # More specific import patterns
+        r"\b(python|javascript|typescript|rust|go|java|c\+\+|sql)\b.{0,30}(code|script|program|function|bug|error|fix|debug)",  # Language + code context
+        r"(debug|fix|refactor|optimize|review) (this |the |my )?(code|function|class|script)",
         r"(implement|write|create|build) (a |an )?(function|class|method|api|script)",
-        r"(error|exception|bug|issue) in (my |the |this )?(code|program)",
+        r"(error|exception|bug|issue) in (my |the |this )?(code|program|script)",
+        r"(code|function|class|method|script) (that|which|to) ",  # Code entity references
     ]
 
     # Model mappings - Hydra local models via LiteLLM
@@ -100,8 +101,8 @@ class RouteClassifier:
 
     def __init__(
         self,
-        complexity_threshold: float = 0.6,
-        token_threshold: int = 500,
+        complexity_threshold: float = 0.45,  # Lower threshold for more quality routing
+        token_threshold: int = 300,  # Lower token threshold
     ):
         """
         Initialize the route classifier.
@@ -165,7 +166,8 @@ class RouteClassifier:
     def _is_code_task(self, prompt: str) -> bool:
         """Determine if prompt is code-related."""
         code_matches = self._count_pattern_matches(prompt, self.code_patterns)
-        return code_matches >= 2 or "```" in prompt
+        # Lower threshold: 1+ matches is enough for code detection
+        return code_matches >= 1 or "```" in prompt
 
     def route(
         self,

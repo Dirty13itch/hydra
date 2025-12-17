@@ -33,10 +33,27 @@
 - ~85% faster than llama.cpp for generation
 - EXL2 quantization format optimized for this engine
 
-### ExLlamaV3 Status
-- Released but **lacks tensor parallelism**
-- Stay on V2 for heterogeneous GPU setups
-- V3 is faster for single-GPU configs only
+### ExLlamaV3 Status (Updated 2025-12-17)
+- **Tensor parallelism added in v0.0.6** (experimental, current: v0.0.18)
+- **Heterogeneous GPU support**: Yes, but requires manual `gpu_split` configuration
+- **Stability**: Experimental - multiple TP fixes in recent releases (v0.0.9, v0.0.16)
+- **TabbyAPI integration**: Draft PR #173, not yet in main branch
+- **Performance**: Limited benchmarks available, Ampere (4090) optimization in progress
+- **Recommendation**: Stay on ExLlamaV2 until V3 TP stabilizes and TabbyAPI merges support
+
+**Future Migration Path**:
+- Monitor TabbyAPI PR #173 for stable TP support
+- Test ExLlamaV3 v0.1.0+ when released
+- EXL3 conversion faster than EXL2 (minutes vs. hours for 70B models)
+- May enable speculative decoding with better VRAM efficiency
+
+**V3 Configuration (for future reference)**:
+```yaml
+# When TabbyAPI merges V3 support
+tensor_parallel: true
+gpu_split: [28, 24]  # Manual split for 5090+4090
+autosplit_reserve: [4096, 2048]  # MB per GPU
+```
 
 ### Installation (NixOS)
 ```bash
