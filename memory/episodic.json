@@ -1,0 +1,178 @@
+{
+  "00438ff7-d414-426d-a1fc-26c55bb4bb7a": {
+    "id": "00438ff7-d414-426d-a1fc-26c55bb4bb7a",
+    "tier": "episodic",
+    "content": "Autonomous trigger: Service Down. Reason: Services down: hydra-tools-api. Action: monitoring",
+    "created_at": "2025-12-17T21:14:37.764266",
+    "updated_at": "2025-12-17T21:14:37.764266",
+    "access_count": 0,
+    "last_accessed": null,
+    "priority": "medium",
+    "tags": [
+      "autonomous",
+      "monitoring",
+      "health-002"
+    ],
+    "metadata": {},
+    "decay_rate": 0.01,
+    "session_id": "",
+    "event_type": "autonomous_action",
+    "participants": [],
+    "outcome": "Spawned monitoring task",
+    "emotional_valence": 0.0
+  },
+  "d540f4d2-e26b-490e-8646-85daa273b312": {
+    "id": "d540f4d2-e26b-490e-8646-85daa273b312",
+    "tier": "episodic",
+    "content": "Autonomous trigger: Service Down. Reason: Services down: hydra-tools-api. Action: monitoring",
+    "created_at": "2025-12-17T21:16:36.027827",
+    "updated_at": "2025-12-17T21:16:36.027827",
+    "access_count": 0,
+    "last_accessed": null,
+    "priority": "medium",
+    "tags": [
+      "autonomous",
+      "monitoring",
+      "health-002"
+    ],
+    "metadata": {},
+    "decay_rate": 0.01,
+    "session_id": "",
+    "event_type": "autonomous_action",
+    "participants": [],
+    "outcome": "Spawned monitoring task",
+    "emotional_valence": 0.0
+  },
+  "d073cee9-c83f-4cc8-ba1d-8256d35c12f0": {
+    "id": "d073cee9-c83f-4cc8-ba1d-8256d35c12f0",
+    "tier": "episodic",
+    "content": "Autonomous trigger: Service Down. Reason: Services down: hydra-tools-api. Action: monitoring",
+    "created_at": "2025-12-17T21:18:41.321510",
+    "updated_at": "2025-12-17T21:18:41.321510",
+    "access_count": 0,
+    "last_accessed": null,
+    "priority": "medium",
+    "tags": [
+      "autonomous",
+      "monitoring",
+      "health-002"
+    ],
+    "metadata": {},
+    "decay_rate": 0.01,
+    "session_id": "",
+    "event_type": "autonomous_action",
+    "participants": [],
+    "outcome": "Spawned monitoring task",
+    "emotional_valence": 0.0
+  },
+  "4be19bee-3ae6-4802-8f84-37868ddca1f7": {
+    "id": "4be19bee-3ae6-4802-8f84-37868ddca1f7",
+    "tier": "episodic",
+    "content": "Autonomous trigger: Service Down. Reason: Services down: hydra-tools-api. Action: monitoring",
+    "created_at": "2025-12-17T21:20:17.372757",
+    "updated_at": "2025-12-17T21:20:17.372757",
+    "access_count": 0,
+    "last_accessed": null,
+    "priority": "medium",
+    "tags": [
+      "autonomous",
+      "monitoring",
+      "health-002"
+    ],
+    "metadata": {},
+    "decay_rate": 0.01,
+    "session_id": "",
+    "event_type": "autonomous_action",
+    "participants": [],
+    "outcome": "Spawned monitoring task",
+    "emotional_valence": 0.0
+  },
+  "1690e815-7a85-499a-a2c9-2517993aa11a": {
+    "id": "1690e815-7a85-499a-a2c9-2517993aa11a",
+    "tier": "episodic",
+    "content": "Autonomous trigger: Service Down. Reason: Services down: hydra-tools-api. Action: monitoring",
+    "created_at": "2025-12-17T21:24:08.364136",
+    "updated_at": "2025-12-17T21:24:08.364136",
+    "access_count": 0,
+    "last_accessed": null,
+    "priority": "medium",
+    "tags": [
+      "autonomous",
+      "monitoring",
+      "health-002"
+    ],
+    "metadata": {},
+    "decay_rate": 0.01,
+    "session_id": "",
+    "event_type": "autonomous_action",
+    "participants": [],
+    "outcome": "Spawned monitoring task",
+    "emotional_valence": 0.0
+  },
+  "6a883371-d5ef-4518-99b5-bc241dc56165": {
+    "id": "6a883371-d5ef-4518-99b5-bc241dc56165",
+    "tier": "episodic",
+    "content": "Autonomous trigger: Service Down. Reason: Services down: hydra-tools-api. Action: monitoring",
+    "created_at": "2025-12-17T21:27:58.076775",
+    "updated_at": "2025-12-17T21:27:58.076775",
+    "access_count": 0,
+    "last_accessed": null,
+    "priority": "medium",
+    "tags": [
+      "autonomous",
+      "monitoring",
+      "health-002"
+    ],
+    "metadata": {},
+    "decay_rate": 0.01,
+    "session_id": "",
+    "event_type": "autonomous_action",
+    "participants": [],
+    "outcome": "Spawned monitoring task",
+    "emotional_valence": 0.0
+  },
+  "5815bf2f-a9d6-4232-b30d-93b6f224d489": {
+    "id": "5815bf2f-a9d6-4232-b30d-93b6f224d489",
+    "tier": "episodic",
+    "content": "Autonomous trigger: Service Down. Reason: Services down: hydra-tools-api. Action: monitoring",
+    "created_at": "2025-12-17T21:29:28.774367",
+    "updated_at": "2025-12-17T21:29:28.774367",
+    "access_count": 0,
+    "last_accessed": null,
+    "priority": "medium",
+    "tags": [
+      "autonomous",
+      "monitoring",
+      "health-002"
+    ],
+    "metadata": {},
+    "decay_rate": 0.01,
+    "session_id": "",
+    "event_type": "autonomous_action",
+    "participants": [],
+    "outcome": "Spawned monitoring task",
+    "emotional_valence": 0.0
+  },
+  "b8f97235-f0fb-4708-bc0f-e4b7a66c72a5": {
+    "id": "b8f97235-f0fb-4708-bc0f-e4b7a66c72a5",
+    "tier": "episodic",
+    "content": "Autonomous trigger: Service Down. Reason: Services down: hydra-tools-api. Action: monitoring",
+    "created_at": "2025-12-17T21:34:38.376974",
+    "updated_at": "2025-12-17T21:34:38.376974",
+    "access_count": 0,
+    "last_accessed": null,
+    "priority": "medium",
+    "tags": [
+      "autonomous",
+      "monitoring",
+      "health-002"
+    ],
+    "metadata": {},
+    "decay_rate": 0.01,
+    "session_id": "",
+    "event_type": "autonomous_action",
+    "participants": [],
+    "outcome": "Spawned monitoring task",
+    "emotional_valence": 0.0
+  }
+}

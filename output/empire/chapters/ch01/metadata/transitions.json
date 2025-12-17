@@ -1,0 +1,21 @@
+{
+  "sc001": {
+    "scene_number": 1,
+    "updated_at": "2025-12-17T17:09:46.339240",
+    "transition_notes": "Opening scene - dramatic fade in",
+    "transition_in": {
+      "type": "fade",
+      "duration": 0.5,
+      "color": "#000000",
+      "easing": "ease-in-out",
+      "sound_effect": null
+    },
+    "transition_out": {
+      "type": "dissolve",
+      "duration": 0.5,
+      "color": "#000000",
+      "easing": "ease-in-out",
+      "sound_effect": null
+    }
+  }
+}
