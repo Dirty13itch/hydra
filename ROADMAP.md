@@ -7,24 +7,27 @@
 
 ## QUICK STATUS (Update Every Session)
 
-**Last Updated:** 2025-12-17T04:20:00Z
+**Last Updated:** 2025-12-17T06:02:00Z
 **Architecture Score:** 99/100
-**API Version:** 2.3.0
+**API Version:** 2.3.0 (330+ endpoints)
 **Benchmark Score:** 96.5%
 
 | Component | Status |
 |-----------|--------|
-| Hydra Tools API | ✅ Port 8700, 100+ endpoints |
+| Hydra Tools API | ✅ Port 8700, 330+ endpoints |
 | Memory (Qdrant+Neo4j) | ✅ MIRIX 6-tier, decay+conflicts |
 | Agent Scheduler (AIOS) | ✅ LLM agent with memory context |
 | Wake Word | ✅ hey_jarvis via Wyoming + voice trigger |
-| MCP | ✅ 54 tools in v2.2 proxy (ComfyUI, characters, n8n) |
+| MCP | ✅ 66+ tools in v2.3 proxy (ComfyUI, characters, n8n) |
 | Discovery Archive | ✅ Cross-session learning operational |
 | Self-Improvement | ✅ DGM cycle (93.4% benchmark) |
 | Autonomous Agents | ✅ Ollama/TabbyAPI/LiteLLM backends |
-| Voice Pipeline | ✅ Kokoro TTS + WebSocket + Streaming |
-| Character System | ✅ 21 queens in Qdrant, consistency API live |
+| Voice Pipeline | ✅ Kokoro TTS + WebSocket + Streaming (44ms /voice/status) |
+| Character System | ✅ 22 queens with voice profiles, consistency API live |
 | Predictive Maintenance | ✅ Prometheus recording rules active |
+| Homepage Integration | ✅ /services/unified with 30 services, SSE real-time updates |
+| Command Center | ✅ ServiceGrid with SSE, favicon, live status indicator |
+| n8n Automation | ✅ Chapter processor workflow for visual novel pipeline |
 
 **Active Priorities:**
 - [x] Discovery Archive System (cross-session learning) - DONE
@@ -39,6 +42,18 @@
 - [x] Claude Code MCP Integration - DONE (41 tools in hydra_mcp_proxy.py v2.1)
 - [x] Wake Word → Voice Chat - DONE (POST /voice/wake/trigger-voice-chat, n8n workflow)
 - [x] WebSocket Voice Interface - DONE (ws://host:8700/voice/ws, bidirectional streaming)
+- [x] Homepage Integration - DONE (2025-12-17, /services/unified merges 22 Homepage + 15 Hydra)
+- [x] Voice Status Optimization - DONE (2025-12-17, 14.8s → 44ms, 336x faster)
+- [x] Character Voice Profiles - DONE (2025-12-17, 22 queens with valid Kokoro TTS voices)
+- [x] Dashboard Services Fix - DONE (2025-12-17, wired to /health/cluster)
+- [x] Command Center Favicon - DONE (2025-12-17, hydra-icon.svg)
+- [x] Character Voice Update API - DONE (2025-12-17, PATCH /characters/{id}/voice)
+- [x] CLIPVision Consistency Workflow - DONE (2025-12-17, character_consistency_clipvision.json)
+- [x] n8n Chapter Processor Workflow - DONE (2025-12-17, config/n8n/chapter-processor.json)
+- [x] ServiceGrid Frontend Component - DONE (2025-12-17, React component with category grouping)
+- [x] SSE Service Status Stream - DONE (2025-12-17, GET /services/stream for real-time updates)
+- [x] Container Health API Fix - DONE (2025-12-17, 36/36 containers healthy via /check-all)
+- [x] Alerts Service Fix - DONE (2025-12-17, corrected Alertmanager health endpoint)
 
 ---
 

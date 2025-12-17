@@ -68,16 +68,16 @@
 
 ## GAPS IDENTIFIED
 
-### 1. Constitution Integrity (CRITICAL)
-- **Issue**: `integrity_valid: false` in /constitution/status
-- **Cause**: CONSTITUTION.yaml hash not computed/stored
-- **Impact**: Safety validation may not be enforced
-- **Fix**: Register CONSTITUTION.yaml with hash verification
+### 1. Constitution Integrity (FIXED)
+- **Status**: ✅ `integrity_valid: true` in /constitution/status
+- **Hash**: 2334e42e146c64917e5485b991765984f812fc2e38b799fc0e0f3ffdde3fd78c
+- **Emergency stop**: inactive
+- **Audit entries**: 0
 
-### 2. Discovery Archive Endpoint (MEDIUM)
-- **Issue**: /discoveries/recent returns 404
-- **Cause**: Route may not be registered in API
-- **Fix**: Verify discovery_archive router inclusion
+### 2. Discovery Archive Endpoint (FIXED)
+- **Issue**: /discoveries/recent was wrong endpoint name
+- **Correct endpoint**: /discoveries/list?limit=N
+- **Status**: ✅ Working - returns latest discoveries
 
 ### 3. ROADMAP Version Drift (LOW)
 - **Issue**: Quick Status shows v2.2.0, actual is v2.3.0

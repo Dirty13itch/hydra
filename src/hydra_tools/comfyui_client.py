@@ -11,6 +11,8 @@ Provides utilities to:
 
 import json
 import logging
+import os
+import random
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -20,8 +22,21 @@ from .config import get_config
 
 logger = logging.getLogger(__name__)
 
-# Template directory
-TEMPLATES_DIR = Path(__file__).parent.parent.parent / "config" / "comfyui" / "workflows"
+# Template directory - check multiple possible locations
+def _find_templates_dir():
+    env_path = os.environ.get("COMFYUI_TEMPLATES_DIR")
+    candidates = [
+        Path(env_path) if env_path else None,  # Environment override
+        Path("/app/repo/config/comfyui/workflows"),  # Docker mounted repo
+        Path(__file__).parent.parent.parent / "config" / "comfyui" / "workflows",  # Relative to source
+        Path("/data/comfyui/workflows"),  # Data directory fallback
+    ]
+    for p in candidates:
+        if p and p.exists() and p.is_dir():
+            return p
+    return candidates[2]  # Default fallback
+
+TEMPLATES_DIR = _find_templates_dir()
 
 
 class ComfyUIClient:
@@ -124,7 +139,8 @@ class ComfyUIClient:
         variables = {
             "CHARACTER_NAME": f"{character_name}_{emotion}",
             "POSITIVE_PROMPT": positive_prompt,
-            "NEGATIVE_PROMPT": negative_prompt or "lowres, bad anatomy, bad hands"
+            "NEGATIVE_PROMPT": negative_prompt or "lowres, bad anatomy, bad hands",
+            "SEED": str(random.randint(0, 2**32 - 1))  # Random seed for variety
         }
 
         workflow = self.fill_template(template, variables)

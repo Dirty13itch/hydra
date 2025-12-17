@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Badge, ProgressBar, StatusDot, Tabs, Button } from '../components/UIComponents';
 import { useDashboardData } from '../context/DashboardDataContext';
 import { queryLogs, getLogsServices, getLogsHealth, LogEntry } from '../services/hydraApi';
-import { Server, Activity, RefreshCw, Power, Loader2, Search, Filter, AlertTriangle, Info, Bug, AlertCircle, Terminal, Clock } from 'lucide-react';
+import { ServiceGrid } from '../components/ServiceGrid';
+import { Server, Activity, RefreshCw, Power, Loader2, Search, Filter, AlertTriangle, Info, Bug, AlertCircle, Terminal, Clock, LayoutGrid } from 'lucide-react';
 
 export const Infra: React.FC = () => {
   const { nodes, services, nodesLoading, servicesLoading, refreshNodes, refreshServices } = useDashboardData();
@@ -24,6 +25,7 @@ export const Infra: React.FC = () => {
   const tabs = [
     { id: 'NODES', label: 'Nodes & Resources' },
     { id: 'SERVICES', label: 'Services & Containers' },
+    { id: 'SERVICE_GRID', label: 'Service Grid' },
     { id: 'LOGS', label: 'Cluster Logs' }
   ];
 
@@ -84,7 +86,7 @@ export const Infra: React.FC = () => {
     }
   };
 
-  const isLoading = activeTab === 'NODES' ? nodesLoading : activeTab === 'SERVICES' ? servicesLoading : logsLoading;
+  const isLoading = activeTab === 'NODES' ? nodesLoading : activeTab === 'SERVICES' ? servicesLoading : activeTab === 'LOGS' ? logsLoading : false;
 
   const getLevelIcon = (level: string) => {
     switch (level.toUpperCase()) {
@@ -278,6 +280,11 @@ export const Infra: React.FC = () => {
               </table>
             )}
           </Card>
+        )}
+
+        {/* SERVICE GRID TAB */}
+        {activeTab === 'SERVICE_GRID' && (
+          <ServiceGrid />
         )}
 
         {/* LOGS TAB */}

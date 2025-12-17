@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 
 
 # Configuration
-ALERTS_SERVICE_URL = os.getenv("ALERTS_SERVICE_URL", "http://192.168.1.244:9095")
+ALERTS_SERVICE_URL = os.getenv("ALERTS_SERVICE_URL", "http://192.168.1.244:9093")
 DISCORD_NOTIFY_URL = os.getenv("DISCORD_NOTIFY_URL", "http://192.168.1.244:5678/webhook/discord-notify")
 ALERT_LOG_DIR = Path(os.getenv("ALERT_LOG_DIR", "/var/log/hydra-alerts"))
 
@@ -256,10 +256,10 @@ def create_alerts_router() -> APIRouter:
             last_alert_timestamp=None,
         )
 
-        # Check alerts service
+        # Check alerts service (Alertmanager uses /-/healthy endpoint)
         async with httpx.AsyncClient(timeout=5.0) as client:
             try:
-                resp = await client.get(f"{ALERTS_SERVICE_URL}/health")
+                resp = await client.get(f"{ALERTS_SERVICE_URL}/-/healthy")
                 status.alerts_service_healthy = resp.status_code == 200
             except Exception:
                 pass

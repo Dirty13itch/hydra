@@ -56,12 +56,14 @@ from hydra_tools.agent_scheduler import create_scheduler_router as create_agent_
 from hydra_tools.wake_word import create_wake_word_router
 from hydra_tools.discovery_archive import create_discovery_router
 from hydra_tools.character_consistency import create_character_router
+from hydra_tools.comfyui_client import create_comfyui_router
 from hydra_tools.dashboard_api import create_dashboard_router, get_dashboard_state
 from hydra_tools.home_automation import create_home_automation_router
 from hydra_tools.logs_api import create_logs_router
 from hydra_tools.autonomous_controller import create_autonomous_router, get_controller
 from hydra_tools.routers.unraid import router as unraid_router
 from hydra_tools.routers.events import router as events_router
+from hydra_tools.routers.services import create_services_router
 from hydra_tools.clients.unraid_client import close_unraid_client
 from hydra_tools.asset_quality import create_quality_router
 
@@ -194,6 +196,23 @@ async def lifespan(app: FastAPI):
     app.state.autonomous_controller = autonomous_controller
     print(f"[{datetime.utcnow().isoformat()}] Autonomous controller started")
 
+    # Start background container health checker
+    import asyncio
+    from hydra_tools.container_health import _monitor
+
+    async def container_health_background_task():
+        """Background task to periodically check container health."""
+        while True:
+            try:
+                await _monitor.check_all()
+            except Exception as e:
+                print(f"[{datetime.utcnow().isoformat()}] Container health check error: {e}")
+            await asyncio.sleep(60)  # Check every 60 seconds
+
+    container_health_task = asyncio.create_task(container_health_background_task())
+    app.state.container_health_task = container_health_task
+    print(f"[{datetime.utcnow().isoformat()}] Background container health checker started (60s interval)")
+
     yield
 
     # Shutdown
@@ -201,6 +220,11 @@ async def lifespan(app: FastAPI):
     scheduler.stop()
     await agent_scheduler.stop()
     await autonomous_controller.stop()
+    container_health_task.cancel()
+    try:
+        await container_health_task
+    except asyncio.CancelledError:
+        pass
     await close_unraid_client()
     print(f"[{datetime.utcnow().isoformat()}] Schedulers, autonomous controller, and clients stopped")
 
@@ -319,6 +343,9 @@ app.include_router(create_discovery_router())
 # Include Character Consistency router (Phase 12: Empire of Broken Queens)
 app.include_router(create_character_router())
 
+# Include ComfyUI router (Phase 12: image generation orchestration)
+app.include_router(create_comfyui_router())
+
 # Include Dashboard router (Command Center UI backend)
 app.include_router(create_dashboard_router())
 
@@ -339,6 +366,9 @@ app.include_router(events_router)
 
 # Include Asset Quality router (Phase 12: automated quality scoring for generated assets)
 app.include_router(create_quality_router())
+
+# Include Unified Services router (Homepage integration - single pane of glass)
+app.include_router(create_services_router())
 
 
 # Root endpoints
@@ -382,6 +412,7 @@ async def root():
             "unraid": "/api/v1/unraid",
             "events": "/api/v1/events",
             "quality": "/quality",
+            "comfyui": "/comfyui",
         },
     }
 

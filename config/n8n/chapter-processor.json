@@ -1,0 +1,175 @@
+{
+  "name": "Empire Chapter Processor",
+  "description": "Process visual novel chapter scripts - parse scenes, generate portraits, organize outputs",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "process-chapter",
+        "responseMode": "responseNode"
+      },
+      "name": "Chapter Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "id": "webhook-1"
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:8700/characters/parse-script",
+        "method": "POST",
+        "body": {
+          "mode": "raw",
+          "raw": "={{ JSON.stringify({ script_text: $json.body.script, chapter: $json.body.chapter || 1 }) }}"
+        },
+        "options": {
+          "headers": {
+            "values": [{"name": "Content-Type", "value": "application/json"}]
+          }
+        }
+      },
+      "name": "Parse Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 300],
+      "id": "parse-1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract unique characters from all scenes\nconst scenes = $input.first().json.scenes || [];\nconst characters = new Set();\nfor (const scene of scenes) {\n  for (const char of scene.characters || []) {\n    characters.add(char.toLowerCase());\n  }\n}\nreturn Array.from(characters).map(name => ({ character: name }));"
+      },
+      "name": "Extract Characters",
+      "type": "n8n-nodes-base.code",
+      "position": [650, 300],
+      "id": "extract-1"
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:8700/characters/",
+        "method": "GET"
+      },
+      "name": "Get Character Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [850, 300],
+      "id": "getchar-1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Match parsed characters with database and prepare generation requests\nconst dbChars = $input.first().json.characters || [];\nconst sceneData = $('Parse Script').first().json.scenes || [];\n\nconst generationQueue = [];\nfor (const scene of sceneData) {\n  for (const charName of scene.characters || []) {\n    const match = dbChars.find(c => c.name === charName.toLowerCase());\n    if (match && !match.reference_images?.length) {\n      // Only add if not already in queue\n      if (!generationQueue.find(g => g.character_id === match.id)) {\n        generationQueue.push({\n          character_id: match.id,\n          character_name: match.name,\n          display_name: match.display_name,\n          description: `${match.display_name}, ${match.hair_color} hair, ${match.eye_color} eyes, ${match.skin_tone} skin`,\n          needs_portrait: true\n        });\n      }\n    }\n  }\n}\nreturn generationQueue.length ? generationQueue : [{status: 'no_portraits_needed'}];"
+      },
+      "name": "Prepare Generation Queue",
+      "type": "n8n-nodes-base.code",
+      "position": [1050, 300],
+      "id": "prepare-1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {"value1": "={{ $json.needs_portrait }}", "value2": true}
+          ]
+        }
+      },
+      "name": "Needs Portrait?",
+      "type": "n8n-nodes-base.if",
+      "position": [1250, 300],
+      "id": "if-1"
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:8700/characters/generate-portrait",
+        "method": "POST",
+        "body": {
+          "mode": "raw",
+          "raw": "={{ JSON.stringify({ character_id: $json.character_id, emotion: 'neutral', style: 'visual_novel' }) }}"
+        },
+        "options": {
+          "headers": {
+            "values": [{"name": "Content-Type", "value": "application/json"}]
+          }
+        }
+      },
+      "name": "Generate Portrait",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1450, 200],
+      "id": "gen-1"
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "name": "Wait for Generation",
+      "type": "n8n-nodes-base.wait",
+      "position": [1650, 200],
+      "id": "wait-1"
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.203:8188/history",
+        "method": "GET"
+      },
+      "name": "Check Generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1850, 200],
+      "id": "check-1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate results from all branches\nconst results = $input.all();\nconst summary = {\n  processed: results.length,\n  portraits_generated: results.filter(r => r.json.status === 'queued').length,\n  skipped: results.filter(r => r.json.status === 'no_portraits_needed').length,\n  timestamp: new Date().toISOString()\n};\nreturn [summary];"
+      },
+      "name": "Aggregate Results",
+      "type": "n8n-nodes-base.code",
+      "position": [1450, 500],
+      "id": "agg-1"
+    },
+    {
+      "parameters": {
+        "url": "http://192.168.1.244:8700/alerts/send",
+        "method": "POST",
+        "body": {
+          "mode": "raw",
+          "raw": "={{ JSON.stringify({ title: 'Chapter Processing Complete', message: `Processed ${$json.processed} characters, generated ${$json.portraits_generated} portraits`, level: 'info', channel: 'discord' }) }}"
+        },
+        "options": {
+          "headers": {
+            "values": [{"name": "Content-Type", "value": "application/json"}]
+          }
+        }
+      },
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1650, 500],
+      "id": "notify-1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'completed', summary: $json }) }}"
+      },
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1850, 500],
+      "id": "respond-1"
+    }
+  ],
+  "connections": {
+    "Chapter Webhook": {"main": [[{"node": "Parse Script", "type": "main", "index": 0}]]},
+    "Parse Script": {"main": [[{"node": "Extract Characters", "type": "main", "index": 0}]]},
+    "Extract Characters": {"main": [[{"node": "Get Character Data", "type": "main", "index": 0}]]},
+    "Get Character Data": {"main": [[{"node": "Prepare Generation Queue", "type": "main", "index": 0}]]},
+    "Prepare Generation Queue": {"main": [[{"node": "Needs Portrait?", "type": "main", "index": 0}]]},
+    "Needs Portrait?": {
+      "main": [
+        [{"node": "Generate Portrait", "type": "main", "index": 0}],
+        [{"node": "Aggregate Results", "type": "main", "index": 0}]
+      ]
+    },
+    "Generate Portrait": {"main": [[{"node": "Wait for Generation", "type": "main", "index": 0}]]},
+    "Wait for Generation": {"main": [[{"node": "Check Generation", "type": "main", "index": 0}]]},
+    "Check Generation": {"main": [[{"node": "Aggregate Results", "type": "main", "index": 0}]]},
+    "Aggregate Results": {"main": [[{"node": "Send Notification", "type": "main", "index": 0}]]},
+    "Send Notification": {"main": [[{"node": "Respond Success", "type": "main", "index": 0}]]}
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

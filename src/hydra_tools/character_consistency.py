@@ -832,6 +832,54 @@ def create_character_router():
     class UpdateReferencesRequest(BaseModel):
         reference_images: List[str]
 
+    class UpdateVoiceRequest(BaseModel):
+        voice_id: Optional[str] = None
+        voice_characteristics: Optional[Dict[str, Any]] = None
+
+    @router.patch("/{character_id}/voice")
+    async def update_character_voice(character_id: str, request: UpdateVoiceRequest):
+        """Update a character's voice profile."""
+        character = manager.get_character(character_id)
+        if not character:
+            raise HTTPException(status_code=404, detail="Character not found")
+
+        # Update voice settings
+        if request.voice_id is not None:
+            character.voice_id = request.voice_id
+        if request.voice_characteristics is not None:
+            character.voice_characteristics = request.voice_characteristics
+
+        # Delete old character data first (like update_character_references does)
+        try:
+            import httpx
+            resp = httpx.post(
+                f"{manager.qdrant_url}/collections/{manager.FACE_COLLECTION}/points/delete",
+                json={
+                    "filter": {
+                        "must": [
+                            {"key": "character_id", "match": {"value": character_id}}
+                        ]
+                    }
+                }
+            )
+            if resp.status_code not in (200, 201):
+                raise HTTPException(status_code=500, detail=f"Failed to delete old character: {resp.text}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error deleting old character: {e}")
+
+        # Re-add character with updated data
+        success = manager.add_character(character)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update voice profile")
+
+        updated = manager.get_character(character_id)
+        return {
+            "status": "updated",
+            "character_id": character_id,
+            "voice_id": updated.voice_id if updated else None,
+            "voice_characteristics": updated.voice_characteristics if updated else {},
+        }
+
     @router.patch("/{character_id}/references")
     async def update_character_references(character_id: str, request: UpdateReferencesRequest):
         """Update a character's reference images."""

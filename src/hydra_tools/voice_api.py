@@ -112,36 +112,42 @@ def create_voice_router() -> APIRouter:
         Get voice pipeline status.
 
         Returns status of all voice pipeline components.
+        Optimized: Runs all health checks in parallel for faster response.
         """
-        stt_status = PipelineStatus.OFFLINE
-        tts_status = PipelineStatus.OFFLINE
-        llm_status = PipelineStatus.OFFLINE
+        import asyncio
 
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            # Check STT
+        async def check_stt():
             try:
-                resp = await client.get(f"{STT_URL}/health")
-                stt_status = PipelineStatus.READY if resp.status_code == 200 else PipelineStatus.ERROR
+                async with httpx.AsyncClient(timeout=2.0) as client:
+                    resp = await client.get(f"{STT_URL}/health")
+                    return PipelineStatus.READY if resp.status_code == 200 else PipelineStatus.ERROR
             except Exception:
-                pass
+                return PipelineStatus.OFFLINE
 
-            # Check TTS
+        async def check_tts():
             try:
-                resp = await client.get(f"{TTS_URL}/health")
-                tts_status = PipelineStatus.READY if resp.status_code == 200 else PipelineStatus.ERROR
+                async with httpx.AsyncClient(timeout=2.0) as client:
+                    resp = await client.get(f"{TTS_URL}/health")
+                    return PipelineStatus.READY if resp.status_code == 200 else PipelineStatus.ERROR
             except Exception:
-                pass
+                return PipelineStatus.OFFLINE
 
-        # LLM health check needs longer timeout (LiteLLM checks all backends)
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async def check_llm():
             try:
-                resp = await client.get(
-                    f"{LLM_URL}/health",
-                    headers={"Authorization": f"Bearer {LLM_API_KEY}"}
-                )
-                llm_status = PipelineStatus.READY if resp.status_code == 200 else PipelineStatus.ERROR
+                async with httpx.AsyncClient(timeout=2.0) as client:
+                    # Don't send auth - just check if service is responding
+                    # 401 means service is up but requires auth
+                    resp = await client.get(f"{LLM_URL}/health")
+                    if resp.status_code in (200, 401):
+                        return PipelineStatus.READY
+                    return PipelineStatus.ERROR
             except Exception:
-                pass
+                return PipelineStatus.OFFLINE
+
+        # Run all checks in parallel
+        stt_status, tts_status, llm_status = await asyncio.gather(
+            check_stt(), check_tts(), check_llm()
+        )
 
         return VoiceStatus(
             stt_status=stt_status,

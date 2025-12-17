@@ -667,6 +667,118 @@ export async function queryLogs(params: {
   }>(`/logs/query?${searchParams.toString()}`);
 }
 
+// ============= Unified Services API (Homepage Integration) =============
+
+export interface UnifiedService {
+  id: string;
+  name: string;
+  category: string;
+  url: string;
+  icon?: string;
+  description?: string;
+  status: 'healthy' | 'unhealthy' | 'unknown';
+  latency_ms?: number;
+  source: 'hydra' | 'homepage';
+  node: string;
+}
+
+export interface UnifiedServicesResponse {
+  services: UnifiedService[];
+  categories: string[];
+  counts: {
+    total: number;
+    healthy: number;
+    unhealthy: number;
+    unknown: number;
+  };
+  timestamp: string;
+}
+
+export async function getUnifiedServices() {
+  return fetchApi<UnifiedServicesResponse>('/services/unified');
+}
+
+export async function getServiceCategories() {
+  return fetchApi<{
+    categories: Array<{
+      name: string;
+      count: number;
+      healthy: number;
+    }>;
+    total_categories: number;
+  }>('/services/categories');
+}
+
+export async function getServicesByCategory(category: string) {
+  return fetchApi<{
+    category: string;
+    services: UnifiedService[];
+    count: number;
+  }>(`/services/by-category/${category}`);
+}
+
+export async function getServicesByNode(node: string) {
+  return fetchApi<{
+    node: string;
+    services: UnifiedService[];
+    count: number;
+  }>(`/services/by-node/${node}`);
+}
+
+export async function getServicesHealthSummary() {
+  return fetchApi<{
+    homepage_services: number;
+    monitored_services: number;
+    healthy: number;
+    unhealthy: number;
+    unmonitored: number;
+    health_percentage: number;
+    timestamp: string;
+  }>('/services/health-summary');
+}
+
+// SSE Stream for real-time service status updates
+export interface ServiceStatusUpdate {
+  type: 'status_update' | 'error';
+  timestamp: string;
+  summary?: {
+    total: number;
+    monitored: number;
+    healthy: number;
+    unhealthy: number;
+    health_percentage: number;
+  };
+  services?: Record<string, {
+    status: string;
+    latency_ms: number | null;
+  }>;
+  message?: string;
+}
+
+export function createServicesEventSource(
+  onUpdate: (data: ServiceStatusUpdate) => void,
+  onError?: (error: Error) => void
+): EventSource {
+  const url = `${HYDRA_API_BASE}/services/stream`;
+  const eventSource = new EventSource(url);
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data) as ServiceStatusUpdate;
+      onUpdate(data);
+    } catch (err) {
+      console.error('Failed to parse SSE message:', err);
+    }
+  };
+
+  eventSource.onerror = (event) => {
+    console.error('SSE connection error:', event);
+    onError?.(new Error('SSE connection failed'));
+  };
+
+  return eventSource;
+}
+
 // ============= Knowledge Ingestion API =============
 
 export async function ingestUrl(url: string, collection?: string, metadata?: Record<string, string>) {
