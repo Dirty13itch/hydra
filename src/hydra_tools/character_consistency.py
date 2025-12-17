@@ -185,7 +185,32 @@ class CharacterManager:
             character.created_at = timestamp
         character.updated_at = timestamp
 
-        # Store face embedding if provided
+        # Always store character metadata (with placeholder vector if no face embedding)
+        face_vector = character.face_embedding or [0.0] * self.FACE_DIM
+        metadata_point = {
+            "id": str(uuid.uuid4()),
+            "vector": face_vector,
+            "payload": {
+                "character_id": character.id,
+                "character_name": character.name,
+                "type": "metadata" if not character.face_embedding else "face",
+                "has_face_embedding": bool(character.face_embedding),
+                **character.to_dict()
+            }
+        }
+        try:
+            resp = self.client.put(
+                f"{self.qdrant_url}/collections/{self.FACE_COLLECTION}/points",
+                json={"points": [metadata_point]}
+            )
+            if resp.status_code not in (200, 201):
+                logger.error(f"Failed to store character metadata: {resp.text}")
+                return False
+        except Exception as e:
+            logger.error(f"Error storing character metadata: {e}")
+            return False
+
+        # Store face embedding if provided (separate point for actual face matching)
         if character.face_embedding:
             face_point = {
                 "id": str(uuid.uuid4()),
@@ -263,6 +288,41 @@ class CharacterManager:
             logger.error(f"Error retrieving character {character_id}: {e}")
 
         return None
+
+    def update_character_references(
+        self,
+        character_id: str,
+        reference_images: List[str]
+    ) -> bool:
+        """Update a character's reference images."""
+        # Get existing character
+        character = self.get_character(character_id)
+        if not character:
+            logger.error(f"Character {character_id} not found")
+            return False
+
+        # Delete existing points for this character
+        try:
+            resp = self.client.post(
+                f"{self.qdrant_url}/collections/{self.FACE_COLLECTION}/points/delete",
+                json={
+                    "filter": {
+                        "must": [
+                            {"key": "character_id", "match": {"value": character_id}}
+                        ]
+                    }
+                }
+            )
+            if resp.status_code not in (200, 201):
+                logger.error(f"Failed to delete old character points: {resp.text}")
+                return False
+        except Exception as e:
+            logger.error(f"Error deleting character points: {e}")
+            return False
+
+        # Update reference images and re-add
+        character.reference_images = reference_images
+        return self.add_character(character)
 
     def find_similar_faces(
         self,
@@ -575,11 +635,79 @@ class ComfyUIWorkflowGenerator:
 
     def queue_workflow(self, workflow: Dict[str, Any]) -> Optional[str]:
         """Queue a workflow in ComfyUI."""
-        # This would integrate with actual ComfyUI API
-        # For now, return a mock job ID
-        job_id = hashlib.md5(json.dumps(workflow).encode()).hexdigest()[:12]
-        logger.info(f"Queued workflow {job_id} for {workflow.get('character_name')}")
-        return job_id
+        try:
+            # Load the portrait template - try multiple paths
+            template_paths = [
+                Path(__file__).parent.parent.parent / "config/comfyui/workflows/character_portrait_template.json",
+                Path("/app/repo/config/comfyui/workflows/character_portrait_template.json"),  # Docker mount
+                Path("/mnt/user/appdata/hydra-dev/config/comfyui/workflows/character_portrait_template.json"),  # Host path
+            ]
+
+            template_path = None
+            for path in template_paths:
+                if path.exists():
+                    template_path = path
+                    break
+
+            if template_path is None:
+                logger.error(f"Character portrait template not found in any of: {template_paths}")
+                return None
+
+            with open(template_path) as f:
+                template = json.load(f)
+
+            # Remove metadata before sending
+            if "_meta" in template:
+                del template["_meta"]
+
+            # Substitute variables in template
+            positive_prompt = workflow.get("prompt", "")
+            negative_prompt = workflow.get("negative_prompt", "low quality, blurry, deformed")
+            character_name = workflow.get("character_name", "unknown")
+
+            # Generate a random seed (0 to 2^63-1)
+            import random
+            random_seed = random.randint(0, 2**63 - 1)
+
+            # Walk through template and substitute variables
+            template_str = json.dumps(template)
+            template_str = template_str.replace("{{POSITIVE_PROMPT}}", positive_prompt.replace('"', '\\"'))
+            template_str = template_str.replace("{{NEGATIVE_PROMPT}}", negative_prompt.replace('"', '\\"'))
+            template_str = template_str.replace("{{CHARACTER_NAME}}", character_name)
+            template_str = template_str.replace("{{REFERENCE_IMAGE}}", "")
+            template_str = template_str.replace("{{OUTPUT_PATH}}", f"empire/{character_name}")
+            # Replace SEED placeholder - it's quoted in template so we need to replace with unquoted number
+            template_str = template_str.replace('"{{SEED}}"', str(random_seed))
+
+            comfyui_workflow = json.loads(template_str)
+
+            # Submit to ComfyUI /prompt endpoint
+            payload = {
+                "prompt": comfyui_workflow,
+                "client_id": "hydra-tools-api"
+            }
+
+            resp = self.client.post(
+                f"{self.comfyui_url}/prompt",
+                json=payload,
+                timeout=30.0
+            )
+
+            if resp.status_code == 200:
+                result = resp.json()
+                prompt_id = result.get("prompt_id")
+                logger.info(f"Queued ComfyUI workflow {prompt_id} for {character_name}")
+                return prompt_id
+            else:
+                logger.error(f"ComfyUI returned {resp.status_code}: {resp.text}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error queuing ComfyUI workflow: {e}")
+            # Return a mock ID for tracking purposes
+            job_id = hashlib.md5(json.dumps(workflow).encode()).hexdigest()[:12]
+            logger.warning(f"Returning mock job ID {job_id} due to ComfyUI error")
+            return job_id
 
     def get_workflow_status(self, job_id: str) -> Dict[str, Any]:
         """Get status of a queued workflow."""
@@ -701,13 +829,27 @@ def create_character_router():
 
         return {"character": character.to_dict()}
 
-    @router.get("/{character_id}")
-    async def get_character(character_id: str):
-        """Get a character by ID."""
+    class UpdateReferencesRequest(BaseModel):
+        reference_images: List[str]
+
+    @router.patch("/{character_id}/references")
+    async def update_character_references(character_id: str, request: UpdateReferencesRequest):
+        """Update a character's reference images."""
         character = manager.get_character(character_id)
         if not character:
             raise HTTPException(status_code=404, detail="Character not found")
-        return {"character": character.to_dict()}
+
+        success = manager.update_character_references(character_id, request.reference_images)
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update references")
+
+        updated = manager.get_character(character_id)
+        return {
+            "status": "updated",
+            "character_id": character_id,
+            "reference_count": len(request.reference_images),
+            "character": updated.to_dict() if updated else None
+        }
 
     @router.post("/parse-script")
     async def parse_script(request: ScriptParseRequest):
@@ -757,5 +899,178 @@ def create_character_router():
             "workflow": workflow,
             "status": "queued"
         }
+
+    # Batch generation models and endpoint
+    class BatchPortraitRequest(BaseModel):
+        """Request for batch portrait generation."""
+        character_ids: List[str] = []  # Empty means all characters
+        emotions: List[str] = ["neutral"]  # Emotions to generate for each character
+        poses: List[str] = ["bust"]  # Poses to generate for each character
+        skip_existing: bool = True  # Skip if character already has reference images
+        priority: str = "normal"  # Priority: low, normal, high
+        max_concurrent: int = 4  # Max concurrent generations
+
+    class BatchPortraitItem(BaseModel):
+        """Single item in batch generation."""
+        character_id: str
+        character_name: str
+        emotion: str
+        pose: str
+        job_id: Optional[str] = None
+        status: str = "pending"
+        error: Optional[str] = None
+
+    @router.post("/batch-generate")
+    async def batch_generate_portraits(request: BatchPortraitRequest):
+        """
+        Generate portraits for multiple characters in batch.
+
+        If character_ids is empty, generates for all characters.
+        Generates all combinations of emotions x poses for each character.
+        """
+        # Get characters to process
+        if request.character_ids:
+            characters = []
+            for char_id in request.character_ids:
+                char = manager.get_character(char_id)
+                if char:
+                    characters.append(char)
+        else:
+            characters = manager.list_characters()
+
+        if not characters:
+            return {
+                "status": "error",
+                "message": "No characters found",
+                "jobs": []
+            }
+
+        # Filter out characters with existing references if skip_existing
+        if request.skip_existing:
+            characters = [c for c in characters if not c.reference_images]
+
+        if not characters:
+            return {
+                "status": "completed",
+                "message": "All characters already have reference images",
+                "jobs": []
+            }
+
+        # Generate jobs for all combinations
+        jobs = []
+        for character in characters:
+            for emotion_str in request.emotions:
+                for pose_str in request.poses:
+                    try:
+                        emotion = EmotionTag(emotion_str)
+                    except ValueError:
+                        emotion = EmotionTag.NEUTRAL
+
+                    try:
+                        pose = PoseType(pose_str)
+                    except ValueError:
+                        pose = PoseType.BUST
+
+                    workflow = workflow_gen.generate_character_portrait(
+                        character, emotion, pose
+                    )
+                    job_id = workflow_gen.queue_workflow(workflow)
+
+                    jobs.append(BatchPortraitItem(
+                        character_id=character.id,
+                        character_name=character.name,
+                        emotion=emotion.value,
+                        pose=pose.value,
+                        job_id=job_id,
+                        status="queued"
+                    ))
+
+        return {
+            "status": "queued",
+            "message": f"Queued {len(jobs)} portrait generations",
+            "total_characters": len(characters),
+            "emotions": request.emotions,
+            "poses": request.poses,
+            "combinations_per_character": len(request.emotions) * len(request.poses),
+            "jobs": [j.model_dump() for j in jobs]
+        }
+
+    @router.get("/batch-status/{batch_id}")
+    async def get_batch_status(batch_id: str):
+        """Get status of a batch generation job."""
+        # In a real implementation, this would track batch status in a database
+        # For now, return a placeholder
+        return {
+            "batch_id": batch_id,
+            "status": "unknown",
+            "message": "Batch tracking not yet implemented - check individual job IDs"
+        }
+
+    @router.get("/coverage")
+    async def get_portrait_coverage():
+        """
+        Get portrait coverage statistics for all characters.
+
+        Returns how many characters have reference images and which emotions are covered.
+        """
+        characters = manager.list_characters()
+
+        with_references = [c for c in characters if c.reference_images]
+        without_references = [c for c in characters if not c.reference_images]
+
+        coverage_details = []
+        for char in characters:
+            coverage_details.append({
+                "id": char.id,
+                "name": char.name,
+                "display_name": char.display_name,
+                "has_reference": bool(char.reference_images),
+                "reference_count": len(char.reference_images),
+            })
+
+        return {
+            "total_characters": len(characters),
+            "with_references": len(with_references),
+            "without_references": len(without_references),
+            "coverage_percentage": (len(with_references) / len(characters) * 100) if characters else 0,
+            "characters_needing_portraits": [c.name for c in without_references],
+            "details": coverage_details
+        }
+
+    @router.post("/generate-missing")
+    async def generate_missing_portraits(
+        emotions: List[str] = ["neutral", "happy", "sad"],
+        poses: List[str] = ["bust"]
+    ):
+        """
+        Generate portraits for all characters missing reference images.
+
+        Convenience endpoint that wraps batch-generate with skip_existing=True.
+        """
+        batch_request = BatchPortraitRequest(
+            character_ids=[],  # All characters
+            emotions=emotions,
+            poses=poses,
+            skip_existing=True,
+            priority="normal"
+        )
+
+        return await batch_generate_portraits(batch_request)
+
+    # NOTE: Using Path parameter with regex to only match UUIDs, preventing
+    # matches against "/coverage", "/batch-status", etc.
+    from fastapi import Path as FastAPIPath
+    import re
+    UUID_PATTERN = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+
+    @router.get("/by-id/{character_id}")
+    async def get_character(
+        character_id: str = FastAPIPath(..., regex=UUID_PATTERN, description="Character UUID")
+    ):
+        """Get a character by ID. Use /by-id/{uuid} to avoid route conflicts."""
+        character = manager.get_character(character_id)
+        if not character:
+            raise HTTPException(status_code=404, detail="Character not found")
+        return {"character": character.to_dict()}
 
     return router

@@ -41,6 +41,29 @@ from hydra_tools.alerts_api import create_alerts_router
 from hydra_tools.health_api import create_health_router
 from hydra_tools.voice_api import create_voice_router
 from hydra_tools.reconcile_api import create_reconcile_router
+from hydra_tools.constitution import create_constitution_router, get_enforcer
+from hydra_tools.self_improvement import create_self_improvement_router
+from hydra_tools.sandbox import create_sandbox_router
+from hydra_tools.memory_architecture import create_memory_router
+from hydra_tools.predictive_maintenance import create_predictive_router
+from hydra_tools.preference_collector import create_preference_collector_router
+from hydra_tools.container_health import create_container_health_router
+from hydra_tools.benchmark_suite import create_benchmark_router
+from hydra_tools.presence_automation import create_presence_router
+from hydra_tools.calendar_intelligence import create_calendar_router
+from hydra_tools.discord_bot import create_discord_router
+from hydra_tools.agent_scheduler import create_scheduler_router as create_agent_scheduler_router, get_scheduler as get_agent_scheduler
+from hydra_tools.wake_word import create_wake_word_router
+from hydra_tools.discovery_archive import create_discovery_router
+from hydra_tools.character_consistency import create_character_router
+from hydra_tools.dashboard_api import create_dashboard_router, get_dashboard_state
+from hydra_tools.home_automation import create_home_automation_router
+from hydra_tools.logs_api import create_logs_router
+from hydra_tools.autonomous_controller import create_autonomous_router, get_controller
+from hydra_tools.routers.unraid import router as unraid_router
+from hydra_tools.routers.events import router as events_router
+from hydra_tools.clients.unraid_client import close_unraid_client
+from hydra_tools.asset_quality import create_quality_router
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -52,7 +75,7 @@ APP_TITLE = "Hydra Tools API"
 APP_DESCRIPTION = """
 Self-improvement and optimization toolkit for the Hydra cluster.
 
-## Features
+## Core Features
 
 * **Self-Diagnosis** - Failure analysis, pattern detection, auto-remediation
 * **Resource Optimization** - GPU/CPU/RAM analysis, model placement suggestions
@@ -60,18 +83,48 @@ Self-improvement and optimization toolkit for the Hydra cluster.
 * **Capability Tracking** - Feature gaps, priority scoring, roadmap generation
 * **Intelligent Routing** - Route prompts to optimal models
 * **Preference Learning** - Track user preferences and model performance
+
+## Transparency Framework
+
 * **Activity Logging** - Unified activity log for all autonomous actions
 * **System Control** - Control modes, emergency stop, workflow toggles
+* **Constitution** - Safety constraints and audit trail
+
+## Search & Knowledge
+
 * **Hybrid Search** - Combined semantic + keyword search (Qdrant + Meilisearch)
 * **Document Ingestion** - Index documents and URLs to knowledge base
 * **Web Research** - Search web and crawl pages (SearXNG + Firecrawl)
+* **Memory Architecture** - MIRIX 6-tier memory system
+
+## Orchestration & Agents
+
 * **CrewAI Orchestration** - Multi-agent crews for research, monitoring, maintenance
+* **Agent Scheduler** - AIOS-style agent task scheduling
+* **Autonomous Controller** - Proactive task spawning and execution
+
+## Infrastructure
+
 * **Cluster Health** - Unified health monitoring across all nodes
-* **Voice Pipeline** - STT, LLM, TTS voice interaction
-* **Alert Routing** - Notification routing to Discord, Slack
+* **Predictive Maintenance** - Trend analysis and failure prediction
+* **Container Health** - External healthchecks for containers
 * **State Reconciliation** - Drift detection and auto-remediation
+* **Unraid Integration** - Storage management and monitoring
+
+## Creative Pipeline (Phase 12)
+
+* **Character Consistency** - Face embedding and style reference management
+* **Asset Quality Scoring** - Automated quality assessment for generated images
+* **Batch Portrait Generation** - Queue multiple character portraits
+* **Voice Pipeline** - STT, LLM, TTS voice interaction
+
+## Notifications & Dashboards
+
+* **Alert Routing** - Notification routing to Discord, Slack
+* **Discovery Archive** - Cross-session learning and improvement tracking
+* **Dashboard API** - Real-time SSE streaming for Command Center
 """
-APP_VERSION = "1.4.0"
+APP_VERSION = "2.3.0"  # Added Asset Quality scoring for Phase 12 character generation pipeline
 
 
 # Startup/shutdown lifecycle
@@ -92,12 +145,64 @@ async def lifespan(app: FastAPI):
     app.state.scheduler = scheduler
     print(f"[{datetime.utcnow().isoformat()}] Crew scheduler started")
 
+    # Start the agent scheduler (AIOS-style)
+    agent_scheduler = get_agent_scheduler()
+    await agent_scheduler.start()
+    app.state.agent_scheduler = agent_scheduler
+    print(f"[{datetime.utcnow().isoformat()}] Agent scheduler started")
+
+    # Register agent handlers
+    from hydra_tools.character_consistency import CharacterManager
+
+    async def character_generation_handler(task):
+        """Handle character generation agent tasks."""
+        import httpx
+        manager = CharacterManager()
+        action = task.payload.get("action", "generate_portrait")
+        results = []
+
+        if action == "generate_missing_portraits":
+            characters = task.payload.get("characters", [])
+            for char_name in characters:
+                try:
+                    # Find character by name
+                    char = next((c for c in manager.list_characters() if c.name == char_name), None)
+                    if char and not char.reference_images:
+                        # Generate portrait via API
+                        async with httpx.AsyncClient() as client:
+                            resp = await client.post(
+                                "http://localhost:8700/characters/generate-portrait",
+                                json={
+                                    "character_id": str(char.id),
+                                    "emotion": task.payload.get("emotion", "neutral"),
+                                    "style": task.payload.get("style", "visual_novel")
+                                },
+                                timeout=60
+                            )
+                            results.append({"character": char_name, "status": "queued", "response": resp.json()})
+                except Exception as e:
+                    results.append({"character": char_name, "status": "error", "error": str(e)})
+
+        return {"action": action, "results": results, "count": len(results)}
+
+    agent_scheduler.register_handler("character_generation", character_generation_handler)
+    print(f"[{datetime.utcnow().isoformat()}] Registered character_generation handler")
+
+    # Start the autonomous controller (proactive task spawning)
+    autonomous_controller = get_controller()
+    await autonomous_controller.start()
+    app.state.autonomous_controller = autonomous_controller
+    print(f"[{datetime.utcnow().isoformat()}] Autonomous controller started")
+
     yield
 
     # Shutdown
     print(f"[{datetime.utcnow().isoformat()}] Hydra Tools API shutting down...")
     scheduler.stop()
-    print(f"[{datetime.utcnow().isoformat()}] Crew scheduler stopped")
+    await agent_scheduler.stop()
+    await autonomous_controller.stop()
+    await close_unraid_client()
+    print(f"[{datetime.utcnow().isoformat()}] Schedulers, autonomous controller, and clients stopped")
 
 
 # Create FastAPI app
@@ -116,8 +221,13 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3200",
+        "http://localhost:3210",
+        "http://localhost:5173",  # Vite dev server for Command Center
         "http://192.168.1.244:3200",
+        "http://192.168.1.244:3210",
         "http://192.168.1.244:3333",
+        "http://192.168.1.244:5173",  # Vite on Unraid
+        "*",  # Allow all origins for SSE streaming
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -164,6 +274,72 @@ app.include_router(create_voice_router())
 # Include Reconcile API router (state management)
 app.include_router(create_reconcile_router())
 
+# Include Constitution router (safety constraints and audit)
+app.include_router(create_constitution_router())
+
+# Include Self-Improvement router (DGM-inspired self-modification)
+app.include_router(create_self_improvement_router())
+
+# Include Sandbox router (secure code execution)
+app.include_router(create_sandbox_router())
+
+# Include Memory Architecture router (MIRIX 6-tier memory)
+app.include_router(create_memory_router())
+
+# Include Predictive Maintenance router (trend analysis, failure prediction)
+app.include_router(create_predictive_router())
+
+# Include Preference Collector router (LiteLLM callback, feedback collection)
+app.include_router(create_preference_collector_router())
+
+# Include Container Health router (external healthchecks for containers)
+app.include_router(create_container_health_router())
+
+# Include Benchmark Suite router (DGM-inspired capability metrics)
+app.include_router(create_benchmark_router())
+
+# Include Presence Automation router (Home Assistant integration)
+app.include_router(create_presence_router())
+
+# Include Calendar Intelligence router (schedule-aware operations)
+app.include_router(create_calendar_router())
+
+# Include Discord Bot router (system control via Discord)
+app.include_router(create_discord_router())
+
+# Include Agent Scheduler router (AIOS-style agent orchestration)
+app.include_router(create_agent_scheduler_router())
+
+# Include Wake Word router (voice activation)
+app.include_router(create_wake_word_router())
+
+# Include Discovery Archive router (cross-session learning)
+app.include_router(create_discovery_router())
+
+# Include Character Consistency router (Phase 12: Empire of Broken Queens)
+app.include_router(create_character_router())
+
+# Include Dashboard router (Command Center UI backend)
+app.include_router(create_dashboard_router())
+
+# Include Home Automation router (Home Assistant integration for Command Center)
+app.include_router(create_home_automation_router())
+
+# Include Logs router (Loki integration for cluster logs)
+app.include_router(create_logs_router())
+
+# Include Autonomous Controller router (proactive task spawning)
+app.include_router(create_autonomous_router())
+
+# Include Unraid router (Unified Control Plane - storage management)
+app.include_router(unraid_router)
+
+# Include SSE Events router (Unified Control Plane - real-time streaming)
+app.include_router(events_router)
+
+# Include Asset Quality router (Phase 12: automated quality scoring for generated assets)
+app.include_router(create_quality_router())
+
 
 # Root endpoints
 @app.get("/", tags=["info"])
@@ -195,6 +371,17 @@ async def root():
             "cluster-health": "/health",
             "voice": "/voice",
             "reconcile": "/reconcile",
+            "constitution": "/constitution",
+            "self-improvement": "/self-improvement",
+            "sandbox": "/sandbox",
+            "memory": "/memory",
+            "predictive": "/predictive",
+            "preference-collector": "/preference-collector",
+            "container-health": "/container-health",
+            "dashboard": "/dashboard",
+            "unraid": "/api/v1/unraid",
+            "events": "/api/v1/events",
+            "quality": "/quality",
         },
     }
 

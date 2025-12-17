@@ -1,0 +1,134 @@
+rules:
+- action_description: Diagnose and attempt to fix unhealthy container
+  action_type: maintenance
+  condition: container.status == 'unhealthy' for > 5 minutes
+  cooldown_minutes: 15
+  enabled: true
+  id: health-001
+  last_triggered: null
+  name: Unhealthy Container
+  priority: HIGH
+  trigger_count: 0
+  trigger_type: health
+- action_description: Investigate down service
+  action_type: monitoring
+  condition: prometheus_target.up == 0
+  cooldown_minutes: 5
+  enabled: true
+  id: health-002
+  last_triggered: null
+  name: Service Down
+  priority: CRITICAL
+  trigger_count: 0
+  trigger_type: health
+- action_description: Restart container with constitutional protection
+  action_type: maintenance
+  condition: container.restart_needed == true
+  cooldown_minutes: 30
+  enabled: true
+  id: health-003
+  last_triggered: null
+  name: Container Restart Required
+  priority: HIGH
+  trigger_count: 0
+  trigger_type: health
+- action_description: Run disk cleanup to free space
+  action_type: maintenance
+  condition: disk_usage_percent > 85
+  cooldown_minutes: 60
+  enabled: true
+  id: metric-001
+  last_triggered: null
+  name: High Disk Usage
+  priority: HIGH
+  trigger_count: 0
+  trigger_type: metric
+- action_description: Research inference optimization options
+  action_type: research
+  condition: avg_inference_latency_ms > 3000
+  cooldown_minutes: 120
+  enabled: true
+  id: metric-002
+  last_triggered: null
+  name: Slow Inference
+  priority: NORMAL
+  trigger_count: 0
+  trigger_type: metric
+- action_description: Monitor GPU temperature and alert if sustained
+  action_type: monitoring
+  condition: gpu_temp_celsius > 80
+  cooldown_minutes: 10
+  enabled: true
+  id: metric-003
+  last_triggered: null
+  name: High GPU Temperature
+  priority: HIGH
+  trigger_count: 0
+  trigger_type: metric
+- action_description: Analyze benchmark regression and propose fixes
+  action_type: llm
+  condition: benchmark_score < previous_score - 5
+  cooldown_minutes: 60
+  enabled: true
+  id: bench-001
+  last_triggered: null
+  name: Benchmark Regression
+  priority: HIGH
+  trigger_count: 0
+  trigger_type: benchmark
+- action_description: Generate improvement proposals for low-scoring areas
+  action_type: llm
+  condition: benchmark_score < 80
+  cooldown_minutes: 1440
+  enabled: true
+  id: bench-002
+  last_triggered: null
+  name: Low Benchmark Score
+  priority: NORMAL
+  trigger_count: 0
+  trigger_type: benchmark
+- action_description: Extract reusable skill from completed task
+  action_type: llm
+  condition: task_completed_successfully
+  cooldown_minutes: 0
+  enabled: true
+  id: learn-001
+  last_triggered: null
+  name: Skill Extraction
+  priority: LOW
+  trigger_count: 0
+  trigger_type: learning
+- action_description: Consolidate and archive old memories
+  action_type: maintenance
+  condition: 'cron: 0 4 * * *'
+  cooldown_minutes: 1440
+  enabled: true
+  id: learn-002
+  last_triggered: null
+  name: Memory Consolidation
+  priority: LOW
+  trigger_count: 0
+  trigger_type: schedule
+- action_description: Research latest developments in AI and infrastructure
+  action_type: deep_research
+  condition: 'cron: 0 2 * * *'
+  cooldown_minutes: 1440
+  enabled: true
+  id: sched-001
+  last_triggered: null
+  name: Daily Knowledge Refresh
+  priority: LOW
+  trigger_count: 0
+  trigger_type: schedule
+- action_description: Run benchmarks and generate improvement proposals
+  action_type: llm
+  condition: 'cron: 0 3 * * 0'
+  cooldown_minutes: 10080
+  enabled: true
+  id: sched-002
+  last_triggered: null
+  name: Weekly Self-Improvement
+  priority: LOW
+  trigger_count: 0
+  trigger_type: schedule
+version: '1.0'

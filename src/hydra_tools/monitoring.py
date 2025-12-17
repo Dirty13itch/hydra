@@ -384,10 +384,10 @@ class HealthCheckTool:
 
     def __init__(self):
         self.endpoints = {
-            "litellm": "http://192.168.1.244:4000/health",
+            "litellm": "http://192.168.1.244:4000/health/liveliness",
             "prometheus": "http://192.168.1.244:9090/-/healthy",
             "grafana": "http://192.168.1.244:3003/api/health",
-            "qdrant": "http://192.168.1.244:6333/health",
+            "qdrant": "http://192.168.1.244:6333/healthz",
             "tabbyapi": "http://192.168.1.250:5000/health",
             "ollama": "http://192.168.1.203:11434/api/tags",
             "comfyui": "http://192.168.1.203:8188/system_stats",

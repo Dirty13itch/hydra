@@ -13,20 +13,50 @@
       "Bash(python:*)",
       "Bash(scp:*)",
       "Bash(git:*)",
+      "Bash(docker:*)",
+      "Bash(sudo:*)",
+      "Bash(cd:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(chmod:*)",
+      "Bash(chown:*)",
+      "Bash(grep:*)",
+      "Bash(awk:*)",
+      "Bash(sed:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(tee:*)",
+      "Bash(touch:*)",
+      "Bash(df:*)",
+      "Bash(du:*)",
+      "Bash(ps:*)",
+      "Bash(kill:*)",
+      "Bash(sleep:*)",
+      "Bash(date:*)",
+      "Bash(tar:*)",
+      "Bash(gzip:*)",
+      "Bash(unzip:*)",
+      "Bash(pip:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(nixos-rebuild:*)",
+      "Bash(nix-shell:*)",
+      "Bash(nix-env:*)",
+      "Bash(systemctl:*)",
+      "Bash(journalctl:*)",
+      "Bash(nvidia-smi:*)",
+      "Bash(rm:*)",
       "WebSearch",
-      "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:*.githubusercontent.com)"
-    ],
-    "ask": [
-      "Bash",
       "WebFetch(domain:*)"
     ],
     "deny": [
       "Bash(rm -rf /)",
       "Bash(rm -rf /*)",
-      "Bash(shred:*)"
-    ]
+      "Bash(shred:*)",
+      "Bash(mkfs:*)"
+    ],
+    "defaultMode": "bypassPermissions"
   },
   "enabledMcpjsonServers": [
     "hydra"

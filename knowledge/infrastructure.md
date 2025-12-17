@@ -200,6 +200,8 @@ sudo nvidia-smi -pl 350  # For 4090
 | 3030 | Perplexica | HTTP |
 | 3080 | LibreChat | HTTP |
 | 3100 | Loki | HTTP |
+| 3200 | Control Plane UI | HTTP |
+| 3210 | Command Center | HTTP |
 | 4000 | LiteLLM | HTTP |
 | 5001 | Docling | HTTP |
 | 5432 | PostgreSQL | TCP |
@@ -223,6 +225,7 @@ sudo nvidia-smi -pl 350  # For 4090
 | 8283 | Letta | HTTP |
 | 8686 | Lidarr | HTTP |
 | 8787 | Readarr | HTTP |
+| 8700 | Hydra Tools API | HTTP |
 | 8880 | Kokoro TTS | HTTP |
 | 8989 | Sonarr | HTTP |
 | 9000 | MinIO API | HTTP |

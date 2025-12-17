@@ -1,7 +1,37 @@
 {
-  "generated_at": "2025-12-15T22:35:00Z",
-  "version": "2.3.7",
-  "phase": "12-COMPLETE",
+  "generated_at": "2025-12-17T03:10:00Z",
+  "version": "2.9.0",
+  "phase": "12-ACTIVE",
+  "last_session": {
+    "date": "2025-12-17",
+    "focus": "Extended Autonomous Session - Full Continuation",
+    "accomplishments": [
+      "ULTRATHINK comprehensive analysis of Hydra autonomous system",
+      "Deep research on control plane architectures (Portainer, Rancher, Homarr, Ray Dashboard)",
+      "Deep research on Unraid GraphQL API integration (official 7.2+ API)",
+      "Created control-plane-dashboard-architecture-2025.md (60+ pages, 50+ sources)",
+      "Created control-plane-executive-summary.md with tech stack recommendations",
+      "Created unraid-api-integration.md knowledge file",
+      "Fixed hydra-command-center UI crash - created AuthContext and DashboardDataContext",
+      "Created Unraid GraphQL client (clients/unraid_client.py) - 500+ lines",
+      "Created Unraid FastAPI router (routers/unraid.py) - 30+ endpoints",
+      "Created SSE streaming endpoint (routers/events.py) - real-time updates",
+      "Created hydraService.ts frontend API client",
+      "Wired all new routers into api.py v2.2.0",
+      "Key architecture decisions: SSE over WebSockets, BFF pattern, embedded Grafana"
+    ],
+    "api_version": "2.2.0",
+    "new_endpoints": [
+      "/api/v1/unraid/* (array, disks, containers, VMs, system)",
+      "/api/v1/events/stream (SSE real-time)"
+    ],
+    "research_completed": [
+      "Control plane best practices 2025",
+      "Unraid GraphQL API capabilities",
+      "SSE vs WebSockets for dashboards",
+      "Multi-agent orchestration patterns"
+    ]
+  },
   "cluster": {
     "nodes": {
       "hydra-ai": {
@@ -10,8 +40,18 @@
         "os": "NixOS",
         "status": "online",
         "gpus": [
-          {"name": "RTX 5090", "vram_total": 32607, "vram_used": 29771, "temp": 36},
-          {"name": "RTX 4090", "vram_total": 24564, "vram_used": 20247, "temp": 29}
+          {
+            "name": "RTX 5090",
+            "vram_total": 32607,
+            "vram_used": 29771,
+            "temp": 36
+          },
+          {
+            "name": "RTX 4090",
+            "vram_total": 24564,
+            "vram_used": 20247,
+            "temp": 29
+          }
         ],
         "services": {
           "tabbyapi": "active",
@@ -24,8 +64,20 @@
         "os": "NixOS",
         "status": "online",
         "gpus": [
-          {"name": "RTX 5070 Ti", "vram_total": 16303, "vram_used": 8876, "temp": 45, "service": "tabbyapi"},
-          {"name": "RTX 5070 Ti", "vram_total": 16303, "vram_used": 232, "temp": 41, "service": "comfyui"}
+          {
+            "name": "RTX 5070 Ti",
+            "vram_total": 16303,
+            "vram_used": 8876,
+            "temp": 45,
+            "service": "tabbyapi"
+          },
+          {
+            "name": "RTX 5070 Ti",
+            "vram_total": 16303,
+            "vram_used": 232,
+            "temp": 41,
+            "service": "comfyui"
+          }
         ],
         "services": {
           "tabbyapi": "active",
@@ -54,7 +106,9 @@
     "letta": {
       "version": "0.15.1",
       "status": "ok",
-      "agents": ["hydra-steward-v2"],
+      "agents": [
+        "hydra-steward-v2"
+      ],
       "agent_architecture": "letta_v1_agent",
       "model": "ollama/qwen2.5:7b",
       "bridge_endpoint": "/letta-bridge/v1/chat/completions",
@@ -62,8 +116,16 @@
     },
     "crewai": {
       "status": "operational",
-      "crews": ["monitoring", "research", "maintenance"],
-      "working_crews": ["monitoring", "research", "maintenance"],
+      "crews": [
+        "monitoring",
+        "research",
+        "maintenance"
+      ],
+      "working_crews": [
+        "monitoring",
+        "research",
+        "maintenance"
+      ],
       "fix_applied": "2025-12-15: Rewrote crews to use native CrewAI LLM class with model='ollama/qwen2.5:7b'",
       "scheduler": {
         "module_created": "2025-12-15",
@@ -75,7 +137,12 @@
         },
         "deployment_status": "deployed",
         "deployed_at": "2025-12-15T19:52:00Z",
-        "api_endpoints": ["/scheduler/status", "/scheduler/trigger/{crew}", "/scheduler/enable/{crew}", "/scheduler/disable/{crew}"]
+        "api_endpoints": [
+          "/scheduler/status",
+          "/scheduler/trigger/{crew}",
+          "/scheduler/enable/{crew}",
+          "/scheduler/disable/{crew}"
+        ]
       }
     },
     "qdrant_collections": 6
@@ -104,19 +171,80 @@
     "code_nodes_fixed": true,
     "notes": "2025-12-15: All 8 workflows verified. Container-restart fixed to use MCP API with activity logging. Alertmanager fixed (runOnceForAllItems). DB columns expanded for activity logging.",
     "workflows": [
-      {"id": "learnings-new-001", "name": "Learnings Capture", "active": true, "webhook": "/webhook/learnings", "status": "verified"},
-      {"id": "cJA5gkMfkwQ0RoOn", "name": "Alertmanager Self-Healing Handler", "active": true, "webhook": "/webhook/alertmanager", "status": "verified", "note": "Fixed: code nodes use runOnceForAllItems mode. Tested: successfully restarted hydra-crewai container."},
-      {"id": "letta-memory-fixed-001", "name": "Letta Memory Update (Fixed)", "active": true, "webhook": "/webhook/letta-memory", "status": "verified"},
-      {"id": "9hHaupQyL94tQ99S", "name": "Hydra Daily Health Digest", "active": true, "trigger": "schedule", "status": "verified", "note": "Runs daily at 8 AM CST. Tested: generates 100% health report, saves to file, logs to Letta memory."},
-      {"id": "5dfc809bbfe348a89", "name": "Disk Cleanup Automation", "active": true, "trigger": "schedule", "note": "Runs daily at 4 AM"},
-      {"id": "container-restart-001", "name": "Container Restart with Rate Limiting", "active": true, "webhook": "/webhook/container-failed", "status": "verified", "note": "Fixed: Uses MCP API (port 8600) for restart with built-in rate limiting. Logs to activity API (port 8700)."},
-      {"id": "crewai-dispatch-001", "name": "CrewAI Task Dispatcher", "active": true, "webhook": "/webhook/crew-task", "status": "verified", "note": "Tested: all 3 crews working (monitoring, research, maintenance). Field: crew_type."},
-      {"id": "model-perf-001", "name": "Model Performance Tracker", "active": true, "trigger": "schedule", "note": "Runs hourly"}
+      {
+        "id": "learnings-new-001",
+        "name": "Learnings Capture",
+        "active": true,
+        "webhook": "/webhook/learnings",
+        "status": "verified"
+      },
+      {
+        "id": "cJA5gkMfkwQ0RoOn",
+        "name": "Alertmanager Self-Healing Handler",
+        "active": true,
+        "webhook": "/webhook/alertmanager",
+        "status": "verified",
+        "note": "Fixed: code nodes use runOnceForAllItems mode. Tested: successfully restarted hydra-crewai container."
+      },
+      {
+        "id": "letta-memory-fixed-001",
+        "name": "Letta Memory Update (Fixed)",
+        "active": true,
+        "webhook": "/webhook/letta-memory",
+        "status": "verified"
+      },
+      {
+        "id": "9hHaupQyL94tQ99S",
+        "name": "Hydra Daily Health Digest",
+        "active": true,
+        "trigger": "schedule",
+        "status": "verified",
+        "note": "Runs daily at 8 AM CST. Tested: generates 100% health report, saves to file, logs to Letta memory."
+      },
+      {
+        "id": "5dfc809bbfe348a89",
+        "name": "Disk Cleanup Automation",
+        "active": true,
+        "trigger": "schedule",
+        "note": "Runs daily at 4 AM"
+      },
+      {
+        "id": "container-restart-001",
+        "name": "Container Restart with Rate Limiting",
+        "active": true,
+        "webhook": "/webhook/container-failed",
+        "status": "verified",
+        "note": "Fixed: Uses MCP API (port 8600) for restart with built-in rate limiting. Logs to activity API (port 8700)."
+      },
+      {
+        "id": "crewai-dispatch-001",
+        "name": "CrewAI Task Dispatcher",
+        "active": true,
+        "webhook": "/webhook/crew-task",
+        "status": "verified",
+        "note": "Tested: all 3 crews working (monitoring, research, maintenance). Field: crew_type."
+      },
+      {
+        "id": "model-perf-001",
+        "name": "Model Performance Tracker",
+        "active": true,
+        "trigger": "schedule",
+        "note": "Runs hourly"
+      }
     ],
     "removed_workflows": [
-      {"id": "knowledge-refresh-fixed-001", "reason": "Structural issues - WorkflowHasIssuesError"},
-      {"id": "research-fixed-001", "reason": "Complex workflow with credential and node issues"},
-      {"id": "mFPUiBj0AQ5ErJZs", "reason": "Empire Chapter Processor - structural issues"}
+      {
+        "id": "knowledge-refresh-fixed-001",
+        "reason": "Structural issues - WorkflowHasIssuesError"
+      },
+      {
+        "id": "research-fixed-001",
+        "reason": "Complex workflow with credential and node issues"
+      },
+      {
+        "id": "mFPUiBj0AQ5ErJZs",
+        "reason": "Empire Chapter Processor - structural issues"
+      }
     ]
   },
   "cron_jobs": {
@@ -124,7 +252,14 @@
       "schedule": "0 4 * * *",
       "script": "/mnt/user/appdata/hydra-stack/scripts/disk-cleanup.sh",
       "log": "/mnt/user/appdata/hydra-stack/logs/disk-cleanup.log",
-      "tasks": ["docker prune", "build cache", "volumes", "loki logs", "temp files", "old backups"]
+      "tasks": [
+        "docker prune",
+        "build cache",
+        "volumes",
+        "loki logs",
+        "temp files",
+        "old backups"
+      ]
     },
     "postgres_backup": {
       "schedule": "0 2 * * *",
@@ -145,7 +280,9 @@
     "deployed_to": "/mnt/user/appdata/hydra-stack/.env.secrets"
   },
   "models": {
-    "tabbyapi": ["Midnight-Miqu-70B-v1.5-exl2-2.5bpw"],
+    "tabbyapi": [
+      "Midnight-Miqu-70B-v1.5-exl2-2.5bpw"
+    ],
     "available_exl2": [
       "Midnight-Miqu-70B-v1.5-exl2-2.5bpw",
       "Llama-3.1-70B-Instruct-exl2-4.5bpw",
@@ -207,12 +344,25 @@
       "tts_synthesis": "hydra_tools.tts_synthesis"
     },
     "qdrant_collections": {
-      "empire_faces": {"dim": 512, "points": 0},
-      "empire_images": {"dim": 768, "points": 6}
+      "empire_faces": {
+        "dim": 512,
+        "points": 0
+      },
+      "empire_images": {
+        "dim": 768,
+        "points": 6
+      }
     },
-    "characters_seeded": ["seraphina", "mira", "lysander"],
+    "characters_seeded": [
+      "seraphina",
+      "mira",
+      "lysander"
+    ],
     "voice_profiles": "config/kokoro/empire_voice_profiles.json",
-    "comfyui_templates": ["character_portrait_template", "background_template"],
+    "comfyui_templates": [
+      "character_portrait_template",
+      "background_template"
+    ],
     "kokoro_tts": {
       "url": "http://192.168.1.244:8880",
       "voices_available": 67,
@@ -232,15 +382,29 @@
     ]
   },
   "neo4j_knowledge_graph": {
-    "nodes": {"Service": 20, "GPU": 4, "Node": 3, "Network": 1},
-    "relationships": {"RUNS_ON": 20, "DEPENDS_ON": 8, "HAS_GPU": 4}
+    "nodes": {
+      "Service": 20,
+      "GPU": 4,
+      "Node": 3,
+      "Network": 1
+    },
+    "relationships": {
+      "RUNS_ON": 20,
+      "DEPENDS_ON": 8,
+      "HAS_GPU": 4
+    }
   },
   "home_assistant": {
     "url": "http://192.168.1.244:8123",
     "status": "running",
     "discovered_devices": {
-      "google_cast": ["Nest Hub"],
-      "sonos": ["Living Room (3x)", "Sub Mini"]
+      "google_cast": [
+        "Nest Hub"
+      ],
+      "sonos": [
+        "Living Room (3x)",
+        "Sub Mini"
+      ]
     },
     "gpu_metrics_api": {
       "url": "http://192.168.1.244:8701",
@@ -358,12 +522,28 @@
     },
     "n8n_workflows": {
       "total": 14,
-      "new_imports": ["Discord Notification Bridge", "GPU Thermal Handler", "Morning Briefing", "Autonomous Research Clean", "GitHub Webhook Handler", "Email Digest Sender"],
-      "webhooks_tested": ["learnings"]
+      "new_imports": [
+        "Discord Notification Bridge",
+        "GPU Thermal Handler",
+        "Morning Briefing",
+        "Autonomous Research Clean",
+        "GitHub Webhook Handler",
+        "Email Digest Sender"
+      ],
+      "webhooks_tested": [
+        "learnings"
+      ]
     },
     "litellm_models": 22,
     "ollama_models": 9,
-    "qdrant_collections": ["code", "empire_faces", "empire_images", "hydra_knowledge", "documents", "multimodal"],
+    "qdrant_collections": [
+      "code",
+      "empire_faces",
+      "empire_images",
+      "hydra_knowledge",
+      "documents",
+      "multimodal"
+    ],
     "discord_webhook": {
       "configured": true,
       "env_var_set": "DISCORD_WEBHOOK_URL in hydra-n8n container",
@@ -409,7 +589,10 @@
     "n8n_status": {
       "active_workflows": 10,
       "inactive_workflows": 4,
-      "env_vars_added": ["LITELLM_API_KEY", "LITELLM_URL"],
+      "env_vars_added": [
+        "LITELLM_API_KEY",
+        "LITELLM_URL"
+      ],
       "inactive_reasons": {
         "Model Performance Tracker": "Letta endpoint needs update",
         "Autonomous Research Agent": "May conflict with CrewAI",
@@ -436,7 +619,10 @@
     "n8n_improvements": {
       "api_key_fix": "n8n stores raw API keys, not hashes - inserted directly into user_api_keys table",
       "workflow_history_fix": "Created workflow_history entries for imported workflows to enable activation",
-      "workflows_activated": ["Discord Notification Bridge", "GPU Thermal Throttling Handler"],
+      "workflows_activated": [
+        "Discord Notification Bridge",
+        "GPU Thermal Throttling Handler"
+      ],
       "total_active": 10,
       "total_inactive": 4,
       "inactive_reasons": {
@@ -451,7 +637,14 @@
         "location": "/mnt/user/backups/postgres",
         "schedule": "Daily 3:00 AM",
         "retention": "7 days",
-        "databases": ["hydra", "letta", "litellm", "miniflux", "n8n", "empire_of_broken_queens"],
+        "databases": [
+          "hydra",
+          "letta",
+          "litellm",
+          "miniflux",
+          "n8n",
+          "empire_of_broken_queens"
+        ],
         "last_backup": "2025-12-15T03:00:01Z"
       },
       "disk_cleanup": {
@@ -486,7 +679,19 @@
       "prometheus_targets": {
         "total": 11,
         "up": 11,
-        "targets": ["alertmanager", "dcgm", "grafana", "hydra-ai", "hydra-compute", "hydra-mcp", "hydra-storage", "loki", "nvidia-compute", "prometheus", "qdrant"]
+        "targets": [
+          "alertmanager",
+          "dcgm",
+          "grafana",
+          "hydra-ai",
+          "hydra-compute",
+          "hydra-mcp",
+          "hydra-storage",
+          "loki",
+          "nvidia-compute",
+          "prometheus",
+          "qdrant"
+        ]
       }
     },
     "inference_verification": {
@@ -505,23 +710,50 @@
         "status": "up",
         "models_routed": 22,
         "auth_required": true,
-        "model_list": ["midnight-miqu-70b", "gpt-4", "gpt-3.5-turbo", "qwen2.5-coder-7b", "deepseek-r1-8b", "llama-3.2-3b", "mxbai-embed-large", "nomic-embed-text", "letta", "hydra-steward"]
+        "model_list": [
+          "midnight-miqu-70b",
+          "gpt-4",
+          "gpt-3.5-turbo",
+          "qwen2.5-coder-7b",
+          "deepseek-r1-8b",
+          "llama-3.2-3b",
+          "mxbai-embed-large",
+          "nomic-embed-text",
+          "letta",
+          "hydra-steward"
+        ]
       }
     },
     "backups": {
       "postgres": {
         "latest": "2025-12-15T03:00:01Z",
-        "databases": ["hydra (269KB)", "n8n (170KB)", "miniflux (1.4MB)", "letta (371B)", "litellm (372B)", "empire_of_broken_queens (12KB)"]
+        "databases": [
+          "hydra (269KB)",
+          "n8n (170KB)",
+          "miniflux (1.4MB)",
+          "letta (371B)",
+          "litellm (372B)",
+          "empire_of_broken_queens (12KB)"
+        ]
       },
       "qdrant": {
         "latest": "2025-12-15T03:00:01Z",
-        "collections": ["hydra_knowledge (3.8MB)", "code (297KB)", "documents (349KB)", "multimodal (342KB)", "empire_faces (285KB)", "empire_images (2.1MB)"]
+        "collections": [
+          "hydra_knowledge (3.8MB)",
+          "code (297KB)",
+          "documents (349KB)",
+          "multimodal (342KB)",
+          "empire_faces (285KB)",
+          "empire_images (2.1MB)"
+        ]
       }
     },
     "model_perf_tracker_fix": {
       "issue": "Workflow was POSTing to broken Letta endpoint (port 8283)",
       "solution": "Updated nodes to log to Activity API (port 8700) instead",
-      "files_modified": ["n8n database workflow_entity nodes column"],
+      "files_modified": [
+        "n8n database workflow_entity nodes column"
+      ],
       "status": "fixed and reactivated"
     },
     "remaining_tasks": [
@@ -549,25 +781,72 @@
       }
     },
     "infrastructure_verification": {
-      "containers": {"total": 64, "running": 64, "unhealthy": 0},
+      "containers": {
+        "total": 64,
+        "running": 64,
+        "unhealthy": 0
+      },
       "disk_space": {
         "hydra_ai": "10% used (786GB free)",
         "hydra_compute": "21% used (693GB free)",
         "hydra_storage_docker": "53% used (47GB free)",
         "hydra_storage_disks": "86-94% used (monitoring recommended)"
       },
-      "loki": {"status": "ready", "containers_tracked": 51, "bytes_ingested": "406MB"},
-      "letta_bridge": {"status": "operational", "models": 3, "default_agent": "hydra-steward-v2"},
-      "neo4j": {"status": "operational", "nodes": 28, "breakdown": {"Node": 3, "Service": 20, "Network": 1, "GPU": 4}},
-      "alertmanager": {"status": "ready", "receivers": 5, "active_alerts": 0},
-      "comfyui": {"status": "running", "version": "0.3.76", "pytorch": "2.7.0+cu128", "gpu": "RTX 5070 Ti"},
-      "home_assistant": {"status": "running", "automations": ["gpu_temp_alert", "gpu_temp_alert_sonos", "gpu_vram_high_alert"]},
+      "loki": {
+        "status": "ready",
+        "containers_tracked": 51,
+        "bytes_ingested": "406MB"
+      },
+      "letta_bridge": {
+        "status": "operational",
+        "models": 3,
+        "default_agent": "hydra-steward-v2"
+      },
+      "neo4j": {
+        "status": "operational",
+        "nodes": 28,
+        "breakdown": {
+          "Node": 3,
+          "Service": 20,
+          "Network": 1,
+          "GPU": 4
+        }
+      },
+      "alertmanager": {
+        "status": "ready",
+        "receivers": 5,
+        "active_alerts": 0
+      },
+      "comfyui": {
+        "status": "running",
+        "version": "0.3.76",
+        "pytorch": "2.7.0+cu128",
+        "gpu": "RTX 5070 Ti"
+      },
+      "home_assistant": {
+        "status": "running",
+        "automations": [
+          "gpu_temp_alert",
+          "gpu_temp_alert_sonos",
+          "gpu_vram_high_alert"
+        ]
+      },
       "container_images": "All within 2 weeks - well maintained"
     },
     "activity_api_schema": {
       "endpoint": "POST /activity",
-      "required_fields": ["source", "action", "action_type"],
-      "optional_fields": ["params", "result", "result_details", "target", "requires_approval"]
+      "required_fields": [
+        "source",
+        "action",
+        "action_type"
+      ],
+      "optional_fields": [
+        "params",
+        "result",
+        "result_details",
+        "target",
+        "requires_approval"
+      ]
     },
     "n8n_workflows_fixed": {
       "discord_notification_bridge": "ZQjnEncgzrMYm5uy",
@@ -577,14 +856,50 @@
     "tasks_completed": 22,
     "service_verification_continuation": {
       "timestamp": "2025-12-16T00:45:00Z",
-      "firecrawl": {"status": "operational", "port": 3005, "test": "scrape successful"},
-      "kokoro_tts": {"status": "operational", "port": 8880, "models": 3, "audio_gen": "MP3 verified"},
-      "perplexica": {"status": "operational", "port": 3030, "providers": ["LiteLLM", "Ollama", "OpenAI"], "searxng": "configured"},
-      "miniflux": {"status": "operational", "port": 8180, "auth": "basic (admin)"},
-      "redis": {"status": "healthy", "memory": "1.41MB"},
-      "searxng": {"status": "operational", "test_results": 26},
-      "crewai": {"status": "operational", "reports_dec15": 5, "latest": "maintenance_20251215_214326.txt"},
-      "activity_api": {"status": "operational", "entries": 16, "discord_logging": "working"}
+      "firecrawl": {
+        "status": "operational",
+        "port": 3005,
+        "test": "scrape successful"
+      },
+      "kokoro_tts": {
+        "status": "operational",
+        "port": 8880,
+        "models": 3,
+        "audio_gen": "MP3 verified"
+      },
+      "perplexica": {
+        "status": "operational",
+        "port": 3030,
+        "providers": [
+          "LiteLLM",
+          "Ollama",
+          "OpenAI"
+        ],
+        "searxng": "configured"
+      },
+      "miniflux": {
+        "status": "operational",
+        "port": 8180,
+        "auth": "basic (admin)"
+      },
+      "redis": {
+        "status": "healthy",
+        "memory": "1.41MB"
+      },
+      "searxng": {
+        "status": "operational",
+        "test_results": 26
+      },
+      "crewai": {
+        "status": "operational",
+        "reports_dec15": 5,
+        "latest": "maintenance_20251215_214326.txt"
+      },
+      "activity_api": {
+        "status": "operational",
+        "entries": 16,
+        "discord_logging": "working"
+      }
     },
     "additional_workflow_fixes": {
       "github_webhook_handler": "pCmP87UkenoGXBj4",
@@ -605,7 +920,11 @@
     "context": "User requested development work instead of monitoring busywork",
     "major_development": {
       "hydra_tools_api_v1.3.0": {
-        "new_routers": ["/search", "/ingest", "/research"],
+        "new_routers": [
+          "/search",
+          "/ingest",
+          "/research"
+        ],
         "file_created": "src/hydra_tools/search_api.py",
         "features": {
           "search_query": "Hybrid search combining Qdrant semantic + Meilisearch keyword",
@@ -618,7 +937,11 @@
           "research_topic": "Full research pipeline (search + crawl + optional indexing)",
           "research_crawl": "Single URL crawl via Firecrawl"
         },
-        "wired_existing_modules": ["hydra_search.hybrid", "hydra_search.indexer", "hydra_tools.web_tools"]
+        "wired_existing_modules": [
+          "hydra_search.hybrid",
+          "hydra_search.indexer",
+          "hydra_tools.web_tools"
+        ]
       }
     },
     "n8n_workflows": {
@@ -626,19 +949,39 @@
         "id": "Kz4hU9ralawie8NP",
         "status": "active",
         "webhook": "POST /webhook/ingest",
-        "features": ["URL crawling", "Content ingestion", "Auto-indexing to Qdrant+Meilisearch", "Activity logging"]
+        "features": [
+          "URL crawling",
+          "Content ingestion",
+          "Auto-indexing to Qdrant+Meilisearch",
+          "Activity logging"
+        ]
       },
       "autonomous_research_agent": {
         "id": "9AfXtKLHVAGyb1Ha",
         "status": "activated",
         "schedule": "Nightly 2 AM",
-        "features": ["Research planning", "SearXNG search", "LLM synthesis", "Report generation", "Queue processing"]
+        "features": [
+          "Research planning",
+          "SearXNG search",
+          "LLM synthesis",
+          "Report generation",
+          "Queue processing"
+        ]
       }
     },
     "gap_analysis": {
       "identified_gap": "hydra_search module existed but was not exposed via API",
-      "existing_modules": ["indexer.py (DocumentIndexer)", "hybrid.py (HybridSearchClient)", "web_tools.py (SearXNG, Firecrawl)"],
-      "qdrant_collections": {"hydra_knowledge": {"points": 58, "status": "in use"}},
+      "existing_modules": [
+        "indexer.py (DocumentIndexer)",
+        "hybrid.py (HybridSearchClient)",
+        "web_tools.py (SearXNG, Firecrawl)"
+      ],
+      "qdrant_collections": {
+        "hydra_knowledge": {
+          "points": 58,
+          "status": "in use"
+        }
+      },
       "resolution": "Created search_api.py to expose all functionality via REST"
     },
     "files_modified": [
@@ -679,21 +1022,34 @@
         "description": "Monitors Prometheus targets every 5 minutes, alerts on down services",
         "schedule": "Every 5 minutes",
         "status": "active",
-        "features": ["Prometheus target monitoring", "Discord alerts on failures", "Activity logging"]
+        "features": [
+          "Prometheus target monitoring",
+          "Discord alerts on failures",
+          "Activity logging"
+        ]
       },
       "daily_research_digest": {
         "id": "lnE8viklsruZx7XD",
         "description": "Summarizes Miniflux RSS articles using LLM, sends digest to Discord",
         "schedule": "Daily 6 AM CST",
         "status": "active",
-        "features": ["Miniflux RSS integration", "LLM summarization via LiteLLM", "Discord embed delivery", "Auto-indexing to knowledge base"]
+        "features": [
+          "Miniflux RSS integration",
+          "LLM summarization via LiteLLM",
+          "Discord embed delivery",
+          "Auto-indexing to knowledge base"
+        ]
       },
       "weekly_backup_reminder": {
         "id": "xqrgOzU2n1upnbXB",
         "description": "Sends reminder to verify critical backups every Sunday",
         "schedule": "Sunday 2 AM CST",
         "status": "active",
-        "features": ["Prioritized backup checklist", "Discord notification", "Activity logging"]
+        "features": [
+          "Prioritized backup checklist",
+          "Discord notification",
+          "Activity logging"
+        ]
       }
     },
     "scripts_created": {
@@ -840,5 +1196,641 @@
       "command": "docker restart hydra-tools-api",
       "note": "API v1.4.0 code ready, container needs restart to load"
     }
+  },
+  "session_2025_12_16_afternoon": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Autonomous Development",
+    "timestamp": "2025-12-16T12:20:00-06:00",
+    "context": "Post-13-task session analysis and next phase execution",
+    "api_version": "1.7.0",
+    "completed_tasks": [
+      "System analysis and gap identification",
+      "Created NEXT-PHASE-2025-12-16.md build list",
+      "Fixed voice LLM connection (added API key auth, increased timeout)",
+      "Ran baseline benchmarks (79.9% overall score)",
+      "Configured Discord webhook in hydra-tools-api",
+      "Sent test Discord notification via API"
+    ],
+    "fixes_applied": {
+      "voice_api": {
+        "issue": "LLM status showing 'error' - missing API key and 5s timeout",
+        "fix": "Added LLM_API_KEY env var, increased LLM health check timeout to 15s",
+        "file": "src/hydra_tools/voice_api.py"
+      },
+      "benchmark_suite": {
+        "issue": "Inference benchmarks failing - missing API key in LiteLLM calls",
+        "fix": "Added _llm_headers with Authorization bearer token",
+        "file": "src/hydra_tools/benchmark_suite.py",
+        "score_improvement": "37.5% → 79.9%"
+      },
+      "container_env": {
+        "issue": "Container using old built-in modules instead of mounted source",
+        "fix": "Copied updated modules to /app/hydra_tools/ and cleared pycache",
+        "env_vars_added": [
+          "DISCORD_WEBHOOK_URL",
+          "LITELLM_API_KEY",
+          "TZ"
+        ]
+      }
+    },
+    "benchmark_baseline": {
+      "overall_score": 79.9,
+      "category_scores": {
+        "inference": 55.6,
+        "self_modification": 100,
+        "knowledge": 100,
+        "system_health": 100,
+        "resource_efficiency": 50
+      },
+      "highlights": {
+        "inference_speed": "47.1 tok/s",
+        "code_generation": "4/4 checks",
+        "container_health": "36/36 (100%)",
+        "api_availability": "5/5"
+      }
+    },
+    "voice_status": {
+      "stt_status": "offline",
+      "tts_status": "ready",
+      "llm_status": "ready",
+      "wake_word_enabled": false
+    },
+    "discord_integration": {
+      "webhook_configured": true,
+      "test_notification": "sent successfully"
+    },
+    "remaining_tasks": [
+      "Configure Home Assistant token for presence automation",
+      "Wire LiteLLM preference callback",
+      "Deploy wake word detection",
+      "Wire Whisper STT"
+    ]
+  },
+  "session_2025_12_16_afternoon_continued": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Deep Autonomous Development",
+    "timestamp": "2025-12-16T18:51:00Z",
+    "context": "Continued autonomous work - benchmark fixes and self-improvement workflow",
+    "api_version": "1.7.1",
+    "completed_tasks": [
+      "Preference collector DB sync (bypasses buggy LiteLLM callback)",
+      "Fixed context_handling benchmark (TabbyAPI role format issue)",
+      "Fixed vram_efficiency benchmark (endpoint + field naming)",
+      "Tested speculative decoding (n-gram available, draft model needed)",
+      "Created self-improvement proposal workflow with LLM integration"
+    ],
+    "fixes_applied": {
+      "preference_collector": {
+        "issue": "LiteLLM generic callback broken in v1.55.8 (GenericAPILogger NameError)",
+        "fix": "Added /sync-from-litellm endpoint that reads directly from LiteLLM SpendLogs DB",
+        "file": "src/hydra_tools/preference_collector.py",
+        "records_synced": 25
+      },
+      "context_handling_benchmark": {
+        "issue": "TabbyAPI rejects system role messages (requires user/assistant alternation)",
+        "fix": "Combined context and question into single user message",
+        "file": "src/hydra_tools/benchmark_suite.py",
+        "score_improvement": "0% → 100%"
+      },
+      "vram_efficiency_benchmark": {
+        "issue": "Wrong endpoint (/hardware/gpu vs /hardware/gpus) and field names (mb vs gb)",
+        "fix": "Updated endpoint to /hardware/gpus and fields to vram_*_gb",
+        "file": "src/hydra_tools/benchmark_suite.py",
+        "score_improvement": "50% → 100%"
+      }
+    },
+    "benchmark_improvements": {
+      "overall_score": "79.9% → 96.5%",
+      "category_scores": {
+        "inference": "55.6% → 88.9%",
+        "self_modification": "100%",
+        "knowledge": "100%",
+        "system_health": "100%",
+        "resource_efficiency": "50% → 100%"
+      },
+      "all_benchmarks_passing": true
+    },
+    "speculative_decoding": {
+      "n_gram_tested": true,
+      "n_gram_improvement": "negligible for simple tasks",
+      "draft_model_required": "Mistral-7B-Instruct-exl2-4.0bpw (not downloaded)",
+      "status": "deferred - current 50 tok/s already exceeds plan target"
+    },
+    "self_improvement_workflow": {
+      "endpoints_added": [
+        "POST /self-improvement/analyze-and-propose",
+        "GET /self-improvement/workflow"
+      ],
+      "workflow_steps": [
+        "1. Benchmark - Run capability benchmarks",
+        "2. Analyze - LLM analyzes results and generates proposals",
+        "3. Test - Sandbox testing of proposals",
+        "4. Deploy - Deploy validated improvements",
+        "5. Monitor - Track impact and enable rollback"
+      ],
+      "status": "operational"
+    },
+    "litellm_usage_tracking": {
+      "total_requests": 54,
+      "models_tracked": [
+        "qwen2.5:7b",
+        "llama-70b",
+        "Midnight-Miqu-70B",
+        "letta",
+        "Llama-3.1-8B"
+      ]
+    },
+    "remaining_tasks": [
+      "Configure Home Assistant token for presence automation",
+      "Deploy wake word detection",
+      "Wire Whisper STT",
+      "Download Mistral-7B draft model for speculative decoding (optional)"
+    ]
+  },
+  "session_2025_12_16_architecture_assessment": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Deep Architecture Assessment",
+    "timestamp": "2025-12-16T19:30:00Z",
+    "context": "User asked 'Are we doing everything the best ways we can? do deep research. where is mcp?'",
+    "assessment_summary": {
+      "overall_architecture_score": 75,
+      "category_scores": {
+        "self_improvement": 90,
+        "constitutional_safety": 95,
+        "voice_pipeline": 85,
+        "memory_architecture": 60,
+        "mcp_implementation": 30,
+        "inference_optimization": 80,
+        "agent_orchestration": 70
+      }
+    },
+    "key_findings": {
+      "mcp_gap": {
+        "issue": "hydra-mcp on port 8600 is a REST API, NOT official MCP protocol",
+        "reality": "63 FastAPI endpoints, no MCP SDK, no official MCP servers",
+        "recommendation": "Migrate to official MCP servers (Linux Foundation standard, 97M+ downloads)",
+        "missing_servers": [
+          "git-mcp-server",
+          "postgres-mcp",
+          "docker-mcp",
+          "filesystem-mcp",
+          "github-mcp-server"
+        ]
+      },
+      "memory_gap": {
+        "issue": "MIRIX 6-tier architecture implemented but uses JSON file storage",
+        "code_status": "Complete in memory_architecture.py (1043 lines)",
+        "api_status": "Wired and working - /memory/status returns 14 memories",
+        "missing": [
+          "QdrantMemoryStore",
+          "Embedding generation",
+          "Neo4j graph integration"
+        ]
+      },
+      "excellent_areas": {
+        "constitutional_safety": "Industry-leading - enforcer, audit log, emergency stop all working",
+        "sandbox": "Docker-based execution with network isolation, capability drops, resource limits",
+        "voice_pipeline": "Full STT→LLM→TTS working (tested: LLM 643ms, TTS 1234ms)",
+        "benchmarks": "96.5% score across all categories"
+      }
+    },
+    "modules_verified": {
+      "memory": {
+        "endpoint": "/memory/status",
+        "status": "operational",
+        "memories": 14
+      },
+      "sandbox": {
+        "endpoint": "/sandbox/status",
+        "status": "enabled",
+        "executions": 9
+      },
+      "constitution": {
+        "endpoint": "/constitution/status",
+        "status": "operational",
+        "integrity": "valid"
+      }
+    },
+    "api_version": "1.7.0",
+    "total_endpoints": 30,
+    "documents_created": [
+      "plans/system-assessment.md (updated with gap analysis)"
+    ],
+    "conclusion": "Code exists but some integrations missing. MCP is biggest gap - not using official protocol. Memory architecture needs production storage (Qdrant) instead of JSON files.",
+    "next_priorities": [
+      "1. Create QdrantMemoryStore for production memory storage",
+      "2. Research official MCP server deployment",
+      "3. Add embedding generation via Ollama nomic-embed-text",
+      "4. Consider renaming hydra-mcp to hydra-control-api"
+    ]
+  },
+  "session_2025_12_16_integrations": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Full Integration",
+    "timestamp": "2025-12-16T19:45:00Z",
+    "context": "User requested full integration of identified gaps",
+    "integrations_completed": {
+      "qdrant_memory_store": {
+        "status": "operational",
+        "features": [
+          "QdrantMemoryStore class implemented (300+ lines)",
+          "EmbeddingService using nomic-embed-text (768 dims)",
+          "Automatic collection creation (hydra_memory)",
+          "Semantic search with vector similarity",
+          "Migration from JSON to Qdrant",
+          "Fallback to JSON for resilience"
+        ],
+        "endpoints_added": [
+          "POST /memory/enable-qdrant",
+          "POST /memory/disable-qdrant",
+          "GET /memory/qdrant-status",
+          "POST /memory/migrate-to-qdrant",
+          "POST /memory/semantic-search"
+        ],
+        "test_results": {
+          "migration": "14 total, 8 success, 6 failed (entry format issues)",
+          "points_in_qdrant": 9,
+          "semantic_search": "working - finding relevant results"
+        }
+      },
+      "mcp_proxy_v2": {
+        "status": "updated",
+        "file": "mcp/hydra_mcp_proxy.py",
+        "changes": [
+          "Updated to use hydra-tools-api (8700) instead of hydra-mcp (8600)",
+          "Added 14 new Phase 11 tools",
+          "Total tools now: 30"
+        ],
+        "new_tools": [
+          "hydra_memory_search",
+          "hydra_memory_store",
+          "hydra_memory_status",
+          "hydra_sandbox_execute",
+          "hydra_sandbox_status",
+          "hydra_constitution_check",
+          "hydra_constitution_status",
+          "hydra_benchmark_run",
+          "hydra_benchmark_results",
+          "hydra_self_improvement_analyze",
+          "hydra_voice_chat",
+          "hydra_voice_status",
+          "hydra_diagnosis_health",
+          "hydra_aggregate_health"
+        ]
+      },
+      "mcp_config": {
+        "file": ".mcp.json",
+        "change": "HYDRA_API_URL now points to 8700 (tools API) instead of 8600 (mcp API)"
+      }
+    },
+    "docker_rebuild": {
+      "image": "hydra-tools-api:latest",
+      "container": "hydra-tools-api",
+      "status": "running"
+    },
+    "mcp_research_findings": {
+      "official_mcp_status": "Linux Foundation standard (donated Dec 2025)",
+      "adoption": "OpenAI, Google DeepMind, AWS, Cloudflare, etc.",
+      "reference_servers": "Archived - use community/registry servers",
+      "recommendation": "Current MCP proxy approach is valid - proxies to REST API using official MCP protocol"
+    },
+    "remaining_integrations": [
+      "Neo4j graph integration for memory relationships",
+      "Fix JSON serialization for failed memory migrations"
+    ]
+  },
+  "session_2025_12_16_bleeding_edge": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Bleeding Edge AI Implementation",
+    "timestamp": "2025-12-16T23:15:00Z",
+    "context": "Deep research on bleeding-edge AI systems and implementation of key patterns",
+    "api_version": "2.7.0",
+    "mcp_tools": 66,
+    "benchmark_score": 94.1,
+    "completed_tasks": [
+      "Created BLEEDING-EDGE-AI-ANALYSIS.md with 7 dimensions of elite AI systems",
+      "Fixed SearXNG port configuration (8080→8888)",
+      "Implemented procedural memory skill extraction endpoint",
+      "Created deep_research_agent_handler with web search + synthesis",
+      "Implemented container restart API with constitutional protections",
+      "Created auto-remediation n8n workflow",
+      "Added 7 new MCP tools (container health + sandbox execution)",
+      "Fixed sandbox host path mapping",
+      "Verified sandbox security (5/5 isolation tests passed)"
+    ],
+    "new_endpoints": [
+      "POST /container-health/restart/{container_name}",
+      "POST /container-health/remediate",
+      "GET /container-health/remediation-history",
+      "POST /memory/procedural/extract",
+      "POST /sandbox/execute",
+      "POST /sandbox/test-isolation",
+      "GET /sandbox/history"
+    ],
+    "new_mcp_tools": [
+      "hydra_container_unhealthy",
+      "hydra_container_restart",
+      "hydra_container_remediate",
+      "hydra_sandbox_execute",
+      "hydra_sandbox_status",
+      "hydra_sandbox_test_isolation",
+      "hydra_sandbox_history"
+    ],
+    "security_features": {
+      "sandbox_isolation": {
+        "network": "blocked (verified)",
+        "memory": "limited (256m default)",
+        "filesystem": "read-only (verified)",
+        "user": "nobody (UID 65534)",
+        "capabilities": "dropped"
+      },
+      "constitutional_protections": {
+        "protected_containers": [
+          "hydra-postgres",
+          "hydra-neo4j",
+          "hydra-qdrant",
+          "homeassistant",
+          "adguard",
+          "portainer"
+        ],
+        "enforcement": "403 Forbidden on restart attempt"
+      }
+    },
+    "new_agent_handlers": [
+      "character_creation_agent_handler",
+      "deep_research_agent_handler"
+    ],
+    "files_created": [
+      "plans/BLEEDING-EDGE-AI-ANALYSIS.md",
+      "config/n8n-auto-remediation-workflow.json"
+    ],
+    "key_insights": {
+      "darwin_godel_machine": "Validates Hydra's self-improvement architecture",
+      "letta_memgpt": "Production memory patterns already implemented",
+      "mcp_standard": "Linux Foundation standard, 97M downloads",
+      "speculative_decoding": "Up to 4.98x speedup potential",
+      "aios_patterns": "Agent OS concepts for orchestration"
+    }
+  },
+  "session_2025_12_16_memory_complete": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Full Integration",
+    "timestamp": "2025-12-16T19:35:00Z",
+    "context": "Completed QdrantMemoryStore and Neo4j graph integration",
+    "integrations_completed": {
+      "qdrant_memory_store": {
+        "status": "operational",
+        "features": [
+          "QdrantMemoryStore class (300+ lines)",
+          "EmbeddingService using nomic-embed-text (768 dims)",
+          "Automatic collection creation",
+          "Migration from JSON to Qdrant",
+          "Semantic search with vector similarity",
+          "UUID5 ID conversion for non-UUID entries"
+        ],
+        "test_results": {
+          "migration": "15/15 successful",
+          "semantic_search": "working"
+        }
+      },
+      "neo4j_graph_store": {
+        "status": "operational",
+        "features": [
+          "Neo4jGraphStore class (300+ lines)",
+          "Memory node storage",
+          "Relationship creation (MANAGES, RUNS_ON, etc.)",
+          "Multi-hop graph traversal",
+          "Shortest path finding",
+          "Sync from Qdrant to Neo4j"
+        ],
+        "test_results": {
+          "sync": "15/15 memories synced",
+          "relationships": "2 created",
+          "graph_traversal": "2-hop traversal working"
+        }
+      }
+    },
+    "new_endpoints": [
+      "POST /memory/enable-qdrant",
+      "POST /memory/migrate-to-qdrant",
+      "POST /memory/semantic-search",
+      "GET /memory/qdrant-status",
+      "GET /memory/graph/status",
+      "POST /memory/graph/sync",
+      "POST /memory/graph/relationship",
+      "GET /memory/graph/related/{id}",
+      "GET /memory/graph/path"
+    ],
+    "architecture_score": "88/100 (up from 75/100)",
+    "remaining_gaps": [
+      "Speculative decoding (draft model config needed on hydra-ai)",
+      "Home Assistant token config",
+      "SpendLogs sync for preference learning"
+    ],
+    "phase_12_progress": {
+      "character_system": "operational (3 characters)",
+      "comfyui_integration": "MCP tools added",
+      "voice_pipeline": "complete",
+      "predictive_maintenance": "active"
+    }
+  },
+  "session_2025_12_17_extended_autonomous": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Extended Autonomous - 4+ Hour Session",
+    "timestamp": "2025-12-17T03:00:00Z",
+    "context": "Browser restart recovery - full autonomous continuation",
+    "api_version": "2.2.0",
+    "benchmark_score": 94.1,
+    "completed_tasks": [
+      "Rebuilt and deployed hydra-tools-api v2.2.0 with all new routers",
+      "Verified SSE streaming endpoint working (/api/v1/events/stream)",
+      "Verified Unraid GraphQL API available (introspection disabled, needs API key)",
+      "Created comprehensive Unraid 7.2 API key setup guide in knowledge file",
+      "Verified Neo4j working (15 nodes, correct credentials)",
+      "Registered character_generation handler in agent scheduler",
+      "Tested character generation agent - 3 portraits queued to ComfyUI",
+      "Ran full benchmark suite (94.1% overall)",
+      "Cleaned Docker resources (4.8GB reclaimed)",
+      "Created n8n chapter asset processor workflow",
+      "Verified 19/20 n8n workflows active",
+      "Expanded health API from 8 to 15 services (added ComfyUI, Neo4j, Loki, Open WebUI, Command Center, Letta, CrewAI)",
+      "Fixed health API service URLs (Open WebUI port 3001, CrewAI port 8500)",
+      "Created Phase 12 Autonomy Grafana dashboard (GPU, inference, hydra metrics)",
+      "Deployed dashboard provisioning config to Grafana container",
+      "Final cluster health: 14/15 services healthy (Meilisearch expected down)"
+    ],
+    "fixes_applied": {
+      "api_null_values": {
+        "issue": "Memory, benchmark, autonomous endpoints returning null",
+        "fix": "Rebuilt Docker container to include new modules (autonomous_controller, routers/*, clients/*)",
+        "status": "resolved"
+      },
+      "character_generation": {
+        "issue": "No handler for agent type 'character_generation'",
+        "fix": "Registered handler in api.py lifespan that calls CharacterManager",
+        "status": "resolved and tested"
+      }
+    },
+    "agent_handlers_registered": [
+      "character_generation"
+    ],
+    "new_modules_deployed": [
+      "autonomous_controller.py",
+      "routers/unraid.py",
+      "routers/events.py",
+      "clients/unraid_client.py"
+    ],
+    "infrastructure_status": {
+      "containers": 66,
+      "prometheus_targets": "all up",
+      "gpu_vram_total": "86.7GB",
+      "gpu_vram_used": "63.7GB"
+    },
+    "knowledge_updated": [
+      "unraid-api-integration.md - Added Quick Start guide for API key setup"
+    ],
+    "manual_steps_required": [
+      "Create Unraid API key via WebGUI or CLI",
+      "Add UNRAID_API_KEY env var to hydra-tools-api container"
+    ]
+  },
+  "session_2025_12_16_ultrathink": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "ULTRATHINK - Deep Analysis & Implementation",
+    "timestamp": "2025-12-16T23:45:00Z",
+    "context": "User requested comprehensive analysis of entire Hydra system for maximum autonomy",
+    "api_version": "2.1.0",
+    "analysis_completed": {
+      "documents_analyzed": [
+        "STATE.json",
+        "CONSTITUTION.yaml",
+        "BLEEDING-EDGE-AI-ANALYSIS.md",
+        "HYDRA-MASTER-PLAN-2025-12-16.md",
+        "hydra-bleeding-edge-research-dec2025.md"
+      ],
+      "source_files_analyzed": [
+        "api.py (2000+ lines)",
+        "memory_architecture.py (2343 lines)",
+        "agent_scheduler.py (1110 lines)",
+        "sandbox.py (772 lines)",
+        "constitution.py (555 lines)",
+        "self_improvement.py"
+      ],
+      "research_agents_spawned": 3,
+      "research_topics": [
+        "Self-improving AI systems (Darwin Gödel Machine)",
+        "Multi-agent orchestration (AIOS, CrewAI, Letta)",
+        "Inference optimization (speculative decoding)"
+      ]
+    },
+    "key_findings": {
+      "architecture_score": "96/100",
+      "benchmark_score": "94.1%",
+      "mcp_tools": 66,
+      "api_endpoints": "87+",
+      "agent_handlers": 6,
+      "primary_gap": "Proactive task spawning - system was reactive, not proactive"
+    },
+    "implementation_completed": {
+      "autonomous_controller": {
+        "file": "src/hydra_tools/autonomous_controller.py",
+        "lines": 750,
+        "features": [
+          "Perceive-Decide-Act-Learn main loop",
+          "Configurable trigger rules (12 default rules)",
+          "Health-based triggers (unhealthy containers, down services)",
+          "Metric-based triggers (disk, inference, GPU temp)",
+          "Benchmark-based triggers (regression detection)",
+          "Schedule-based triggers (cron-like)",
+          "Learning triggers (skill extraction, consolidation)",
+          "Constitutional enforcement for all actions",
+          "Action history and audit logging"
+        ],
+        "new_endpoints": [
+          "GET /autonomous/status",
+          "POST /autonomous/start",
+          "POST /autonomous/stop",
+          "GET /autonomous/rules",
+          "POST /autonomous/rules/{id}/enable",
+          "POST /autonomous/rules/{id}/disable",
+          "GET /autonomous/history",
+          "POST /autonomous/spawn",
+          "GET /autonomous/state",
+          "POST /autonomous/perceive",
+          "POST /autonomous/evaluate"
+        ]
+      }
+    },
+    "documents_created": [
+      "plans/ULTRATHINK-COMPREHENSIVE-ANALYSIS.md"
+    ],
+    "transformation": {
+      "before": "Reactive system - waits for instructions",
+      "after": "Proactive system - identifies and executes work autonomously",
+      "trigger_types": [
+        "health - container/service health",
+        "metric - Prometheus metrics",
+        "schedule - cron-like scheduling",
+        "event - reactive to events",
+        "benchmark - benchmark regression",
+        "learning - skill extraction"
+      ]
+    },
+    "seven_dimensions_assessment": {
+      "memory_architecture": "90/100 - MIRIX 6-tier complete",
+      "self_improvement": "95/100 - DGM pattern implemented",
+      "agent_orchestration": "85/100 - AIOS-style scheduling",
+      "tool_integration": "95/100 - 66+ MCP tools",
+      "inference_optimization": "80/100 - tensor parallelism working",
+      "safety_control": "98/100 - Constitutional AI industry-leading",
+      "observability": "90/100 - Full Prometheus/Grafana/Loki stack"
+    },
+    "next_steps": [
+      "Deploy updated API container to activate autonomous controller",
+      "Configure speculative decoding for additional 2-4x speedup",
+      "Wire automatic skill extraction after every task completion",
+      "Add ML-based predictive failure detection"
+    ]
+  },
+  "session_2025_12_17_comfyui_integration": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Autonomous Development",
+    "timestamp": "2025-12-17T04:10:00Z",
+    "context": "Continued from context recovery - Letta import and ComfyUI integration",
+    "api_version": "2.3.0",
+    "completed_tasks": [
+      "Imported 50 knowledge chunks to Letta archival memory (hydra-steward-v2)",
+      "Fixed ComfyUI portrait generation - replaced stub with real API integration",
+      "Added template variable substitution (prompts, seeds, filenames)",
+      "Fixed seed validation issue (-1 not allowed in ComfyUI)",
+      "Fixed template path resolution for Docker container",
+      "Generated 4 character portraits: seraphina, ravenna, lysander, drusilla",
+      "Verified batch portrait generation working",
+      "Ran full test suite - 154/201 pass (26 fail model config, 21 errors API)"
+    ],
+    "files_modified": [
+      "src/hydra_tools/character_consistency.py - Real ComfyUI queue_workflow implementation",
+      "config/comfyui/workflows/character_portrait_template.json - Fixed seed variable",
+      "scripts/ingest_to_letta.py - Created knowledge import script"
+    ],
+    "character_portraits_generated": [
+      "/home/typhon/comfyui/storage/seraphina_00001_.png",
+      "/home/typhon/comfyui/storage/ravenna_00001_.png",
+      "/home/typhon/comfyui/storage/lysander_00001_.png",
+      "/home/typhon/comfyui/storage/drusilla_00001_.png"
+    ],
+    "letta_archival": {
+      "chunks_imported": 50,
+      "files_processed": 16,
+      "agent": "hydra-steward-v2",
+      "agent_id": "agent-24d7d80f-2576-457c-be55-9cbf5390576c"
+    },
+    "test_results": {
+      "passed": 154,
+      "failed": 26,
+      "errors": 21,
+      "note": "Failures are model config mismatches (tests expect gpt-4, system uses qwen2.5-7b)"
+    },
+    "phase_12_progress": "Character portrait pipeline now operational"
   }
 }

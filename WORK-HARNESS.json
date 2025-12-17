@@ -1,0 +1,295 @@
+{
+  "meta": {
+    "name": "Hydra Autonomous Work Harness",
+    "version": "1.0.0",
+    "generated": "2025-12-16T23:35:00Z",
+    "purpose": "Unified structure for continuous autonomous development",
+    "maintainer": "Claude Code (Hydra Steward)"
+  },
+
+  "directives": {
+    "primary": "Build a self-improving autonomous AI system that runs 70B+ models at interactive speeds with 24/7 autonomous operation",
+    "operational_mode": "Proactive Team Lead - execute without waiting for permission",
+    "philosophy": "Done right over done fast. Bleeding edge. Report results not intentions."
+  },
+
+  "current_state": {
+    "version": "2.7.0",
+    "phase": "12-ACTIVE",
+    "benchmark_score": 94.1,
+    "memory_entries": 41,
+    "mcp_tools": 66,
+    "containers": 64,
+    "workflows_active": 18,
+    "last_updated": "2025-12-16T23:35:00Z"
+  },
+
+  "priority_queues": {
+    "P0_critical": {
+      "description": "Broken or blocking - fix immediately",
+      "items": []
+    },
+    "P1_high_impact": {
+      "description": "Major capability improvements",
+      "items": [
+        {
+          "id": "inference-optimization",
+          "title": "Speculative Decoding Implementation",
+          "rationale": "2-4x speedup potential with no quality loss",
+          "status": "researching",
+          "prerequisites": ["draft_model_download", "tabbyapi_config"],
+          "success_criteria": "70+ tok/s on 70B model (currently ~50)"
+        },
+        {
+          "id": "voice-pipeline-hardening",
+          "title": "Full Voice Pipeline with Wake Word",
+          "rationale": "Highest user-facing impact, enables hands-free interaction",
+          "status": "partially_complete",
+          "prerequisites": ["openwakeword_install"],
+          "success_criteria": "Wake word triggers STT->LLM->TTS flow end-to-end"
+        },
+        {
+          "id": "dgm-evolution-loop",
+          "title": "Darwin Godel Machine Self-Improvement Loop",
+          "rationale": "Core differentiator - validated by bleeding-edge research",
+          "status": "foundation_ready",
+          "prerequisites": ["benchmark_baseline", "sandbox_working", "constitutional_constraints"],
+          "success_criteria": "Autonomous propose->test->deploy cycle running"
+        }
+      ]
+    },
+    "P2_medium_impact": {
+      "description": "Infrastructure and integration improvements",
+      "items": [
+        {
+          "id": "memory-graph-enhancement",
+          "title": "Neo4j Knowledge Graph Expansion",
+          "rationale": "Multi-hop reasoning requires rich relationship data",
+          "status": "operational",
+          "success_criteria": "100+ nodes with meaningful relationships"
+        },
+        {
+          "id": "code-collection",
+          "title": "Populate Code Collection for Code-Aware Reasoning",
+          "rationale": "Self-modification requires understanding own codebase",
+          "status": "pending",
+          "success_criteria": "All src/hydra_tools/*.py indexed to Qdrant"
+        },
+        {
+          "id": "preference-learning",
+          "title": "Preference Learning Loop",
+          "rationale": "Continuous model routing improvement",
+          "status": "syncing",
+          "success_criteria": "1000+ interactions analyzed, routing improved"
+        },
+        {
+          "id": "agent-transparency",
+          "title": "Agent Activity Transparency Layer",
+          "rationale": "Critical for user trust - agents should show their work in real-time",
+          "status": "design_needed",
+          "design_options": [
+            {
+              "option": "Event-driven streaming",
+              "implementation": "Agents emit events to Redis pub/sub, multiple consumers (Discord, UI, Grafana) subscribe",
+              "pros": "Decoupled, scalable, flexible",
+              "effort": "medium"
+            },
+            {
+              "option": "Control-plane-ui integration",
+              "implementation": "WebSocket endpoint streams agent activity to existing UI",
+              "pros": "Uses existing infrastructure",
+              "effort": "low"
+            },
+            {
+              "option": "Discord activity feed",
+              "implementation": "n8n workflow triggers Discord messages on agent milestones",
+              "pros": "Simple, immediate visibility",
+              "effort": "low"
+            }
+          ],
+          "success_criteria": "Users can see real-time agent searches, decisions, and findings"
+        }
+      ]
+    },
+    "P3_continuous": {
+      "description": "Ongoing research and optimization",
+      "items": [
+        {
+          "id": "bleeding-edge-research",
+          "title": "Continuous Bleeding-Edge AI Research",
+          "rationale": "Stay ahead of the curve, identify new capabilities",
+          "status": "active",
+          "schedule": "Weekly deep research sessions",
+          "topics": [
+            "Self-improving AI architectures",
+            "Multi-agent orchestration advances",
+            "Inference optimization techniques",
+            "Memory system innovations",
+            "MCP ecosystem expansion"
+          ]
+        },
+        {
+          "id": "benchmark-monitoring",
+          "title": "Continuous Benchmark Monitoring",
+          "rationale": "Track capability evolution over time",
+          "status": "active",
+          "schedule": "Daily automated runs"
+        }
+      ]
+    }
+  },
+
+  "research_agenda": {
+    "completed_research": [
+      {
+        "topic": "Self-Improving AI Systems (DGM, AIOS)",
+        "completed_at": "2025-12-16",
+        "key_findings": "DGM validates empirical self-improvement. Three pillars: sandboxing (E2B), constitutional constraints, audit trails. AIOS 2.1x faster scheduling.",
+        "document": "knowledge/bleeding-edge-synthesis-dec2025.md"
+      },
+      {
+        "topic": "Multi-Agent Orchestration",
+        "completed_at": "2025-12-16",
+        "key_findings": "LangGraph 2.2x faster than CrewAI. MCP is Linux Foundation standard. Letta+Zep/Graphiti 18.5% accuracy boost. OpenHands for self-improvement.",
+        "document": "knowledge/bleeding-edge-synthesis-dec2025.md"
+      },
+      {
+        "topic": "Inference Optimization",
+        "completed_at": "2025-12-16",
+        "key_findings": "Speculative decoding 2.31x with Llama 3.2-1B draft. Combined optimizations: 200-280 tok/s (4x current). ExLlamaV3 wait until Q2-Q3 2026.",
+        "document": "plans/inference-optimization-research-dec2025.md"
+      }
+    ],
+    "planned_research": [
+      "Memory consolidation and forgetting mechanisms",
+      "Constitutional AI safety advances",
+      "Multimodal agent capabilities"
+    ]
+  },
+
+  "implementation_roadmap": {
+    "phase_1_foundation": {
+      "weeks": "1-2",
+      "status": "ready_to_start",
+      "tasks": [
+        "Configure speculative decoding in TabbyAPI (Llama 3.2-1B draft)",
+        "Verify E2B/Docker sandbox isolation",
+        "Set up comprehensive audit logging",
+        "Baseline benchmark all capabilities"
+      ]
+    },
+    "phase_2_memory": {
+      "weeks": "3-4",
+      "status": "planned",
+      "tasks": [
+        "Deploy Letta as memory orchestration layer",
+        "Configure hybrid memory (vector + graph + filesystem)",
+        "Enable skill learning mechanisms",
+        "Test multi-agent shared memory"
+      ]
+    },
+    "phase_3_mcp": {
+      "weeks": "5-6",
+      "status": "planned",
+      "tasks": [
+        "Convert existing tools to MCP servers",
+        "Deploy code-as-API pattern",
+        "Create custom MCP servers (n8n, ComfyUI, SillyTavern)"
+      ]
+    },
+    "phase_4_aios": {
+      "weeks": "7-8",
+      "status": "planned",
+      "tasks": [
+        "Implement AIOS-style agent scheduling",
+        "Add context management and snapshots",
+        "Build resource isolation and access control"
+      ]
+    },
+    "phase_5_self_improvement": {
+      "weeks": "9-10",
+      "status": "planned",
+      "tasks": [
+        "Implement DGM-inspired mutation engine",
+        "Set up open-ended agent archive",
+        "Enable human-in-loop gates for major changes"
+      ]
+    },
+    "phase_6_optimization": {
+      "weeks": "11-12",
+      "status": "planned",
+      "tasks": [
+        "Deploy full speculative decoding (target: 200+ tok/s)",
+        "Optimize 5090+4090 tensor parallelism",
+        "Fine-tune agent scheduling"
+      ]
+    }
+  },
+
+  "kpis": {
+    "inference_speed_toks": {"current": 50, "target": 200, "unit": "tok/s"},
+    "benchmark_score": {"current": 94.1, "target": 98, "unit": "%"},
+    "memory_entries": {"current": 41, "target": 500, "unit": "count"},
+    "mcp_tools": {"current": 66, "target": 100, "unit": "count"},
+    "container_health_pct": {"current": 61.1, "target": 95, "unit": "%"},
+    "voice_latency_ms": {"current": 2000, "target": 1000, "unit": "ms"}
+  },
+
+  "execution_protocol": {
+    "on_session_start": [
+      "Read WORK-HARNESS.json for priorities",
+      "Check P0_critical for blockers",
+      "Check research_agenda for pending results",
+      "Continue highest priority incomplete work"
+    ],
+    "on_task_complete": [
+      "Update WORK-HARNESS.json with results",
+      "Run relevant benchmarks",
+      "Check for new P0 issues",
+      "Move to next priority item"
+    ],
+    "on_research_complete": [
+      "Synthesize findings into knowledge",
+      "Store to semantic memory",
+      "Update priority queues if needed",
+      "Generate implementation proposals"
+    ],
+    "blockers_protocol": [
+      "Attempt 3 different approaches",
+      "Document what was tried",
+      "If still blocked, log and move on",
+      "Only escalate if truly insurmountable"
+    ]
+  },
+
+  "constitutional_constraints": {
+    "immutable": [
+      "Never delete databases without human approval",
+      "Never modify network/firewall configuration",
+      "Never disable authentication systems",
+      "Never expose secrets or credentials",
+      "Always maintain audit trail",
+      "Always sandbox code execution",
+      "Require human approval for git push to main"
+    ],
+    "allowed_autonomy": [
+      "Code modifications and feature additions",
+      "Config updates within safety bounds",
+      "Research and analysis tasks",
+      "Documentation and tests",
+      "Workflow automation",
+      "Self-improvement proposals (with sandbox testing)"
+    ]
+  },
+
+  "integration_points": {
+    "state_file": "/mnt/user/appdata/hydra-dev/STATE.json",
+    "master_plan": "/mnt/user/appdata/hydra-dev/plans/HYDRA-MASTER-PLAN-2025-12-16.md",
+    "improvements_backlog": "/mnt/user/appdata/hydra-dev/plans/AUTONOMOUS-IMPROVEMENTS-MASTER.md",
+    "knowledge_dir": "/mnt/user/appdata/hydra-dev/knowledge/",
+    "api_base": "http://192.168.1.244:8700",
+    "benchmark_endpoint": "/benchmark/run",
+    "self_improve_endpoint": "/self-improvement/analyze-and-propose",
+    "memory_endpoint": "/memory/semantic"
+  }
+}

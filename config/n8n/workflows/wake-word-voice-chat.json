@@ -1,0 +1,327 @@
+{
+  "name": "Wake Word Voice Chat",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wake-word-detected",
+        "authentication": "none",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Wake Word Detected",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [260, 300],
+      "webhookId": "wake-word-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse wake word event and prepare for voice processing\nconst body = $input.item.json.body || $input.item.json;\n\nconst event = {\n  wake_word: body.wake_word || 'hey_jarvis',\n  confidence: body.confidence || 1.0,\n  audio_url: body.audio_url || null,\n  audio_base64: body.audio_base64 || null,\n  text_input: body.text || null,  // For text-based testing\n  timestamp: new Date().toISOString(),\n  source: body.source || 'webhook'\n};\n\nreturn { json: event };"
+      },
+      "id": "code-1",
+      "name": "Parse Wake Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.text_input }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "if-1",
+      "name": "Has Text Input?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Pass through text input directly\nreturn {\n  json: {\n    text: $json.text_input,\n    source: 'text',\n    wake_word: $json.wake_word\n  }\n};"
+      },
+      "id": "code-2",
+      "name": "Use Text Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8787/inference",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"audio\": \"{{ $json.audio_base64 }}\",\n  \"task\": \"transcribe\",\n  \"language\": \"en\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-1",
+      "name": "STT (Whisper)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [920, 380]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extract transcribed text from Whisper response\nconst response = $input.item.json;\n\nlet text = '';\nif (response.text) {\n  text = response.text.trim();\n} else if (response.transcription) {\n  text = response.transcription.trim();\n}\n\nreturn {\n  json: {\n    text: text,\n    source: 'stt',\n    wake_word: $('Parse Wake Event').item.json.wake_word\n  }\n};"
+      },
+      "id": "code-3",
+      "name": "Extract Transcription",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 380]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Merge text from both paths\nconst text = $json.text || '';\nconst source = $json.source || 'unknown';\nconst wake_word = $json.wake_word || 'hey_jarvis';\n\nreturn {\n  json: {\n    text: text,\n    source: source,\n    wake_word: wake_word\n  }\n};"
+      },
+      "id": "merge-1",
+      "name": "Merge Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1360, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/voice/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{ $json.text }}\",\n  \"voice_response\": true,\n  \"voice\": \"af_nova\",\n  \"system_prompt\": \"You are Hydra, a helpful AI assistant. Be concise and conversational. Respond naturally as if speaking to the user.\"\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "http-2",
+      "name": "Voice Chat (LLM + TTS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1580, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Format the response\nconst response = $input.item.json;\nconst inputText = $('Merge Text').item.json.text;\n\nreturn {\n  json: {\n    status: 'success',\n    input_text: inputText,\n    response_text: response.response || '',\n    audio_available: !!response.audio_url,\n    audio_url: response.audio_url || null,\n    audio_base64: response.audio || null,\n    model: response.model || 'unknown',\n    latency_ms: {\n      llm: response.llm_latency_ms || 0,\n      tts: response.tts_latency_ms || 0,\n      total: response.total_latency_ms || 0\n    },\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "code-4",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/discoveries/archive",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"session\",\n  \"title\": \"Voice interaction - {{ $json.input_text.slice(0, 30) }}\",\n  \"description\": \"User: {{ $json.input_text }}\\n\\nHydra: {{ $json.response_text }}\",\n  \"tags\": [\"voice\", \"wake-word\", \"conversation\"]\n}",
+        "options": {}
+      },
+      "id": "http-3",
+      "name": "Log to Discoveries",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2020, 380]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Return Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2020, 240]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-chat-text",
+        "authentication": "none",
+        "options": {}
+      },
+      "id": "webhook-2",
+      "name": "Text Input (Testing)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [260, 500],
+      "webhookId": "voice-chat-text-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Direct text input for testing\nconst body = $input.item.json.body || $input.item.json;\n\nreturn {\n  json: {\n    wake_word: 'text_input',\n    confidence: 1.0,\n    audio_url: null,\n    audio_base64: null,\n    text_input: body.text || body.message || '',\n    timestamp: new Date().toISOString(),\n    source: 'text_webhook'\n  }\n};"
+      },
+      "id": "code-5",
+      "name": "Parse Text Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 500]
+    }
+  ],
+  "connections": {
+    "Wake Word Detected": {
+      "main": [
+        [
+          {
+            "node": "Parse Wake Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Wake Event": {
+      "main": [
+        [
+          {
+            "node": "Has Text Input?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Text Input?": {
+      "main": [
+        [
+          {
+            "node": "Use Text Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "STT (Whisper)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Text Input": {
+      "main": [
+        [
+          {
+            "node": "Merge Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STT (Whisper)": {
+      "main": [
+        [
+          {
+            "node": "Extract Transcription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Transcription": {
+      "main": [
+        [
+          {
+            "node": "Merge Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Text": {
+      "main": [
+        [
+          {
+            "node": "Voice Chat (LLM + TTS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice Chat (LLM + TTS)": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Return Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log to Discoveries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Input (Testing)": {
+      "main": [
+        [
+          {
+            "node": "Parse Text Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Text Input": {
+      "main": [
+        [
+          {
+            "node": "Has Text Input?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

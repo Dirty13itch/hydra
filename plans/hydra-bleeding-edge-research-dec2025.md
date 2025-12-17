@@ -140,7 +140,7 @@ MCP is the universal standard now. All Hydra tool integrations should be MCP-nat
 - Context window management and snapshots
 - Memory isolation between agents
 - Tool access control
-- 2.1× faster execution vs non-AIOS agents
+- 2.1x faster execution vs non-AIOS agents
 
 **Recent Additions (2025):**
 - LiteCUA: Computer-Use Agent via MCP
@@ -151,19 +151,6 @@ MCP is the universal standard now. All Hydra tool integrations should be MCP-nat
 
 **Hydra Relevance:** ⭐⭐⭐⭐
 AIOS provides the missing orchestration layer. Consider integrating AIOS concepts into Hydra Command Center.
-
-### OpenDAN (Personal AI OS)
-**What it is:** Personal AI OS for running agents with knowledge bases
-
-**Features:**
-- Docker-based deployment
-- Built-in knowledge base from local files
-- Multi-agent workflows
-- Telegram/Email integration
-- AIGC tool integration
-
-**Hydra Relevance:** ⭐⭐⭐
-Some useful patterns for personal data integration.
 
 ---
 
@@ -189,7 +176,7 @@ Some useful patterns for personal data integration.
 **Hydra Relevance:** ⭐⭐⭐⭐⭐
 OpenHands could replace/complement the planned coding agent infrastructure. Their SDK is production-ready.
 
-### Tool Comparison Matrix (Updated)
+### Tool Comparison Matrix
 
 | Tool | MCP | Self-Extend | Local Models | GitHub Stars |
 |------|-----|-------------|--------------|--------------|
@@ -202,17 +189,6 @@ OpenHands could replace/complement the planned coding agent infrastructure. Thei
 ---
 
 ## 6. AGENT FRAMEWORKS COMPARISON
-
-### Framework Maturity Matrix (December 2025)
-
-| Framework | Multi-Agent | Memory | MCP | Production Ready | Best For |
-|-----------|-------------|--------|-----|------------------|----------|
-| **LangGraph** | Yes | Yes | Yes | Yes | Complex workflows |
-| **CrewAI** | Yes+ | Shared | Partial | Yes | Role-based teams |
-| **AutoGen** | Yes+ | Yes | Yes | Yes | Microsoft ecosystem |
-| **OpenAI Agents SDK** | Yes | Yes | Yes | Yes | OpenAI models |
-| **mcp-agent** | Yes | Via MCP | Full | Yes | MCP-native agents |
-| **Semantic Kernel** | Yes | Yes | Yes | Yes | Enterprise .NET |
 
 ### Recommended Stack for Hydra
 
@@ -240,33 +216,16 @@ OpenHands could replace/complement the planned coding agent infrastructure. Thei
 
 **Core Concept:** Use small "draft" model to propose tokens, verify in parallel with large model.
 
-**Latest Techniques:**
-
 | Method | Speedup | Notes |
 |--------|---------|-------|
 | **Basic SD** | 1.5-2x | Draft + verify |
 | **EAGLE-3** | 3-4x | Training-time optimization |
 | **SpecPipe** | 4.98x | Pipeline parallel + SD |
-| **Mirror-SD** | 2-3x | Heterogeneous compute (GPU+NPU) |
+| **Mirror-SD** | 2-3x | Heterogeneous compute |
 | **EasySpec** | 4.17x | Layer-parallel drafting |
 
-**SpecPipe Details:**
-Results: 4.98x faster than vanilla PP on LLaMA3.1-70B
-
 **Hydra Relevance:** ⭐⭐⭐⭐
-Could dramatically improve inference speed on 5090+4090 setup. ExLlamaV2 may add speculative decoding support.
-
-### Tensor Parallelism Innovations
-
-**Meta's N-D Parallelism:**
-- Combines: Context Parallelism + Pipeline Parallelism + Expert Parallelism + Tensor Parallelism
-- Disaggregates prefill and decode tiers
-- Targets: <350ms TTFT, <25ms TTIT
-
-**Heterogeneous Compute:**
-- Mirror-SD demonstrates GPU+NPU co-scheduling
-- Draft on NPU, verify on GPU
-- Could apply to Hydra's mixed GPU setup (5090+4090+5070Ti+3060)
+Could dramatically improve inference speed on 5090+4090 setup.
 
 ---
 
@@ -287,56 +246,22 @@ Could dramatically improve inference speed on 5090+4090 setup. ExLlamaV2 may add
 - 54 voices across 8 languages
 - Supports voice cloning
 
-**Integration Patterns:**
-1. **Direct ONNX:** Fastest, local inference
-2. **FastAPI Server:** OpenAI-compatible endpoint
-3. **n8n Workflow:** Automation integration
-4. **Gradio Interface:** Web UI
-
-**Conversational AI Pattern:**
-User Speech → faster-whisper (STT) → LLM → Kokoro (TTS) → Audio
-
-Optimizations:
-- Text chunking (process partial responses)
-- Filler words ("umm") for perceived latency reduction
-- ~1.5s end-to-end on CPU-only setup
-
 **Hydra Relevance:** ⭐⭐⭐⭐⭐
-Already planned. Should be primary TTS for all Hydra voice interactions.
-
-### Real-Time Voice Stack Comparison
-
-| Model | Latency (TTFB) | Quality | Local | License |
-|-------|----------------|---------|-------|---------|
-| **Kokoro** | 40-70ms | Excellent | Yes | Apache 2.0 |
-| **Cartesia Sonic** | ~40ms | Excellent | No | Commercial |
-| **ElevenLabs Flash** | ~100ms | Excellent | No | Commercial |
-| **Coqui XTTS v2** | <200ms | Good | Yes | CPML |
-| **Chatterbox** | <200ms | Good | Yes | MIT |
-| **Orpheus** | ~150ms | Excellent | Yes | Apache 2.0 |
+Should be primary TTS for all Hydra voice interactions.
 
 ---
 
 ## 9. KNOWLEDGE GRAPHS FOR AGENTS
 
-### Graph-Based Memory Benefits
-
-**Why Graphs > Pure Vector Search:**
+### Why Graphs > Pure Vector Search
 1. Multi-hop reasoning across connected facts
 2. Temporal relationship tracking
 3. Entity disambiguation
 4. Explainable retrieval paths
 5. Structured relationship queries
 
-### Recommended Architecture
-
-**Hybrid Retrieval:**
-- Vector Search (Qdrant) + Graph Traverse (Neo4j) + Keyword (BM25)
-- Results combined through Reranker (Cohere)
-- Final Results
-
-**Hydra Implementation:**
-- Neo4j for entity relationships (already planned, needs auth fix)
+### Hydra Implementation
+- Neo4j for entity relationships (needs auth fix)
 - Qdrant for semantic search (operational)
 - PostgreSQL for structured data (operational)
 - Redis for caching (operational)
@@ -439,11 +364,6 @@ autonomous_operations:
 | MCP registry | New servers | Weekly |
 | OpenHands SDK | Production patterns | Bi-weekly |
 
-### Experimental (Wait for Maturity)
-- Quantum-AI hybrid agents (2027+ timeline)
-- Decentralized autonomous agent organizations
-- Continuous learning in production (gradient updates during inference)
-
 ### Deprecated/Avoid
 - Flat vector-only RAG (superseded by hybrid)
 - Single-agent architectures for complex tasks
@@ -461,11 +381,6 @@ autonomous_operations:
 - OpenHands Documentation: https://docs.openhands.dev/
 - Darwin Godel Machine Paper: https://arxiv.org/abs/2505.22954
 
-### Community Resources
-- MCP Discord: https://discord.gg/mcp
-- Letta Slack: https://letta.com/community
-- OpenHands Slack: https://openhands.dev/community
-
 ### Model Resources
 - Kokoro TTS HuggingFace: https://huggingface.co/hexgrad/Kokoro-82M
 - ExLlamaV2 GitHub: https://github.com/turboderp/exllamav2
@@ -476,4 +391,3 @@ autonomous_operations:
 *Document Version: 1.0*
 *Research Date: December 15, 2025*
 *Status: Discovery Complete - Ready for Architecture Design Phase*
-*Next Step: Review with Shaun, prioritize technologies, create detailed implementation plans*

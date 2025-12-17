@@ -1,0 +1,251 @@
+{
+  "name": "Hydra Auto-Remediation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8700/container-health/unhealthy",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "check-unhealthy",
+      "name": "Get Unhealthy Containers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse unhealthy containers and filter remediation candidates\nconst data = $input.first().json;\nconst unhealthyContainers = data.containers || [];\n\n// Protected containers - never auto-remediate\nconst PROTECTED = [\n  'hydra-postgres', 'hydra-neo4j', 'hydra-qdrant',\n  'homeassistant', 'adguard', 'portainer',\n  'Plex-Media-Server', 'sabnzbd', 'qbittorrent'\n];\n\n// Containers that can be safely auto-restarted\nconst SAFE_TO_RESTART = [\n  'hydra-n8n', 'hydra-litellm', 'hydra-grafana',\n  'hydra-loki', 'hydra-prometheus', 'hydra-miniflux',\n  'hydra-alertmanager', 'hydra-searxng', 'hydra-letta',\n  'hydra-docling', 'hydra-crewai', 'hydra-uptime-kuma',\n  'hydra-firecrawl-api', 'hydra-control-plane-ui',\n  'hydra-control-plane-backend', 'hydra-task-hub',\n  'open-webui', 'sillytavern', 'kokoro-tts', 'perplexica'\n];\n\nconst candidates = [];\nconst skipped = [];\n\nfor (const container of unhealthyContainers) {\n  const name = container.name;\n  const failures = container.consecutive_failures || 1;\n  \n  if (PROTECTED.includes(name)) {\n    skipped.push({ name, reason: 'protected' });\n    continue;\n  }\n  \n  // Only remediate if consecutive failures >= 3\n  if (failures < 3) {\n    skipped.push({ name, reason: `only ${failures} failures (need 3)` });\n    continue;\n  }\n  \n  if (SAFE_TO_RESTART.includes(name)) {\n    candidates.push({\n      name: name,\n      message: container.message,\n      failures: failures,\n      action: 'restart'\n    });\n  } else {\n    skipped.push({ name, reason: 'not in safe list' });\n  }\n}\n\nreturn {\n  json: {\n    totalUnhealthy: unhealthyContainers.length,\n    remediationCandidates: candidates.length,\n    candidates: candidates,\n    skipped: skipped,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "filter-candidates",
+      "name": "Filter Remediation Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [540, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.remediationCandidates }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "check-candidates",
+      "name": "Any Candidates?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extract each candidate for individual processing\nconst candidates = $('Filter Remediation Candidates').first().json.candidates;\nconst items = [];\n\nfor (const candidate of candidates) {\n  items.push({ json: candidate });\n}\n\nreturn items;"
+      },
+      "id": "split-candidates",
+      "name": "Split Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://192.168.1.244:8700/container-health/restart/{{ $json.name }}?reason=auto-remediation",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "restart-container",
+      "name": "Restart Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine restart result with original candidate info\nconst candidate = $('Split Candidates').item.json;\nconst restartResult = $input.first().json;\n\nreturn {\n  json: {\n    action: 'auto_remediation',\n    container: candidate.name,\n    previousFailures: candidate.failures,\n    restartStatus: restartResult.status || 'error',\n    error: restartResult.detail || null,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "format-result",
+      "name": "Format Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/audit",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'auto_remediation', data: { container: $json.container, status: $json.restartStatus, failures: $json.previousFailures }, status: $json.restartStatus === 'success' ? 'success' : 'failed', category: 'automation' }) }}",
+        "options": {}
+      },
+      "id": "audit-log",
+      "name": "Log to Audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1640, 200],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "no-action",
+      "name": "All Healthy (No Action)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [980, 400]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "remediation-webhook",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson"
+      },
+      "id": "manual-trigger",
+      "name": "Manual Trigger Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 500],
+      "webhookId": "remediation-manual"
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Unhealthy Containers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Unhealthy Containers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unhealthy Containers": {
+      "main": [
+        [
+          {
+            "node": "Filter Remediation Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Remediation Candidates": {
+      "main": [
+        [
+          {
+            "node": "Any Candidates?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Candidates?": {
+      "main": [
+        [
+          {
+            "node": "Split Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "All Healthy (No Action)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Candidates": {
+      "main": [
+        [
+          {
+            "node": "Restart Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restart Container": {
+      "main": [
+        [
+          {
+            "node": "Format Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Result": {
+      "main": [
+        [
+          {
+            "node": "Log to Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "hydra"
+    },
+    {
+      "name": "automation"
+    },
+    {
+      "name": "self-healing"
+    }
+  ],
+  "active": false
+}

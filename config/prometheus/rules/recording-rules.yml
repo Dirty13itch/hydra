@@ -212,7 +212,7 @@ groups:
         expr: |
           clamp_max(
             ((sum(up) / count(up)) * 25) +
-            (clamp_max(100 - avg(nvidia_gpu_temp_c or DCGM_FI_DEV_GPU_TEMP or 0), 100) / 100 * 25) +
+            (clamp_max(100 - avg(nvidia_gpu_temp_c), 100) / 100 * 25) +
             (clamp_max(100 - avg((1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100), 100) / 100 * 25) +
             (clamp_max(100 - avg((1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100), 100) / 100 * 25),
             100
@@ -230,3 +230,190 @@ groups:
 
       - record: hydra:dashboard:vram_5m_avg
         expr: avg_over_time(hydra:gpu:vram_used_pct[5m])
+
+  # ===========================================
+  # PREDICTIVE MAINTENANCE RULES
+  # ===========================================
+  - name: predictive_maintenance
+    interval: 60s
+    rules:
+      # -----------------------------------------
+      # DISK PREDICTIONS
+      # -----------------------------------------
+      # Predict disk usage 24 hours from now (percent)
+      - record: disk:predicted_usage_24h:percent
+        expr: |
+          100 * (1 - (
+            predict_linear(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}[6h], 86400) /
+            node_filesystem_size_bytes
+          ))
+
+      # Hours until disk is full (based on current fill rate)
+      - record: disk:time_to_full:hours
+        expr: |
+          (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} /
+           (-deriv(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}[6h]) + 1)) / 3600
+
+      # -----------------------------------------
+      # GPU VRAM PREDICTIONS
+      # -----------------------------------------
+      # Predict VRAM usage 1 hour from now (percent) - nvidia-smi format
+      - record: gpu:predicted_vram_1h:percent
+        expr: |
+          100 * (
+            predict_linear(nvidia_gpu_memory_used_bytes[1h], 3600) /
+            nvidia_gpu_memory_total_bytes
+          )
+
+      # Predict VRAM usage 1 hour from now (percent) - DCGM format
+      - record: gpu:predicted_vram_1h_dcgm:percent
+        expr: |
+          100 * (
+            predict_linear(DCGM_FI_DEV_FB_USED[1h], 3600) /
+            DCGM_FI_DEV_FB_TOTAL
+          )
+
+      # -----------------------------------------
+      # GPU THERMAL PREDICTIONS
+      # -----------------------------------------
+      # Predict GPU temperature 10 minutes from now (Celsius) - nvidia-smi
+      - record: gpu:predicted_temp_10m:celsius
+        expr: predict_linear(nvidia_gpu_temp_c[30m], 600)
+
+      # Predict GPU temperature 10 minutes from now (Celsius) - DCGM
+      - record: gpu:predicted_temp_10m_dcgm:celsius
+        expr: predict_linear(DCGM_FI_DEV_GPU_TEMP[30m], 600)
+
+      # Temperature change rate per minute - nvidia-smi
+      - record: gpu:temp_change_rate:per_minute
+        expr: deriv(nvidia_gpu_temp_c[10m]) * 60
+
+      # Temperature change rate per minute - DCGM
+      - record: gpu:temp_change_rate_dcgm:per_minute
+        expr: deriv(DCGM_FI_DEV_GPU_TEMP[10m]) * 60
+
+      # -----------------------------------------
+      # SYSTEM MEMORY PREDICTIONS
+      # -----------------------------------------
+      # Predict memory usage 1 hour from now (percent)
+      - record: node:predicted_memory_usage_1h:percent
+        expr: |
+          100 * (1 - (
+            predict_linear(node_memory_MemAvailable_bytes[1h], 3600) /
+            node_memory_MemTotal_bytes
+          ))
+
+      # -----------------------------------------
+      # CLUSTER HEALTH SCORE
+      # -----------------------------------------
+      # Overall cluster health score (0-100)
+      - record: cluster:health_score:percent
+        expr: |
+          clamp_max(
+            clamp_min(
+              ((sum(up) / count(up)) * 40) +
+              (clamp_max(100 - max(nvidia_gpu_temp_c), 60) / 100 * 30) +
+              (clamp_max(100 - max((1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100), 100) / 100 * 15) +
+              (clamp_max(100 - max((1 - (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})) * 100), 100) / 100 * 15),
+              0
+            ),
+            100
+          )
+
+  # ===========================================
+  # CHARACTER GENERATION METRICS (Phase 12)
+  # ===========================================
+  - name: character_generation_rules
+    interval: 60s
+    rules:
+      # Portrait generation request rate (per minute)
+      - record: hydra:character:generation_rate_1m
+        expr: rate(hydra_character_portraits_generated_total[1m]) * 60
+
+      # Portrait generation success rate (percentage)
+      - record: hydra:character:success_rate_pct
+        expr: |
+          (sum(hydra_character_portraits_success_total) /
+           sum(hydra_character_portraits_generated_total)) * 100
+
+      # Average quality score across all generated assets
+      - record: hydra:character:avg_quality_score
+        expr: avg(hydra_asset_quality_score)
+
+      # Assets pending review count
+      - record: hydra:character:pending_review_count
+        expr: sum(hydra_asset_quality_pending_review)
+
+      # Auto-approved assets rate (percentage)
+      - record: hydra:character:auto_approve_rate_pct
+        expr: |
+          (sum(hydra_asset_quality_auto_approved_total) /
+           sum(hydra_asset_quality_evaluated_total)) * 100
+
+      # Auto-rejected assets rate (percentage)
+      - record: hydra:character:auto_reject_rate_pct
+        expr: |
+          (sum(hydra_asset_quality_auto_rejected_total) /
+           sum(hydra_asset_quality_evaluated_total)) * 100
+
+      # Average generation latency (seconds)
+      - record: hydra:character:generation_latency_avg_sec
+        expr: |
+          rate(hydra_character_generation_duration_seconds_sum[5m]) /
+          rate(hydra_character_generation_duration_seconds_count[5m])
+
+      # Quality score by dimension (for breakdown charts)
+      - record: hydra:character:quality_by_dimension
+        expr: avg by (dimension) (hydra_asset_quality_dimension_score)
+
+      # Characters with complete portrait sets (percentage)
+      - record: hydra:character:portrait_coverage_pct
+        expr: |
+          (sum(hydra_character_portraits_complete) /
+           sum(hydra_character_total)) * 100
+
+      # ComfyUI workflow execution time (seconds)
+      - record: hydra:comfyui:workflow_execution_avg_sec
+        expr: |
+          rate(comfyui_workflow_execution_seconds_sum[5m]) /
+          rate(comfyui_workflow_execution_seconds_count[5m])
+
+      # ComfyUI queue depth
+      - record: hydra:comfyui:queue_depth
+        expr: comfyui_queue_pending_count
+
+      # ControlNet strength effectiveness (correlation with quality)
+      - record: hydra:controlnet:avg_strength
+        expr: avg(hydra_controlnet_strength_used)
+
+  # ===========================================
+  # EMPIRE OF BROKEN QUEENS SPECIFIC METRICS
+  # ===========================================
+  - name: empire_character_rules
+    interval: 300s
+    rules:
+      # Total queens defined
+      - record: empire:queens:total_count
+        expr: hydra_empire_queens_total
+
+      # Queens with reference images
+      - record: empire:queens:with_reference_count
+        expr: sum(hydra_empire_queen_has_reference)
+
+      # Reference coverage percentage
+      - record: empire:queens:reference_coverage_pct
+        expr: |
+          (sum(hydra_empire_queen_has_reference) /
+           hydra_empire_queens_total) * 100
+
+      # Average emotion variants per queen
+      - record: empire:queens:avg_emotion_variants
+        expr: avg(hydra_empire_queen_emotion_count)
+
+      # Total portraits generated for Empire
+      - record: empire:portraits:total_generated
+        expr: sum(hydra_empire_portraits_generated_total)
+
+      # Portrait consistency score (face similarity across emotions)
+      - record: empire:portraits:consistency_score_avg
+        expr: avg(hydra_empire_portrait_consistency_score)

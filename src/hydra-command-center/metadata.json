@@ -1,0 +1,7 @@
+{
+  "name": "HYDRA Command Center",
+  "description": "A neural cyberpunk command center for AI agent orchestration and system control.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

@@ -1,0 +1,460 @@
+# HYDRA AUTONOMOUS AI CONSTITUTIONAL CONSTRAINTS
+# Version: 1.0
+# Date: 2025-12-16
+#
+# This file defines immutable boundaries for self-improving AI systems.
+# Signature verification prevents tampering by autonomous agents.
+#
+# Design Philosophy:
+# "Constitutional constraints enable MORE aggressive autonomy, not less.
+#  Like highway guardrails - they allow you to drive fast safely."
+
+version: "1.0"
+
+# Digital signature (generate with: sha256sum CONSTITUTION.yaml)
+# Verified on load to prevent agent tampering
+signature: "PLACEHOLDER_GENERATE_AFTER_CUSTOMIZATION"
+
+# =============================================================================
+# IMMUTABLE CONSTRAINTS
+# These rules can NEVER be violated, even by self-modifying code
+# =============================================================================
+
+immutable_constraints:
+  # Data Protection
+  - "Never delete databases without human approval"
+  - "Never modify production data without backup verification"
+  - "Never expose secrets, credentials, or API keys"
+  - "Always maintain encrypted storage for sensitive data"
+
+  # System Integrity
+  - "Never modify network or firewall configuration"
+  - "Never disable authentication systems"
+  - "Never bypass security controls"
+  - "Never execute code outside sandboxed environments"
+
+  # Self-Modification Boundaries
+  - "Never modify this constitutional file"
+  - "Never remove safety checks or guardrails"
+  - "Never disable audit logging"
+  - "Require human approval for git push to main/master branch"
+
+  # Audit & Transparency
+  - "Always maintain complete audit trail of modifications"
+  - "Always log reasoning for autonomous decisions"
+  - "Never obfuscate code or hide functionality"
+  - "Always provide rollback mechanism for changes"
+
+  # Resource Management
+  - "Never consume resources beyond allocated limits"
+  - "Never interfere with critical system processes"
+  - "Always respect UPS power constraints (2000W total)"
+  - "Never overload GPU memory (56GB hydra-ai, 32GB hydra-compute)"
+
+# =============================================================================
+# SUPERVISED OPERATIONS
+# Require human confirmation before execution
+# =============================================================================
+
+supervised_operations:
+  file_deletion:
+    scope: "outside agent workspace (/mnt/user/appdata/hydra-dev/workspace)"
+    approval_method: "interactive_prompt"
+    timeout_seconds: 300
+    default_on_timeout: "abort"
+    examples:
+      - "rm -rf /mnt/user/appdata/some-service/*"
+      - "DELETE FROM production_table"
+
+  service_management:
+    actions:
+      - "docker stop"
+      - "docker restart"
+      - "docker rm"
+      - "systemctl stop"
+      - "systemctl restart"
+    approval_method: "interactive_prompt"
+    timeout_seconds: 180
+    required_approvers: 1
+    examples:
+      - "docker restart hydra-tools-api"
+      - "systemctl restart tabby"
+
+  nixos_configuration:
+    files:
+      - "/etc/nixos/configuration.nix"
+      - "/etc/nixos/hardware-configuration.nix"
+    approval_method: "git_pr_review"
+    required_approvers: 1
+    workflow:
+      - "Create git branch"
+      - "Commit changes"
+      - "nixos-rebuild dry-build"
+      - "Request human review"
+      - "On approval: nixos-rebuild switch"
+
+  database_operations:
+    actions:
+      - "DROP DATABASE"
+      - "DROP TABLE"
+      - "TRUNCATE"
+      - "ALTER TABLE DROP COLUMN"
+    approval_method: "dry_run_review"
+    auto_approve_threshold: "zero_data_loss_verified"
+    backup_required: true
+
+  container_removal:
+    scope: "any docker rm, docker-compose down"
+    approval_method: "interactive_prompt"
+    timeout_seconds: 120
+    preserve_volumes: true
+
+  network_changes:
+    scope:
+      - "Port mappings"
+      - "Firewall rules"
+      - "DNS configuration"
+      - "Static IP assignments"
+    approval_method: "configuration_review"
+    required_approvers: 1
+
+# =============================================================================
+# AUTONOMOUS OPERATIONS
+# Agent can execute freely within these boundaries
+# =============================================================================
+
+autonomous_operations:
+  code_modifications:
+    scope: "/mnt/user/appdata/hydra-dev/workspace"
+    requires:
+      - "git_commit"
+      - "test_suite_pass"
+      - "type_check_pass"
+    rollback: "automatic_on_failure"
+    max_files_per_commit: 50
+    examples:
+      - "Fix bug in Python module"
+      - "Add new API endpoint"
+      - "Refactor function for clarity"
+
+  configuration_updates:
+    allowed_files:
+      - "*.yaml"
+      - "*.json"
+      - "*.toml"
+      - "*.env.example"
+      - "docker-compose.*.yml"
+    forbidden_files:
+      - "/etc/nixos/*"
+      - "~/.ssh/*"
+      - "*.env"  # Never modify actual .env files
+      - "CONSTITUTION.yaml"
+    validation: "schema_check_before_write"
+    backup: "automatic"
+
+  feature_development:
+    scope: "New capabilities and improvements"
+    requires:
+      - "documentation"
+      - "unit_tests"
+      - "integration_tests"
+      - "benchmark_improvement_or_neutral"
+    deployment: "automatic_to_dev_environment"
+
+  bug_fixes:
+    scope: "Fixing identified issues"
+    auto_deploy: true
+    requires:
+      - "test_coverage"
+      - "no_regression"
+      - "git_commit_with_issue_reference"
+
+  mcp_tool_creation:
+    scope: "Creating new MCP servers for tool integration"
+    auto_deploy: true
+    requires:
+      - "sandboxed_test"
+      - "type_annotations"
+      - "documentation"
+      - "example_usage"
+
+  research_and_analysis:
+    unlimited: true
+    allowed_tools:
+      - "web_search"
+      - "file_read"
+      - "database_query"
+      - "api_call"
+    requires_sandbox: false  # Read-only operations
+    rate_limits:
+      web_search: "100_per_hour"
+      api_calls: "1000_per_hour"
+
+  documentation_updates:
+    scope: "*.md files, docstrings, comments"
+    auto_commit: true
+    requires_approval: false
+
+  monitoring_and_alerts:
+    scope: "Creating/updating Prometheus rules, Grafana dashboards"
+    auto_deploy: true
+    requires:
+      - "validation"
+      - "test_alert"
+
+  workflow_automation:
+    scope: "n8n workflows, cron jobs within agent scope"
+    auto_deploy: false  # Create but don't enable
+    requires:
+      - "documentation"
+      - "error_handling"
+      - "timeout_limits"
+
+# =============================================================================
+# ESCALATION POLICY
+# What happens when agent needs to perform supervised operation
+# =============================================================================
+
+escalation_policy:
+  default_action: "request_approval"
+  fallback_on_timeout: "abort"
+
+  notification_channels:
+    - type: "console_prompt"
+      priority: 1
+    - type: "slack_webhook"
+      priority: 2
+      webhook_url: "${SLACK_WEBHOOK_URL}"  # From environment
+    - type: "email"
+      priority: 3
+      address: "${ADMIN_EMAIL}"
+
+  emergency_contact:
+    name: "Shaun"
+    methods:
+      - "slack"
+      - "email"
+    escalate_after_failures: 3
+
+  autonomous_fallback:
+    # If human unavailable, can agent take safer alternative?
+    enabled: true
+    examples:
+      - request: "Restart crashed service"
+        fallback: "Log error and alert, don't restart"
+      - request: "Delete large file"
+        fallback: "Move to archive instead"
+
+# =============================================================================
+# AUDIT TRAIL
+# Complete logging of all agent decisions and actions
+# =============================================================================
+
+audit_trail:
+  enabled: true
+  storage: "postgresql://hydra-storage:5432/agent_audit"
+  retention_days: 365
+  log_level: "INFO"
+
+  log_events:
+    - "constitutional_check_failed"
+    - "constitutional_check_passed"
+    - "approval_requested"
+    - "approval_granted"
+    - "approval_denied"
+    - "operation_executed"
+    - "operation_failed"
+    - "rollback_triggered"
+    - "emergency_stop"
+
+  alert_on:
+    - event: "constitutional_violation_attempt"
+      severity: "high"
+      action: "immediate_alert"
+
+    - event: "objective_hacking_detected"
+      severity: "critical"
+      action: "pause_self_improvement"
+
+    - event: "sandbox_escape_attempt"
+      severity: "critical"
+      action: "immediate_shutdown"
+
+    - event: "repeated_failures"
+      threshold: 5
+      window_minutes: 10
+      severity: "medium"
+      action: "alert_and_pause"
+
+  retention_policy:
+    critical_events: "permanent"
+    normal_events: "365_days"
+    debug_logs: "30_days"
+
+# =============================================================================
+# SELF-IMPROVEMENT CONSTRAINTS
+# Specific rules for self-modifying code
+# =============================================================================
+
+self_improvement:
+  enabled: true
+
+  allowed_modifications:
+    - "prompt_optimization"
+    - "tool_refinement"
+    - "workflow_improvement"
+    - "code_refactoring"
+    - "performance_optimization"
+
+  forbidden_modifications:
+    - "removing_safety_checks"
+    - "disabling_logging"
+    - "bypassing_constitutional_checks"
+    - "modifying_constitution"
+    - "expanding_permissions"
+
+  validation_requirements:
+    - "sandboxed_testing"
+    - "benchmark_improvement"
+    - "no_constitutional_violations"
+    - "no_objective_hacking"
+    - "human_review_for_major_changes"
+
+  objective_hacking_detection:
+    enabled: true
+    patterns:
+      - "Hallucinating tool outputs instead of executing"
+      - "Removing error detection instead of fixing errors"
+      - "Faking benchmark results"
+      - "Commenting out safety checks"
+      - "Modifying test suite to always pass"
+
+  rollback:
+    automatic: true
+    triggers:
+      - "performance_degradation > 5%"
+      - "test_suite_failures"
+      - "constitutional_violations"
+      - "runtime_errors > baseline"
+
+  archive:
+    # Keep history of all agent versions
+    enabled: true
+    storage: "/mnt/user/appdata/hydra-dev/self_improvement/archive"
+    retention: "all_versions"  # Never delete history
+    metadata_fields:
+      - "timestamp"
+      - "performance_score"
+      - "improvements_made"
+      - "git_commit_hash"
+
+# =============================================================================
+# RESOURCE LIMITS
+# Prevent runaway processes or resource exhaustion
+# =============================================================================
+
+resource_limits:
+  computation:
+    max_cpu_percent: 80
+    max_memory_gb: 32
+    max_gpu_memory_percent: 90
+    timeout_per_operation: 300  # 5 minutes
+
+  storage:
+    max_workspace_size_gb: 100
+    max_file_size_mb: 1000
+    max_files_per_operation: 1000
+
+  network:
+    max_requests_per_minute: 100
+    max_download_size_mb: 1000
+    allowed_domains:
+      - "*.huggingface.co"
+      - "*.github.com"
+      - "*.anthropic.com"
+      - "192.168.1.*"  # Internal network
+
+  power:
+    # Respect UPS constraints
+    total_cluster_watts: 2000
+    hydra_ai_max_watts: 1400  # 5090 + 4090
+    hydra_compute_max_watts: 500  # 2x 5070 Ti
+    alert_threshold_watts: 1800
+
+# =============================================================================
+# HYDRA-SPECIFIC RULES
+# Cluster-specific operational constraints
+# =============================================================================
+
+hydra_cluster:
+  nodes:
+    hydra-ai:
+      ip: "192.168.1.250"
+      role: "inference"
+      gpu: ["RTX 5090 32GB", "RTX 4090 24GB"]
+      autonomous_access: "api_only"  # No SSH
+      allowed_operations:
+        - "Model loading via TabbyAPI"
+        - "Inference requests"
+        - "Health checks"
+
+    hydra-compute:
+      ip: "192.168.1.203"
+      role: "image_generation"
+      gpu: ["2x RTX 5070 Ti"]
+      autonomous_access: "api_only"
+      allowed_operations:
+        - "ComfyUI workflows"
+        - "Ollama requests"
+        - "Health checks"
+
+    hydra-storage:
+      ip: "192.168.1.244"
+      role: "orchestration"
+      autonomous_access: "full"  # Can manage Docker containers
+      allowed_operations:
+        - "Docker container management"
+        - "Service deployment"
+        - "File operations"
+        - "Database queries"
+
+  services:
+    critical:
+      # Never stop these without approval
+      - "tabby"
+      - "postgresql"
+      - "qdrant"
+      - "prometheus"
+
+    managed:
+      # Can restart/update autonomously
+      - "hydra-tools-api"
+      - "grafana"
+      - "loki"
+
+  deprecation:
+    # IPs that must never be used (from .claude/rules/02-canonical-ips.md)
+    forbidden_ips:
+      - "192.168.1.251"  # Old Ollama host
+      - "192.168.1.175"  # Old compute host
+      - "192.168.1.100"  # Old NFS server
+
+# =============================================================================
+# VERSION HISTORY
+# =============================================================================
+
+changelog:
+  - version: "1.0"
+    date: "2025-12-16"
+    changes:
+      - "Initial constitutional framework"
+      - "Based on 2025 Constitutional AI research"
+      - "Designed for Darwin Gödel Machine-style self-improvement"
+    author: "Claude Opus 4.5 (Hydra Autonomous Steward)"
+
+# =============================================================================
+# SIGNATURE GENERATION
+# After customizing this file, generate signature with:
+#   sha256sum CONSTITUTION.yaml
+# Then update the 'signature' field at the top
+# =============================================================================

@@ -1,0 +1,389 @@
+{
+  "name": "LLM Agent Scheduler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent-task",
+        "authentication": "none",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Agent Task Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [260, 300],
+      "webhookId": "agent-task-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Parse agent task request\nconst body = $input.item.json.body || $input.item.json;\n\nconst task = {\n  agent_type: 'llm',\n  description: body.description || body.prompt?.slice(0, 50) || 'LLM Task',\n  payload: {\n    prompt: body.prompt || body.message || '',\n    model: body.model || 'qwen2.5:7b',\n    backend: body.backend || 'ollama',\n    system_prompt: body.system_prompt || 'You are Hydra, an autonomous AI assistant.',\n    include_memory: body.include_memory !== false,\n    store_result: body.store_result || false,\n    max_tokens: body.max_tokens || 2048\n  },\n  priority: body.priority || 'normal',\n  timeout_seconds: body.timeout || 300\n};\n\nreturn { json: task };"
+      },
+      "id": "code-1",
+      "name": "Build Task Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/agent-scheduler/schedule",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-1",
+      "name": "Schedule Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Store task ID for polling\nconst response = $input.item.json;\nreturn {\n  json: {\n    task_id: response.task_id,\n    status: response.status,\n    attempts: 0,\n    max_attempts: 60\n  }\n};"
+      },
+      "id": "code-2",
+      "name": "Store Task ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
+      "id": "wait-1",
+      "name": "Wait 1s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://192.168.1.244:8700/agent-scheduler/task/{{ $json.task_id }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-2",
+      "name": "Poll Task Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1360, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "if-1",
+      "name": "Is Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1580, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Format successful response\nconst result = $input.item.json;\nreturn {\n  json: {\n    status: 'success',\n    task_id: result.task_id,\n    response: result.result?.response || null,\n    model: result.result?.model || 'unknown',\n    backend: result.result?.backend || 'unknown',\n    memory_context_count: result.result?.memory_context_count || 0,\n    tokens_used: result.result?.tokens_used || 0,\n    execution_time_ms: result.completed_at && result.started_at \n      ? new Date(result.completed_at) - new Date(result.started_at)\n      : null,\n    error: result.result?.error || null\n  }\n};"
+      },
+      "id": "code-3",
+      "name": "Format Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 240]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-1",
+      "name": "Return Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2020, 240]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Check if we should retry or fail\nconst status = $input.item.json;\nconst attempts = ($input.all()[0]?.json?.attempts || 0) + 1;\nconst maxAttempts = 60;\n\nif (status.status === 'failed') {\n  return {\n    json: {\n      should_continue: false,\n      status: 'failed',\n      task_id: status.task_id,\n      error: status.error || status.result?.error || 'Task failed'\n    }\n  };\n}\n\nif (attempts >= maxAttempts) {\n  return {\n    json: {\n      should_continue: false,\n      status: 'timeout',\n      task_id: status.task_id,\n      error: 'Polling timeout exceeded'\n    }\n  };\n}\n\nreturn {\n  json: {\n    should_continue: true,\n    task_id: status.task_id,\n    status: status.status,\n    attempts: attempts,\n    max_attempts: maxAttempts\n  }\n};"
+      },
+      "id": "code-4",
+      "name": "Check Retry",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 380]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-2",
+              "leftValue": "={{ $json.should_continue }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-2",
+      "name": "Should Continue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2020, 380]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"error\",\n  \"task_id\": \"{{ $json.task_id }}\",\n  \"error\": \"{{ $json.error }}\"\n}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "respond-2",
+      "name": "Return Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2240, 440]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-1",
+      "name": "Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [260, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/agent-scheduler/schedule",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"agent_type\": \"llm\",\n  \"description\": \"Scheduled cluster health analysis\",\n  \"payload\": {\n    \"prompt\": \"Analyze the current state of the Hydra cluster. Check for any issues, performance concerns, or optimization opportunities. Provide a brief status report.\",\n    \"model\": \"qwen2.5:7b\",\n    \"backend\": \"ollama\",\n    \"include_memory\": true,\n    \"store_result\": true,\n    \"max_tokens\": 1024\n  },\n  \"priority\": \"low\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-3",
+      "name": "Schedule Health Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [480, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/discoveries/archive",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"session\",\n  \"title\": \"Scheduled Health Check - {{ new Date().toISOString().split('T')[0] }}\",\n  \"description\": \"Automated health check task scheduled\",\n  \"tags\": [\"scheduled\", \"health-check\", \"automated\"]\n}",
+        "options": {}
+      },
+      "id": "http-4",
+      "name": "Log to Discovery Archive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [700, 560]
+    }
+  ],
+  "connections": {
+    "Agent Task Request": {
+      "main": [
+        [
+          {
+            "node": "Build Task Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Task Request": {
+      "main": [
+        [
+          {
+            "node": "Schedule Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Task": {
+      "main": [
+        [
+          {
+            "node": "Store Task ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Task ID": {
+      "main": [
+        [
+          {
+            "node": "Wait 1s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1s": {
+      "main": [
+        [
+          {
+            "node": "Poll Task Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Task Status": {
+      "main": [
+        [
+          {
+            "node": "Is Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Complete?": {
+      "main": [
+        [
+          {
+            "node": "Format Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success": {
+      "main": [
+        [
+          {
+            "node": "Return Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Retry": {
+      "main": [
+        [
+          {
+            "node": "Should Continue?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Continue?": {
+      "main": [
+        [
+          {
+            "node": "Wait 1s",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Schedule Health Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Health Check": {
+      "main": [
+        [
+          {
+            "node": "Log to Discovery Archive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,403 @@
+{
+  "name": "Asset Quality Checker",
+  "nodes": [
+    {
+      "id": "scheduleOrWebhook",
+      "name": "Schedule / Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "webhookId": "quality-check",
+      "parameters": {
+        "path": "quality-check",
+        "httpMethod": "POST"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "scheduleTrigger",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 450],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "getPendingReviews",
+      "name": "Get Pending Reviews",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 375],
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8700/quality/pending-reviews",
+        "options": {}
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "filterHasItems",
+      "name": "Has Items?",
+      "type": "n8n-nodes-base.if",
+      "position": [650, 375],
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.count }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "splitItems",
+      "name": "Split Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [850, 300],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "typeVersion": 3
+    },
+    {
+      "id": "evaluateAsset",
+      "name": "Evaluate Asset Quality",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1050, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/quality/evaluate",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ asset_path: $json.path, image_info: { width: $json.width, height: $json.height, format: $json.format }, character_id: $json.character_id, expected_emotion: $json.emotion }) }}",
+        "options": {}
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "routeByAction",
+      "name": "Route by Action",
+      "type": "n8n-nodes-base.switch",
+      "position": [1250, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.recommended_action }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "approve",
+              "output": 0
+            },
+            {
+              "value2": "review",
+              "output": 1
+            },
+            {
+              "value2": "reject",
+              "output": 2
+            }
+          ]
+        }
+      },
+      "typeVersion": 3
+    },
+    {
+      "id": "logApproved",
+      "name": "Log Approved",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1500, 150],
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ activity: 'asset_approved', source: 'quality-checker', data: { asset: $json.asset_id, score: $json.overall_score, tier: $json.quality_tier }}) }}",
+        "options": {}
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "notifyReview",
+      "name": "Notify for Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1500, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/alerts/send",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: 'discord', message: 'Asset needs review: ' + $json.asset_id + ' (Score: ' + $json.overall_score + ')', severity: 'info', data: { asset_id: $json.asset_id, scores: $json.dimension_scores, issues: $json.issues }}) }}",
+        "options": {}
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "logRejected",
+      "name": "Log Rejected",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1500, 450],
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ activity: 'asset_rejected', source: 'quality-checker', data: { asset: $json.asset_id, score: $json.overall_score, issues: $json.issues }}) }}",
+        "options": {}
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "deleteRejected",
+      "name": "Move to Rejected Folder",
+      "type": "n8n-nodes-base.set",
+      "position": [1700, 450],
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "action",
+              "value": "move_to_rejected"
+            },
+            {
+              "name": "target_path",
+              "value": "=/mnt/user/empire/rejected/{{ $json.asset_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 3
+    },
+    {
+      "id": "noItems",
+      "name": "No Items - End",
+      "type": "n8n-nodes-base.noOp",
+      "position": [850, 450],
+      "parameters": {},
+      "typeVersion": 1
+    },
+    {
+      "id": "getStatistics",
+      "name": "Get Quality Statistics",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1900, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "http://192.168.1.244:8700/quality/statistics",
+        "options": {}
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "logCompletion",
+      "name": "Log Batch Completion",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2100, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity/log",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ activity: 'quality_check_batch_complete', source: 'quality-checker', data: $json }) }}",
+        "options": {}
+      },
+      "typeVersion": 4.2
+    }
+  ],
+  "connections": {
+    "scheduleOrWebhook": {
+      "main": [
+        [
+          {
+            "node": "getPendingReviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "scheduleTrigger": {
+      "main": [
+        [
+          {
+            "node": "getPendingReviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getPendingReviews": {
+      "main": [
+        [
+          {
+            "node": "filterHasItems",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filterHasItems": {
+      "main": [
+        [
+          {
+            "node": "splitItems",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "noItems",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "splitItems": {
+      "main": [
+        [
+          {
+            "node": "evaluateAsset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "evaluateAsset": {
+      "main": [
+        [
+          {
+            "node": "routeByAction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "routeByAction": {
+      "main": [
+        [
+          {
+            "node": "logApproved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "notifyReview",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "logRejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "logApproved": {
+      "main": [
+        [
+          {
+            "node": "getStatistics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "notifyReview": {
+      "main": [
+        [
+          {
+            "node": "getStatistics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "logRejected": {
+      "main": [
+        [
+          {
+            "node": "deleteRejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "deleteRejected": {
+      "main": [
+        [
+          {
+            "node": "getStatistics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getStatistics": {
+      "main": [
+        [
+          {
+            "node": "logCompletion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "meta": {
+    "instanceId": "hydra-cluster",
+    "description": "Automated quality checking for generated character assets. Runs every 15 minutes or on webhook trigger.",
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "quality",
+      "id": "quality"
+    },
+    {
+      "name": "automation",
+      "id": "automation"
+    },
+    {
+      "name": "empire",
+      "id": "empire"
+    }
+  ]
+}

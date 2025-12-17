@@ -226,7 +226,7 @@ def _check_services(config) -> Dict[str, Dict[str, Any]]:
 
     # LiteLLM
     try:
-        r = requests.get(f"{config.litellm_url}/health", timeout=5)
+        r = requests.get(f"{config.litellm_url}/health/liveliness", timeout=5)
         services["LiteLLM"] = {"ok": r.ok, "status": "healthy" if r.ok else "unhealthy"}
     except Exception:
         services["LiteLLM"] = {"ok": False, "status": "unreachable"}
@@ -241,7 +241,7 @@ def _check_services(config) -> Dict[str, Dict[str, Any]]:
 
     # Qdrant
     try:
-        r = requests.get(f"{config.qdrant_url}/health", timeout=5)
+        r = requests.get(f"{config.qdrant_url}/healthz", timeout=5)
         services["Qdrant"] = {"ok": r.ok, "status": "healthy" if r.ok else "unhealthy"}
     except Exception:
         services["Qdrant"] = {"ok": False, "status": "unreachable"}

@@ -81,15 +81,24 @@ SERVICES = [
     # Inference
     {"name": "TabbyAPI", "url": "http://192.168.1.250:5000/health", "node": "hydra-ai", "category": "inference", "critical": True},
     {"name": "Ollama", "url": "http://192.168.1.203:11434/api/tags", "node": "hydra-compute", "category": "inference", "critical": True},
-    {"name": "LiteLLM", "url": "http://192.168.1.244:4000/health", "node": "hydra-storage", "category": "inference", "critical": True},
+    {"name": "LiteLLM", "url": "http://192.168.1.244:4000/health/liveliness", "node": "hydra-storage", "category": "inference", "critical": True},
+    {"name": "ComfyUI", "url": "http://192.168.1.203:8188/system_stats", "node": "hydra-compute", "category": "inference", "critical": False},
     # Databases
-    {"name": "Qdrant", "url": "http://192.168.1.244:6333/health", "node": "hydra-storage", "category": "database", "critical": True},
+    {"name": "Qdrant", "url": "http://192.168.1.244:6333/healthz", "node": "hydra-storage", "category": "database", "critical": True},
+    {"name": "Neo4j", "url": "http://192.168.1.244:7474/", "node": "hydra-storage", "category": "database", "critical": False},
     {"name": "Meilisearch", "url": "http://192.168.1.244:7700/health", "node": "hydra-storage", "category": "database", "critical": False},
     # Observability
     {"name": "Prometheus", "url": "http://192.168.1.244:9090/-/healthy", "node": "hydra-storage", "category": "observability", "critical": True},
     {"name": "Grafana", "url": "http://192.168.1.244:3003/api/health", "node": "hydra-storage", "category": "observability", "critical": False},
+    {"name": "Loki", "url": "http://192.168.1.244:3100/ready", "node": "hydra-storage", "category": "observability", "critical": False},
     # Automation
     {"name": "n8n", "url": "http://192.168.1.244:5678/healthz", "node": "hydra-storage", "category": "automation", "critical": True},
+    # Web UIs
+    {"name": "Open WebUI", "url": "http://192.168.1.244:3001", "node": "hydra-storage", "category": "webui", "critical": False},
+    {"name": "Command Center", "url": "http://192.168.1.244:3210/", "node": "hydra-storage", "category": "webui", "critical": False},
+    # Agents
+    {"name": "Letta", "url": "http://192.168.1.244:8283/v1/health/", "node": "hydra-storage", "category": "agents", "critical": False},
+    {"name": "CrewAI", "url": "http://192.168.1.244:8500/", "node": "hydra-storage", "category": "agents", "critical": False},
 ]
 
 

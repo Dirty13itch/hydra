@@ -499,7 +499,7 @@ def create_research_router() -> APIRouter:
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.get(
-                    "http://192.168.1.244:8080/search",
+                    "http://192.168.1.244:8888/search",
                     params=params
                 )
 

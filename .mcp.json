@@ -2,10 +2,28 @@
   "mcpServers": {
     "hydra": {
       "command": "python",
-      "args": ["C:/Users/shaun/projects/hydra/mcp/hydra_mcp_proxy.py"],
+      "args": ["/mnt/user/appdata/hydra-dev/mcp/hydra_mcp_proxy.py"],
       "env": {
-        "HYDRA_MCP_URL": "http://192.168.1.244:8600"
+        "HYDRA_API_URL": "http://192.168.1.244:8700"
       }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/mnt/user/appdata/hydra-dev",
+        "/mnt/user/appdata/hydra-tools",
+        "/mnt/user/appdata/hydra-stack"
+      ]
+    },
+    "postgres": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm", "--network", "host",
+        "mcp/postgres",
+        "postgresql://hydra:g9cUyFK6unpMQ8XBmeJNZJPoY6viGg6@192.168.1.244:5432/hydra"
+      ]
     }
   }
 }

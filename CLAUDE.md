@@ -2,6 +2,19 @@
 
 This repository is the canonical source of truth for the Hydra home cluster.
 
+## SESSION BOOTSTRAP (ALWAYS DO THIS FIRST)
+
+```bash
+# 1. Read the single source of truth for planning
+cat ROADMAP.md | head -50   # Quick status + active priorities
+
+# 2. Check cluster health
+curl -s http://192.168.1.244:8700/health | jq .
+```
+
+**CRITICAL:** ROADMAP.md is THE planning document. Do NOT create new planning files.
+Update ROADMAP.md instead of creating alternatives.
+
 ## Quick Reference
 
 | Node | IP | Role |
@@ -41,6 +54,7 @@ See `docs/phase-11-self-improvement.md` for details.
 
 | Service | Endpoint |
 |---------|----------|
+| **Command Center** | http://192.168.1.244:3210 |
 | Hydra Tools API | http://192.168.1.244:8700 |
 | TabbyAPI | http://192.168.1.250:5000 |
 | Ollama | http://192.168.1.203:11434 |

@@ -6,8 +6,8 @@ import pytest
 from hydra_tools.capability_expansion import (
     CapabilityTracker,
     CapabilityGap,
-    GapPriority,
-    GapStatus,
+    Priority as GapPriority,
+    Status as GapStatus,
 )
 
 

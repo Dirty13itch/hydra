@@ -33,29 +33,48 @@ class ServiceStatus:
 
 # Service definitions
 SERVICES = {
+    # Core API
+    "Hydra Tools API": ("http://192.168.1.244:8700/health", "hydra-storage"),
+
     # Inference
     "TabbyAPI": ("http://192.168.1.250:5000/health", "hydra-ai"),
     "Ollama": ("http://192.168.1.203:11434/api/tags", "hydra-compute"),
-    "LiteLLM": ("http://192.168.1.244:4000/health", "hydra-storage"),
+    "LiteLLM": ("http://192.168.1.244:4000/health/liveliness", "hydra-storage"),
     "ComfyUI": ("http://192.168.1.203:8188/system_stats", "hydra-compute"),
 
     # Databases
     "PostgreSQL": ("tcp://192.168.1.244:5432", "hydra-storage"),
-    "Qdrant": ("http://192.168.1.244:6333/health", "hydra-storage"),
+    "Qdrant": ("http://192.168.1.244:6333/healthz", "hydra-storage"),
     "Redis": ("tcp://192.168.1.244:6379", "hydra-storage"),
     "Meilisearch": ("http://192.168.1.244:7700/health", "hydra-storage"),
 
-    # Services
+    # Observability
     "Prometheus": ("http://192.168.1.244:9090/-/healthy", "hydra-storage"),
     "Grafana": ("http://192.168.1.244:3003/api/health", "hydra-storage"),
     "Loki": ("http://192.168.1.244:3100/ready", "hydra-storage"),
+
+    # Automation
     "n8n": ("http://192.168.1.244:5678/healthz", "hydra-storage"),
+
+    # Search & Research
     "SearXNG": ("http://192.168.1.244:8888/healthz", "hydra-storage"),
+    "Firecrawl": ("http://192.168.1.244:3005", "hydra-storage"),
+
+    # Voice
+    "Kokoro TTS": ("http://192.168.1.244:8880/health", "hydra-storage"),
+
+    # Document Processing
+    "Docling": ("http://192.168.1.244:5001/health", "hydra-storage"),
+
+    # Memory & Agents
+    "Letta": ("http://192.168.1.244:8283/v1/health", "hydra-storage"),
 
     # Web UIs
     "Open WebUI": ("http://192.168.1.250:3000", "hydra-ai"),
     "Perplexica": ("http://192.168.1.244:3030", "hydra-storage"),
     "SillyTavern": ("http://192.168.1.244:8000", "hydra-storage"),
+    "Homepage": ("http://192.168.1.244:3333", "hydra-storage"),
+    "Portainer": ("http://192.168.1.244:9000/api/status", "hydra-storage"),
 }
 
 

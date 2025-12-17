@@ -1,0 +1,248 @@
+{
+  "name": "Empire Chapter Asset Processor",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "webhookId": "chapter-processor",
+      "parameters": {
+        "path": "process-chapter",
+        "httpMethod": "POST"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "parseScript",
+      "name": "Parse Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/characters/parse-script",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "script_content",
+              "value": "={{ $json.script_content }}"
+            },
+            {
+              "name": "chapter_id",
+              "value": "={{ $json.chapter_id || 'chapter-unknown' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "splitScenes",
+      "name": "Split Scenes",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [650, 300],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "typeVersion": 3
+    },
+    {
+      "id": "generatePortrait",
+      "name": "Generate Character Portrait",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [850, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/characters/generate-portrait",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "character_id",
+              "value": "={{ $json.character_id }}"
+            },
+            {
+              "name": "emotion",
+              "value": "={{ $json.emotion || 'neutral' }}"
+            },
+            {
+              "name": "scene",
+              "value": "={{ $json.scene_description || '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "generateDialogueAudio",
+      "name": "Generate Dialogue Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [850, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/voice/speak",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.dialogue }}"
+            },
+            {
+              "name": "voice_id",
+              "value": "={{ $json.voice_id || 'af_bella' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "waitForAssets",
+      "name": "Wait for Assets",
+      "type": "n8n-nodes-base.wait",
+      "position": [1050, 300],
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "typeVersion": 1.1
+    },
+    {
+      "id": "logActivity",
+      "name": "Log Activity",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1250, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:8700/activity",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source",
+              "value": "n8n-chapter-processor"
+            },
+            {
+              "name": "action",
+              "value": "Generated assets for chapter {{ $('webhook').item.json.chapter_id }}"
+            },
+            {
+              "name": "action_type",
+              "value": "asset_generation"
+            },
+            {
+              "name": "result",
+              "value": "success"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "notifyDiscord",
+      "name": "Notify Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1450, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.1.244:5678/webhook/discord-notify",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "Chapter Assets Generated"
+            },
+            {
+              "name": "message",
+              "value": "Generated assets for chapter {{ $('webhook').item.json.chapter_id }}"
+            },
+            {
+              "name": "color",
+              "value": "5763719"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "typeVersion": 4.2
+    },
+    {
+      "id": "returnResults",
+      "name": "Return Results",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1650, 300],
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        },
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'complete', chapter_id: $('webhook').item.json.chapter_id, scenes_processed: $('splitScenes').item.json.length } }}"
+      },
+      "typeVersion": 1.1
+    }
+  ],
+  "connections": {
+    "webhook": {
+      "main": [
+        [{"node": "parseScript", "type": "main", "index": 0}]
+      ]
+    },
+    "parseScript": {
+      "main": [
+        [{"node": "splitScenes", "type": "main", "index": 0}]
+      ]
+    },
+    "splitScenes": {
+      "main": [
+        [
+          {"node": "generatePortrait", "type": "main", "index": 0},
+          {"node": "generateDialogueAudio", "type": "main", "index": 0}
+        ],
+        [{"node": "waitForAssets", "type": "main", "index": 0}]
+      ]
+    },
+    "generatePortrait": {
+      "main": [
+        [{"node": "waitForAssets", "type": "main", "index": 0}]
+      ]
+    },
+    "generateDialogueAudio": {
+      "main": [
+        [{"node": "waitForAssets", "type": "main", "index": 0}]
+      ]
+    },
+    "waitForAssets": {
+      "main": [
+        [{"node": "logActivity", "type": "main", "index": 0}]
+      ]
+    },
+    "logActivity": {
+      "main": [
+        [{"node": "notifyDiscord", "type": "main", "index": 0}]
+      ]
+    },
+    "notifyDiscord": {
+      "main": [
+        [{"node": "returnResults", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {"name": "empire"},
+    {"name": "asset-generation"},
+    {"name": "phase-12"}
+  ]
+}

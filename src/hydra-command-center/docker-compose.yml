@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  hydra-command-center:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hydra-command-center
+    restart: unless-stopped
+    ports:
+      - "3210:80"
+    environment:
+      - VITE_HYDRA_API_URL=http://192.168.1.244:8700
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    networks:
+      - hydra-apps
+    labels:
+      - "hydra.service=command-center"
+      - "hydra.version=1.0.0"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+networks:
+  hydra-apps:
+    external: true
