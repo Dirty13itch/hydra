@@ -218,6 +218,17 @@ class AssetQualityScorer:
             image_info["resolution"] = {"width": 1024, "height": 1024}
             image_info["aspect_ratio"] = 1.0
 
+        # Run face detection for composition scoring
+        try:
+            from hydra_tools.face_detection import detect_faces_in_image
+            face_data = detect_faces_in_image(str(path))
+            image_info.update(face_data)
+            logger.debug(f"Face detection: {face_data.get('face_count', 0)} faces found")
+        except ImportError:
+            logger.debug("Face detection not available")
+        except Exception as e:
+            logger.warning(f"Face detection failed: {e}")
+
         # Call the full evaluate_asset method
         return self.evaluate_asset(
             asset_path=str(path),

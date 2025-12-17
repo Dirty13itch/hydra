@@ -98,6 +98,7 @@ from hydra_tools.routers.services import create_services_router
 from hydra_tools.clients.unraid_client import close_unraid_client
 from hydra_tools.asset_quality import create_quality_router
 from hydra_tools.semantic_cache import create_semantic_cache_router
+from hydra_tools.face_detection import create_face_detection_router
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -577,6 +578,9 @@ app.include_router(create_services_router())
 # Include Semantic Cache router (LLM response caching with semantic similarity)
 app.include_router(create_semantic_cache_router())
 
+# Include Face Detection router (Phase 12: face analysis for quality scoring)
+app.include_router(create_face_detection_router())
+
 
 # Root endpoints
 @app.get("/", tags=["info"])
@@ -621,6 +625,7 @@ async def root():
             "quality": "/quality",
             "comfyui": "/comfyui",
             "cache": "/cache",
+            "faces": "/faces",
         },
     }
 
