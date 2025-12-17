@@ -100,6 +100,7 @@ from hydra_tools.asset_quality import create_quality_router
 from hydra_tools.semantic_cache import create_semantic_cache_router
 from hydra_tools.face_detection import create_face_detection_router
 from hydra_tools.graphiti_memory import create_graphiti_router
+from hydra_tools.reranker import create_reranker_router
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -585,6 +586,9 @@ app.include_router(create_face_detection_router())
 # Include Graphiti Memory router (Hybrid graph + vector + keyword search)
 app.include_router(create_graphiti_router())
 
+# Include Reranker router (Cross-encoder reranking for improved relevance)
+app.include_router(create_reranker_router())
+
 
 # Root endpoints
 @app.get("/", tags=["info"])
@@ -631,6 +635,7 @@ async def root():
             "cache": "/cache",
             "faces": "/faces",
             "graphiti": "/graphiti",
+            "rerank": "/rerank",
         },
     }
 
