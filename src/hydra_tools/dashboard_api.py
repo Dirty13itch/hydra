@@ -616,9 +616,9 @@ def create_dashboard_router() -> APIRouter:
                 nvidia_queries = {
                     "memory_used": "nvidia_gpu_memory_used_bytes",
                     "memory_total": "nvidia_gpu_memory_total_bytes",
-                    "utilization": "nvidia_gpu_utilization_gpu",
+                    "utilization": "nvidia_gpu_utilization_percent",
                     "temperature": "nvidia_gpu_temperature_celsius",
-                    "power": "nvidia_gpu_power_usage_milliwatts",
+                    "power": "nvidia_gpu_power_draw_watts",
                 }
 
                 nvidia_results = {}
@@ -657,7 +657,7 @@ def create_dashboard_router() -> APIRouter:
                         "vram": round(float(metrics.get("memory_used", 0)) / (1024**3), 1),
                         "totalVram": round(float(metrics.get("memory_total", 0)) / (1024**3), 0),
                         "temp": int(float(metrics.get("temperature", 0))),
-                        "power": int(float(metrics.get("power", 0)) / 1000),
+                        "power": int(float(metrics.get("power", 0))),  # already in watts
                     })
 
                 # === Fetch DCGM_FI_* metrics (hydra-ai) ===
