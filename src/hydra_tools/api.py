@@ -137,6 +137,10 @@ EXEMPT_PATHS = {
 EXEMPT_PREFIXES = (
     "/docs",
     "/redoc",
+    "/dashboard",  # Command Center UI endpoints
+    "/services",   # Service status endpoints for UI
+    "/home",       # Home automation endpoints
+    "/ingest",     # Knowledge ingest endpoints
 )
 
 

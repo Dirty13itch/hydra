@@ -598,109 +598,121 @@ def create_dashboard_router() -> APIRouter:
 
     # ============= Infrastructure =============
 
+    async def fetch_prometheus_gpu_metrics() -> Dict[str, List[Dict]]:
+        """Fetch GPU metrics from Prometheus for all nodes"""
+        import httpx
+
+        gpu_data = {"hydra-ai": [], "hydra-compute": []}
+        prometheus_url = "http://192.168.1.244:9090/api/v1/query"
+
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                # Fetch all GPU metrics in parallel
+                queries = {
+                    "memory_used": "nvidia_gpu_memory_used_bytes",
+                    "memory_total": "nvidia_gpu_memory_total_bytes",
+                    "utilization": "nvidia_gpu_utilization_gpu",
+                    "temperature": "nvidia_gpu_temperature_celsius",
+                    "power": "nvidia_gpu_power_usage_milliwatts",
+                }
+
+                results = {}
+                for metric_name, query in queries.items():
+                    try:
+                        resp = await client.get(prometheus_url, params={"query": query})
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            results[metric_name] = data.get("data", {}).get("result", [])
+                    except Exception:
+                        results[metric_name] = []
+
+                # Group metrics by GPU
+                gpu_metrics = {}
+                for metric_name, result_list in results.items():
+                    for item in result_list:
+                        metric = item.get("metric", {})
+                        gpu_id = metric.get("gpu", "0")
+                        instance = metric.get("instance", "")
+                        name = metric.get("name", "Unknown GPU").replace("_", " ")
+                        value = item.get("value", [None, "0"])[1]
+
+                        # Determine node from instance
+                        node = "hydra-compute" if "203" in instance else "hydra-ai" if "250" in instance else None
+                        if not node:
+                            continue
+
+                        key = f"{node}_{gpu_id}"
+                        if key not in gpu_metrics:
+                            gpu_metrics[key] = {"node": node, "name": name, "gpu_id": gpu_id}
+
+                        gpu_metrics[key][metric_name] = value
+
+                # Convert to node-grouped format
+                for key, metrics in gpu_metrics.items():
+                    node = metrics["node"]
+                    gpu_data[node].append({
+                        "name": metrics.get("name", "Unknown GPU"),
+                        "util": int(float(metrics.get("utilization", 0))),
+                        "vram": round(float(metrics.get("memory_used", 0)) / (1024**3), 1),
+                        "totalVram": round(float(metrics.get("memory_total", 0)) / (1024**3), 0),
+                        "temp": int(float(metrics.get("temperature", 0))),
+                        "power": int(float(metrics.get("power", 0)) / 1000),  # mW to W
+                    })
+
+        except Exception as e:
+            print(f"[Dashboard] Prometheus GPU fetch failed: {e}")
+
+        return gpu_data
+
     @router.get("/nodes")
     async def get_nodes():
-        """Get cluster node status with GPU metrics"""
+        """Get cluster node status with GPU metrics from Prometheus"""
         nodes = []
 
-        # Try to get real GPU data from hydra-ai
-        try:
-            result = subprocess.run(
-                ["ssh", "-o", "ConnectTimeout=2", "typhon@192.168.1.250",
-                 "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw --format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=5
-            )
+        # Fetch real GPU data from Prometheus
+        gpu_data = await fetch_prometheus_gpu_metrics()
 
-            if result.returncode == 0:
-                gpus = []
-                for line in result.stdout.strip().split("\n"):
-                    if line:
-                        parts = [p.strip() for p in line.split(",")]
-                        if len(parts) >= 6:
-                            gpus.append({
-                                "name": parts[0],
-                                "util": int(float(parts[1])),
-                                "vram": round(float(parts[2]) / 1024, 1),
-                                "totalVram": round(float(parts[3]) / 1024, 0),
-                                "temp": int(float(parts[4])),
-                                "power": int(float(parts[5])),
-                            })
+        # hydra-ai node
+        hydra_ai_gpus = gpu_data.get("hydra-ai", [])
+        if not hydra_ai_gpus:
+            # Fallback if no Prometheus data for hydra-ai
+            hydra_ai_gpus = [
+                {"name": "RTX 5090", "util": 0, "vram": 0, "totalVram": 32, "temp": 35, "power": 50},
+                {"name": "RTX 4090", "util": 0, "vram": 0, "totalVram": 24, "temp": 32, "power": 40},
+            ]
 
-                nodes.append({
-                    "id": "hydra-ai",
-                    "name": "hydra-ai",
-                    "ip": "192.168.1.250",
-                    "cpu": 24,
-                    "ram": {"used": 48, "total": 128},
-                    "gpus": gpus,
-                    "status": "online",
-                    "uptime": "14d+",
-                })
-        except Exception as e:
-            # Fallback to mock data if SSH fails
-            nodes.append({
-                "id": "hydra-ai",
-                "name": "hydra-ai",
-                "ip": "192.168.1.250",
-                "cpu": 24,
-                "ram": {"used": 48, "total": 128},
-                "gpus": [
-                    {"name": "RTX 5090", "util": 0, "vram": 0, "totalVram": 32, "temp": 35, "power": 50},
-                    {"name": "RTX 4090", "util": 0, "vram": 0, "totalVram": 24, "temp": 32, "power": 40},
-                ],
-                "status": "online",
-                "uptime": "14d+",
-            })
+        nodes.append({
+            "id": "hydra-ai",
+            "name": "hydra-ai",
+            "ip": "192.168.1.250",
+            "cpu": 24,
+            "ram": {"used": 48, "total": 128},
+            "gpus": hydra_ai_gpus,
+            "status": "online",
+            "uptime": "14d+",
+        })
 
-        # Try hydra-compute
-        try:
-            result = subprocess.run(
-                ["ssh", "-o", "ConnectTimeout=2", "typhon@192.168.1.203",
-                 "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw --format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=5
-            )
+        # hydra-compute node
+        hydra_compute_gpus = gpu_data.get("hydra-compute", [])
+        if not hydra_compute_gpus:
+            # Fallback if no Prometheus data for hydra-compute
+            hydra_compute_gpus = [
+                {"name": "RTX 5070 Ti", "util": 0, "vram": 0, "totalVram": 16, "temp": 30, "power": 30},
+                {"name": "RTX 5070 Ti", "util": 0, "vram": 0, "totalVram": 16, "temp": 30, "power": 30},
+            ]
 
-            if result.returncode == 0:
-                gpus = []
-                for line in result.stdout.strip().split("\n"):
-                    if line:
-                        parts = [p.strip() for p in line.split(",")]
-                        if len(parts) >= 6:
-                            gpus.append({
-                                "name": parts[0],
-                                "util": int(float(parts[1])),
-                                "vram": round(float(parts[2]) / 1024, 1),
-                                "totalVram": round(float(parts[3]) / 1024, 0),
-                                "temp": int(float(parts[4])),
-                                "power": int(float(parts[5])),
-                            })
+        nodes.append({
+            "id": "hydra-compute",
+            "name": "hydra-compute",
+            "ip": "192.168.1.203",
+            "cpu": 16,
+            "ram": {"used": 16, "total": 64},
+            "gpus": hydra_compute_gpus,
+            "status": "online",
+            "uptime": "5d+",
+        })
 
-                nodes.append({
-                    "id": "hydra-compute",
-                    "name": "hydra-compute",
-                    "ip": "192.168.1.203",
-                    "cpu": 16,
-                    "ram": {"used": 16, "total": 64},
-                    "gpus": gpus,
-                    "status": "online",
-                    "uptime": "5d+",
-                })
-        except Exception:
-            nodes.append({
-                "id": "hydra-compute",
-                "name": "hydra-compute",
-                "ip": "192.168.1.203",
-                "cpu": 16,
-                "ram": {"used": 16, "total": 64},
-                "gpus": [
-                    {"name": "RTX 5070 Ti", "util": 0, "vram": 0, "totalVram": 16, "temp": 30, "power": 30},
-                    {"name": "RTX 5070 Ti", "util": 0, "vram": 0, "totalVram": 16, "temp": 30, "power": 30},
-                ],
-                "status": "online",
-                "uptime": "5d+",
-            })
-
-        # hydra-storage (local)
+        # hydra-storage (local, no GPUs)
         nodes.append({
             "id": "hydra-storage",
             "name": "hydra-storage",
@@ -874,23 +886,36 @@ def create_dashboard_router() -> APIRouter:
 
     @router.get("/stats")
     async def get_system_stats():
-        """Get aggregated system statistics"""
+        """Get aggregated system statistics with real GPU metrics"""
         agents = list(dashboard_state.agents.values())
         active_agents = sum(1 for a in agents if a.status in [AgentStatus.ACTIVE, AgentStatus.THINKING])
 
-        # Calculate total power (estimate)
-        total_power = 400  # Base hydra-storage
+        # Fetch real GPU data from Prometheus
+        gpu_data = await fetch_prometheus_gpu_metrics()
 
-        # Get VRAM usage
-        vram_used = 0
-        vram_total = 56 + 32  # hydra-ai + hydra-compute
+        # Calculate total power and VRAM from all GPUs
+        total_power = 150  # Base system power estimate
+        vram_used = 0.0
+        vram_total = 0.0
+
+        for node_gpus in gpu_data.values():
+            for gpu in node_gpus:
+                total_power += gpu.get("power", 0)
+                vram_used += gpu.get("vram", 0)
+                vram_total += gpu.get("totalVram", 0)
+
+        # Fallback values if no Prometheus data
+        if vram_total == 0:
+            vram_total = 88  # 32 + 24 + 16 + 16
+            vram_used = 0
+            total_power = 400
 
         return {
             "activeAgents": active_agents,
             "totalAgents": len(agents),
-            "systemPower": total_power,
-            "vramUsed": vram_used,
-            "vramTotal": vram_total,
+            "systemPower": int(total_power),
+            "vramUsed": round(vram_used, 1),
+            "vramTotal": round(vram_total, 0),
             "uptime": "14d 3h",
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
