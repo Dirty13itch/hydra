@@ -1,14 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, StatusDot, ProgressBar, Badge, Button, Modal } from '../components/UIComponents';
-import { Activity, Cpu, Zap, Clock, ArrowRight, Download, Share2, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Activity, Cpu, Zap, Clock, ArrowRight, Download, Share2, RefreshCw, Wifi, WifiOff, Thermometer, Server } from 'lucide-react';
 import { Artifact } from '../types';
 import { useAgents } from '../context/AgentContext';
 import { useDashboardData } from '../context/DashboardDataContext';
 
+// Refresh intervals in seconds (should match DashboardDataContext)
+const STATS_REFRESH_INTERVAL = 15;
+const NODES_REFRESH_INTERVAL = 30;
+
 export const Mission: React.FC = () => {
   const { agents, isLoading: agentsLoading, isConnected } = useAgents();
-  const { projects, stats, alerts, isLoading: dataLoading, refreshAll } = useDashboardData();
+  const { projects, stats, alerts, nodes, isLoading: dataLoading, refreshAll } = useDashboardData();
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
+
+  // Update countdown state
+  const [statsCountdown, setStatsCountdown] = useState(STATS_REFRESH_INTERVAL);
+  const [nodesCountdown, setNodesCountdown] = useState(NODES_REFRESH_INTERVAL);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const statsTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const nodesTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Reset countdowns when data changes
+  useEffect(() => {
+    setLastUpdate(new Date());
+    setStatsCountdown(STATS_REFRESH_INTERVAL);
+  }, [stats]);
+
+  useEffect(() => {
+    setNodesCountdown(NODES_REFRESH_INTERVAL);
+  }, [nodes]);
+
+  // Countdown timers
+  useEffect(() => {
+    statsTimerRef.current = setInterval(() => {
+      setStatsCountdown(prev => (prev > 0 ? prev - 1 : STATS_REFRESH_INTERVAL));
+    }, 1000);
+    return () => { if (statsTimerRef.current) clearInterval(statsTimerRef.current); };
+  }, []);
+
+  useEffect(() => {
+    nodesTimerRef.current = setInterval(() => {
+      setNodesCountdown(prev => (prev > 0 ? prev - 1 : NODES_REFRESH_INTERVAL));
+    }, 1000);
+    return () => { if (nodesTimerRef.current) clearInterval(nodesTimerRef.current); };
+  }, []);
+
+  // Collect all GPUs from all nodes
+  const allGpus = nodes.flatMap(node =>
+    node.gpus.map(gpu => ({ ...gpu, nodeName: node.name }))
+  );
 
   const activeAgentsCount = agents.filter(a => a.status === 'active' || a.status === 'thinking').length;
   const isLoading = agentsLoading || dataLoading;
@@ -74,19 +115,30 @@ export const Mission: React.FC = () => {
       </Modal>
 
       {/* Connection Status Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center justify-between bg-surface-dim rounded-lg px-4 py-2 border border-neutral-800/50">
+        <div className="flex items-center gap-4 text-sm">
           {isConnected ? (
-            <>
+            <div className="flex items-center gap-2">
               <Wifi size={16} className="text-emerald-500" />
               <span className="text-emerald-500 font-mono">LIVE</span>
-            </>
+            </div>
           ) : (
-            <>
+            <div className="flex items-center gap-2">
               <WifiOff size={16} className="text-amber-500" />
               <span className="text-amber-500 font-mono">POLLING</span>
-            </>
+            </div>
           )}
+          <div className="h-4 w-px bg-neutral-700" />
+          <div className="flex items-center gap-3 text-xs font-mono text-neutral-500">
+            <span>Updated: {lastUpdate.toLocaleTimeString()}</span>
+            <span className="text-neutral-600">|</span>
+            <span className={statsCountdown <= 3 ? 'text-cyan-400' : ''}>
+              Stats: {statsCountdown}s
+            </span>
+            <span className={nodesCountdown <= 3 ? 'text-cyan-400' : ''}>
+              GPUs: {nodesCountdown}s
+            </span>
+          </div>
         </div>
         <Button
           variant="ghost"
@@ -149,6 +201,78 @@ export const Mission: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      {/* GPU Cards Row */}
+      {allGpus.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-mono font-semibold text-neutral-200 flex items-center gap-2">
+              <Server size={18} className="text-purple-500" /> GPU_ACCELERATORS
+            </h2>
+            <span className="text-xs font-mono text-neutral-500">{allGpus.length} GPUs across {nodes.filter(n => n.gpus.length > 0).length} nodes</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {allGpus.map((gpu, idx) => {
+              const vramPercent = (gpu.vram / gpu.totalVram) * 100;
+              const isHot = gpu.temp > 75;
+              const isWarm = gpu.temp > 60;
+              return (
+                <Card key={idx} className="bg-surface-dim border-neutral-800/50 hover:border-purple-500/30 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-neutral-200 truncate">{gpu.name.replace('NVIDIA GeForce ', '')}</p>
+                      <p className="text-[10px] font-mono text-neutral-500">{gpu.nodeName}</p>
+                    </div>
+                    <div className={`flex items-center gap-1 text-xs font-mono ${isHot ? 'text-red-400' : isWarm ? 'text-amber-400' : 'text-neutral-400'}`}>
+                      <Thermometer size={12} />
+                      {gpu.temp}°C
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* VRAM Bar */}
+                    <div>
+                      <div className="flex justify-between text-[10px] font-mono text-neutral-500 mb-1">
+                        <span>VRAM</span>
+                        <span>{gpu.vram.toFixed(1)} / {gpu.totalVram} GB</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-neutral-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-500 ${vramPercent > 90 ? 'bg-red-500' : vramPercent > 70 ? 'bg-amber-500' : 'bg-purple-500'}`}
+                          style={{ width: `${vramPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Util Bar */}
+                    <div>
+                      <div className="flex justify-between text-[10px] font-mono text-neutral-500 mb-1">
+                        <span>UTIL</span>
+                        <span>{gpu.util}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-neutral-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-cyan-500 transition-all duration-500"
+                          style={{ width: `${gpu.util}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 pt-2 border-t border-neutral-800 flex justify-between items-center">
+                    <span className="text-[10px] font-mono text-amber-400 flex items-center gap-1">
+                      <Zap size={10} /> {gpu.power}W
+                    </span>
+                    <span className="text-[10px] font-mono text-neutral-600">
+                      {Math.round(vramPercent)}% used
+                    </span>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Agents & Projects Split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
