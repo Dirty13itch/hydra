@@ -44,7 +44,7 @@
       "positive": ["3", 0],
       "negative": ["4", 0],
       "latent_image": ["2", 0],
-      "seed": -1,
+      "seed": "{{SEED}}",
       "steps": 35,
       "cfg": 8.0,
       "sampler_name": "dpmpp_2m_sde",

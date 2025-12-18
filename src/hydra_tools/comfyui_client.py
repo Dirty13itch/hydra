@@ -160,7 +160,8 @@ class ComfyUIClient:
         variables = {
             "SCENE_DESCRIPTION": scene_description,
             "TIME_OF_DAY": time_of_day,
-            "OUTPUT_PATH": f"background_{scene_id}"
+            "OUTPUT_PATH": f"background_{scene_id}",
+            "SEED": str(random.randint(0, 2**32 - 1))
         }
 
         workflow = self.fill_template(template, variables)
