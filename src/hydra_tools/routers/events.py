@@ -19,16 +19,23 @@ SSE is chosen over WebSockets because:
 import asyncio
 import json
 import logging
+import os
 import uuid
 from datetime import datetime
 from typing import AsyncGenerator, Dict, Any, Optional, Set
 from dataclasses import dataclass, asdict
 from enum import Enum
 
+import httpx
 from fastapi import APIRouter, Request, Query
 from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
+
+# API configuration for internal calls
+API_BASE_URL = os.environ.get("HYDRA_API_URL", "http://localhost:8700")
+API_KEY = os.environ.get("HYDRA_API_KEY", "hydra-dev-key")
+PROMETHEUS_URL = os.environ.get("PROMETHEUS_URL", "http://192.168.1.244:9090")
 
 router = APIRouter(prefix="/api/v1/events", tags=["events"])
 
@@ -134,137 +141,247 @@ manager = ConnectionManager()
 
 async def collect_cluster_health() -> Dict[str, Any]:
     """
-    Collect current cluster health status.
+    Collect current cluster health status from /autonomous/resources API.
 
-    TODO: Integrate with real data sources:
-    - Prometheus metrics
-    - Unraid API
-    - Docker API
-    - TabbyAPI status
+    Integrated with:
+    - ClusterResourceMonitor (Prometheus-based GPU metrics)
+    - /health/cluster for services
     """
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Get cluster resources from autonomous queue
+            resources_response = await client.get(
+                f"{API_BASE_URL}/autonomous/resources",
+                headers={"X-API-Key": API_KEY}
+            )
+
+            if resources_response.status_code == 200:
+                resources = resources_response.json()
+                nodes = []
+                for node_data in resources.get("nodes", []):
+                    gpu_utils = [g.get("utilization_percent", 0) for g in node_data.get("gpus", [])]
+                    gpu_vram_pct = [
+                        int((g.get("vram_used_gb", 0) / g.get("vram_total_gb", 1)) * 100)
+                        for g in node_data.get("gpus", [])
+                    ]
+                    nodes.append({
+                        "id": node_data.get("name", "unknown"),
+                        "status": "online" if node_data.get("online") else "offline",
+                        "cpu_percent": 0,  # Will add Prometheus query if needed
+                        "memory_percent": 0,
+                        "gpu_utilization": gpu_utils,
+                        "gpu_vram_percent": gpu_vram_pct
+                    })
+
+                # Get service health
+                health_response = await client.get(
+                    f"{API_BASE_URL}/health/cluster",
+                    headers={"X-API-Key": API_KEY}
+                )
+                services_healthy = 0
+                services_total = 0
+                if health_response.status_code == 200:
+                    health_data = health_response.json()
+                    services = health_data.get("services", [])
+                    services_total = len(services)
+                    services_healthy = sum(1 for s in services if s.get("status") == "healthy")
+
+                return {
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "nodes": nodes,
+                    "services": {
+                        "healthy": services_healthy,
+                        "total": services_total
+                    },
+                    "containers": {
+                        "running": resources.get("summary", {}).get("total_gpus", 0),
+                        "total": resources.get("summary", {}).get("total_gpus", 0)
+                    }
+                }
+    except Exception as e:
+        logger.warning(f"Failed to collect cluster health: {e}")
+
+    # Fallback to minimal data
     return {
         "timestamp": datetime.utcnow().isoformat(),
-        "nodes": [
-            {
-                "id": "hydra-ai",
-                "status": "online",
-                "cpu_percent": 45,
-                "memory_percent": 37,
-                "gpu_utilization": [78, 65],
-                "gpu_vram_percent": [87, 75]
-            },
-            {
-                "id": "hydra-compute",
-                "status": "online",
-                "cpu_percent": 32,
-                "memory_percent": 35,
-                "gpu_utilization": [42, 38],
-                "gpu_vram_percent": [50, 38]
-            },
-            {
-                "id": "hydra-storage",
-                "status": "online",
-                "cpu_percent": 28,
-                "memory_percent": 40,
-                "gpu_utilization": [],
-                "gpu_vram_percent": []
-            }
-        ],
-        "services": {
-            "healthy": 22,
-            "total": 25
-        },
-        "containers": {
-            "running": 58,
-            "total": 64
-        }
+        "nodes": [],
+        "services": {"healthy": 0, "total": 0},
+        "containers": {"running": 0, "total": 0}
     }
 
 
 async def collect_container_status() -> Dict[str, Any]:
-    """Collect container status updates."""
-    # TODO: Integrate with Docker API / Unraid API
+    """
+    Collect container status updates from /container-health/list API.
+
+    Integrated with Docker API via container health router.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{API_BASE_URL}/container-health/list",
+                headers={"X-API-Key": API_KEY}
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                containers = data.get("containers", [])
+                running = sum(1 for c in containers if c.get("status") == "running")
+                unhealthy = sum(1 for c in containers if c.get("health") == "unhealthy")
+                stopped = len(containers) - running
+
+                return {
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "changes": [],  # Would need delta tracking
+                    "summary": {
+                        "running": running,
+                        "stopped": stopped,
+                        "unhealthy": unhealthy
+                    }
+                }
+    except Exception as e:
+        logger.warning(f"Failed to collect container status: {e}")
+
     return {
         "timestamp": datetime.utcnow().isoformat(),
-        "changes": [],  # List of containers with status changes
-        "summary": {
-            "running": 58,
-            "stopped": 4,
-            "unhealthy": 2
-        }
+        "changes": [],
+        "summary": {"running": 0, "stopped": 0, "unhealthy": 0}
     }
 
 
 async def collect_gpu_metrics() -> Dict[str, Any]:
-    """Collect GPU metrics from all nodes."""
-    # TODO: Integrate with nvidia-smi via SSH or agent
+    """
+    Collect GPU metrics from all nodes via /autonomous/resources API.
+
+    Integrated with ClusterResourceMonitor (Prometheus-based):
+    - DCGM metrics for hydra-ai (RTX 5090, RTX 4090)
+    - nvidia-exporter metrics for hydra-compute (2x RTX 5070 Ti)
+    """
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{API_BASE_URL}/autonomous/resources",
+                headers={"X-API-Key": API_KEY}
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                gpus = []
+                total_power = 0
+                total_vram_used = 0
+                total_vram_total = 0
+
+                for node in data.get("nodes", []):
+                    node_name = node.get("name", "unknown")
+                    for gpu_data in node.get("gpus", []):
+                        vram_used_mb = int(gpu_data.get("vram_used_gb", 0) * 1024)
+                        vram_total_mb = int(gpu_data.get("vram_total_gb", 0) * 1024)
+                        power = gpu_data.get("power_watts", 0)
+
+                        gpus.append({
+                            "node": node_name,
+                            "name": gpu_data.get("name", "Unknown GPU"),
+                            "utilization": gpu_data.get("utilization_percent", 0),
+                            "memory_used": vram_used_mb,
+                            "memory_total": vram_total_mb,
+                            "temperature": gpu_data.get("temperature_f", 0),  # Already in F
+                            "power": power
+                        })
+
+                        total_power += power
+                        total_vram_used += vram_used_mb
+                        total_vram_total += vram_total_mb
+
+                return {
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "gpus": gpus,
+                    "total_power": total_power,
+                    "total_vram_used": total_vram_used,
+                    "total_vram_total": total_vram_total
+                }
+    except Exception as e:
+        logger.warning(f"Failed to collect GPU metrics: {e}")
+
     return {
         "timestamp": datetime.utcnow().isoformat(),
-        "gpus": [
-            {
-                "node": "hydra-ai",
-                "name": "RTX 5090",
-                "utilization": 78,
-                "memory_used": 28672,
-                "memory_total": 32768,
-                "temperature": 72,
-                "power": 420
-            },
-            {
-                "node": "hydra-ai",
-                "name": "RTX 4090",
-                "utilization": 65,
-                "memory_used": 18432,
-                "memory_total": 24576,
-                "temperature": 68,
-                "power": 280
-            },
-            {
-                "node": "hydra-compute",
-                "name": "RTX 5070 Ti #1",
-                "utilization": 42,
-                "memory_used": 8192,
-                "memory_total": 16384,
-                "temperature": 58,
-                "power": 180
-            },
-            {
-                "node": "hydra-compute",
-                "name": "RTX 5070 Ti #2",
-                "utilization": 38,
-                "memory_used": 6144,
-                "memory_total": 16384,
-                "temperature": 55,
-                "power": 165
-            }
-        ],
-        "total_power": 1045,
-        "total_vram_used": 61440,
-        "total_vram_total": 89088
+        "gpus": [],
+        "total_power": 0,
+        "total_vram_used": 0,
+        "total_vram_total": 0
     }
 
 
 async def collect_agent_status() -> Dict[str, Any]:
-    """Collect AI agent status."""
-    # TODO: Integrate with agent scheduler
+    """
+    Collect AI agent status from /autonomous/scheduler/status API.
+
+    Integrated with:
+    - AutonomousScheduler for 24/7 task processing
+    - /autonomous/queue for pending tasks
+    """
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Get scheduler status
+            scheduler_response = await client.get(
+                f"{API_BASE_URL}/autonomous/scheduler/status",
+                headers={"X-API-Key": API_KEY}
+            )
+
+            # Get queue stats
+            queue_response = await client.get(
+                f"{API_BASE_URL}/autonomous/queue/stats",
+                headers={"X-API-Key": API_KEY}
+            )
+
+            scheduler_data = {}
+            queue_data = {}
+
+            if scheduler_response.status_code == 200:
+                scheduler_data = scheduler_response.json()
+            if queue_response.status_code == 200:
+                queue_data = queue_response.json()
+
+            # Build agent list from scheduler state
+            agents = []
+            current_tasks = scheduler_data.get("current_tasks", 0)
+            if current_tasks > 0:
+                agents.append({
+                    "id": "scheduler-main",
+                    "status": "active",
+                    "task": f"Processing {current_tasks} task(s)",
+                    "progress": 50
+                })
+
+            # Add queue info
+            pending = queue_data.get("pending", 0)
+            if pending > 0:
+                agents.append({
+                    "id": "queue-monitor",
+                    "status": "waiting",
+                    "task": f"{pending} tasks pending",
+                    "progress": 0
+                })
+
+            return {
+                "timestamp": datetime.utcnow().isoformat(),
+                "agents": agents,
+                "active_count": current_tasks,
+                "total_count": pending + current_tasks,
+                "scheduler_running": scheduler_data.get("running", False),
+                "tasks_processed": scheduler_data.get("tasks_processed", 0),
+                "tasks_failed": scheduler_data.get("tasks_failed", 0)
+            }
+    except Exception as e:
+        logger.warning(f"Failed to collect agent status: {e}")
+
     return {
         "timestamp": datetime.utcnow().isoformat(),
-        "agents": [
-            {
-                "id": "research-alpha",
-                "status": "active",
-                "task": "Analyzing quantum computing papers",
-                "progress": 67
-            },
-            {
-                "id": "code-prime",
-                "status": "thinking",
-                "task": "Implementing autonomous controller",
-                "progress": 45
-            }
-        ],
-        "active_count": 2,
-        "total_count": 4
+        "agents": [],
+        "active_count": 0,
+        "total_count": 0,
+        "scheduler_running": False,
+        "tasks_processed": 0,
+        "tasks_failed": 0
     }
 
 
@@ -389,7 +506,7 @@ async def _collect_and_queue_events(
                 data = await collect_cluster_health()
                 event_id += 1
                 event = SSEEvent(
-                    event=EventType.CLUSTER_HEALTH,
+                    event=EventType.CLUSTER_HEALTH.value,
                     data=data,
                     id=str(event_id)
                 )
@@ -404,7 +521,7 @@ async def _collect_and_queue_events(
                 data = await collect_gpu_metrics()
                 event_id += 1
                 event = SSEEvent(
-                    event=EventType.GPU_METRICS,
+                    event=EventType.GPU_METRICS.value,
                     data=data,
                     id=str(event_id)
                 )
@@ -419,7 +536,7 @@ async def _collect_and_queue_events(
                 data = await collect_agent_status()
                 event_id += 1
                 event = SSEEvent(
-                    event=EventType.AGENT_STATUS,
+                    event=EventType.AGENT_STATUS.value,
                     data=data,
                     id=str(event_id)
                 )
@@ -433,7 +550,7 @@ async def _collect_and_queue_events(
             if "heartbeat" in requested_events and now - last_heartbeat >= 30:
                 event_id += 1
                 event = SSEEvent(
-                    event=EventType.HEARTBEAT,
+                    event=EventType.HEARTBEAT.value,
                     data={
                         "timestamp": datetime.utcnow().isoformat(),
                         "connections": manager.connection_count
@@ -469,7 +586,7 @@ async def broadcast_alert(
     Used by other services to push alert notifications.
     """
     event = SSEEvent(
-        event=EventType.ALERT,
+        event=EventType.ALERT.value,
         data={
             "timestamp": datetime.utcnow().isoformat(),
             **alert
@@ -489,7 +606,7 @@ async def broadcast_notification(
     Used for general notifications (not alerts).
     """
     event = SSEEvent(
-        event=EventType.NOTIFICATION,
+        event=EventType.NOTIFICATION.value,
         data={
             "timestamp": datetime.utcnow().isoformat(),
             **notification
@@ -509,7 +626,7 @@ async def broadcast_container_update(
     Called when a container starts, stops, or changes state.
     """
     event = SSEEvent(
-        event=EventType.CONTAINER_STATUS,
+        event=EventType.CONTAINER_STATUS.value,
         data={
             "timestamp": datetime.utcnow().isoformat(),
             **update
@@ -529,7 +646,7 @@ async def broadcast_model_update(
     Called when a model loads, unloads, or changes status.
     """
     event = SSEEvent(
-        event=EventType.MODEL_STATUS,
+        event=EventType.MODEL_STATUS.value,
         data={
             "timestamp": datetime.utcnow().isoformat(),
             **update

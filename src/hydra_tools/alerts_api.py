@@ -9,11 +9,16 @@ Endpoints:
 - /alerts/send - Send a custom alert to notification channels
 - /alerts/test - Send a test alert
 - /alerts/status - Get alerting system status
+- /alerts/silences - List active Alertmanager silences
+- /alerts/silence - Create a new silence
+- /alerts/silence/{id} - Delete a silence
 """
 
 import json
 import os
-from datetime import datetime
+import uuid
+import logging
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from enum import Enum
@@ -21,6 +26,8 @@ from enum import Enum
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger("alerts_api")
 
 
 # Configuration
@@ -79,6 +86,44 @@ class AlertSystemStatus(BaseModel):
     log_directory_writable: bool
     recent_alert_count: int
     last_alert_timestamp: Optional[str] = None
+
+
+# =============================================================================
+# ALERTMANAGER SILENCE MODELS
+# =============================================================================
+
+class SilenceMatcher(BaseModel):
+    """A matcher for silence rules."""
+    name: str = Field(..., description="Label name to match (e.g., 'alertname', 'node', 'service')")
+    value: str = Field(..., description="Label value to match")
+    isRegex: bool = Field(False, description="Whether value is a regex pattern")
+    isEqual: bool = Field(True, description="Whether to match equal (True) or not equal (False)")
+
+
+class CreateSilenceRequest(BaseModel):
+    """Request to create an Alertmanager silence."""
+    matchers: List[SilenceMatcher] = Field(..., description="List of label matchers")
+    duration_minutes: int = Field(60, ge=1, le=10080, description="Duration in minutes (max 7 days)")
+    comment: str = Field("Silenced via Hydra API", description="Comment explaining the silence")
+    created_by: str = Field("hydra-api", description="Who created the silence")
+
+
+class SilenceResponse(BaseModel):
+    """Response from silence operations."""
+    id: str
+    status: str
+    matchers: List[Dict[str, Any]]
+    starts_at: str
+    ends_at: str
+    created_by: str
+    comment: str
+
+
+class SilenceListResponse(BaseModel):
+    """Response containing list of silences."""
+    silences: List[SilenceResponse]
+    count: int
+    active_count: int
 
 
 def _get_timestamp() -> str:
@@ -316,26 +361,310 @@ def create_alerts_router() -> APIRouter:
 
         return {"channels": channels}
 
-    @router.post("/silence")
-    async def silence_alert(
+    # =========================================================================
+    # ALERTMANAGER SILENCE ENDPOINTS
+    # =========================================================================
+
+    @router.get("/silences", response_model=SilenceListResponse)
+    async def list_silences(active_only: bool = True):
+        """
+        List Alertmanager silences.
+
+        Returns all silences or only active ones based on the active_only parameter.
+        """
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                resp = await client.get(f"{ALERTS_SERVICE_URL}/api/v2/silences")
+                if resp.status_code != 200:
+                    raise HTTPException(
+                        status_code=resp.status_code,
+                        detail=f"Alertmanager returned error: {resp.text}"
+                    )
+
+                all_silences = resp.json()
+                silences = []
+                active_count = 0
+
+                for s in all_silences:
+                    status = s.get("status", {}).get("state", "unknown")
+                    if status == "active":
+                        active_count += 1
+
+                    if active_only and status != "active":
+                        continue
+
+                    silences.append(SilenceResponse(
+                        id=s.get("id", ""),
+                        status=status,
+                        matchers=s.get("matchers", []),
+                        starts_at=s.get("startsAt", ""),
+                        ends_at=s.get("endsAt", ""),
+                        created_by=s.get("createdBy", "unknown"),
+                        comment=s.get("comment", ""),
+                    ))
+
+                return SilenceListResponse(
+                    silences=silences,
+                    count=len(silences),
+                    active_count=active_count,
+                )
+
+            except httpx.RequestError as e:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Failed to connect to Alertmanager: {str(e)}"
+                )
+
+    @router.post("/silence", response_model=SilenceResponse)
+    async def create_silence(request: CreateSilenceRequest):
+        """
+        Create an Alertmanager silence.
+
+        Silences matching alerts for the specified duration.
+        Matchers define which alerts to silence based on label matching.
+        """
+        now = datetime.now(timezone.utc)
+        ends_at = now + timedelta(minutes=request.duration_minutes)
+
+        # Build Alertmanager silence payload
+        silence_payload = {
+            "matchers": [
+                {
+                    "name": m.name,
+                    "value": m.value,
+                    "isRegex": m.isRegex,
+                    "isEqual": m.isEqual,
+                }
+                for m in request.matchers
+            ],
+            "startsAt": now.isoformat().replace("+00:00", "Z"),
+            "endsAt": ends_at.isoformat().replace("+00:00", "Z"),
+            "createdBy": request.created_by,
+            "comment": request.comment,
+        }
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                resp = await client.post(
+                    f"{ALERTS_SERVICE_URL}/api/v2/silences",
+                    json=silence_payload,
+                    headers={"Content-Type": "application/json"},
+                )
+
+                if resp.status_code not in (200, 201):
+                    raise HTTPException(
+                        status_code=resp.status_code,
+                        detail=f"Alertmanager returned error: {resp.text}"
+                    )
+
+                result = resp.json()
+                silence_id = result.get("silenceID", result.get("id", ""))
+
+                logger.info(f"Created silence {silence_id} for {request.duration_minutes} minutes")
+
+                return SilenceResponse(
+                    id=silence_id,
+                    status="active",
+                    matchers=[m.model_dump() for m in request.matchers],
+                    starts_at=silence_payload["startsAt"],
+                    ends_at=silence_payload["endsAt"],
+                    created_by=request.created_by,
+                    comment=request.comment,
+                )
+
+            except httpx.RequestError as e:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Failed to connect to Alertmanager: {str(e)}"
+                )
+
+    @router.delete("/silence/{silence_id}")
+    async def delete_silence(silence_id: str):
+        """
+        Delete (expire) an Alertmanager silence.
+
+        This immediately expires the silence, allowing matching alerts to fire again.
+        """
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                resp = await client.delete(
+                    f"{ALERTS_SERVICE_URL}/api/v2/silence/{silence_id}"
+                )
+
+                if resp.status_code == 404:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Silence {silence_id} not found"
+                    )
+
+                if resp.status_code not in (200, 204):
+                    raise HTTPException(
+                        status_code=resp.status_code,
+                        detail=f"Alertmanager returned error: {resp.text}"
+                    )
+
+                logger.info(f"Deleted silence {silence_id}")
+
+                return {
+                    "status": "deleted",
+                    "silence_id": silence_id,
+                    "message": "Silence has been expired",
+                }
+
+            except httpx.RequestError as e:
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Failed to connect to Alertmanager: {str(e)}"
+                )
+
+    # =========================================================================
+    # CONVENIENCE SILENCE ENDPOINTS
+    # =========================================================================
+
+    @router.post("/silence/alert/{alertname}")
+    async def silence_by_alertname(
         alertname: str,
         duration_minutes: int = 60,
         comment: Optional[str] = None,
     ):
         """
-        Silence an alert for a specified duration.
+        Silence a specific alert by name.
 
-        Note: This is a placeholder - actual silencing requires Alertmanager integration.
+        Convenience endpoint to silence all instances of a specific alert.
         """
-        # This would integrate with Alertmanager's silence API
-        # For now, just log the request
+        request = CreateSilenceRequest(
+            matchers=[
+                SilenceMatcher(name="alertname", value=alertname, isRegex=False, isEqual=True)
+            ],
+            duration_minutes=duration_minutes,
+            comment=comment or f"Silencing {alertname} via Hydra API",
+            created_by="hydra-api",
+        )
+        return await create_silence(request)
+
+    @router.post("/silence/node/{node}")
+    async def silence_by_node(
+        node: str,
+        duration_minutes: int = 60,
+        comment: Optional[str] = None,
+    ):
+        """
+        Silence all alerts for a specific node.
+
+        Useful during planned maintenance on a specific node.
+        """
+        request = CreateSilenceRequest(
+            matchers=[
+                SilenceMatcher(name="node", value=node, isRegex=False, isEqual=True)
+            ],
+            duration_minutes=duration_minutes,
+            comment=comment or f"Silencing all alerts for node {node}",
+            created_by="hydra-api",
+        )
+        return await create_silence(request)
+
+    @router.post("/silence/service/{service}")
+    async def silence_by_service(
+        service: str,
+        duration_minutes: int = 60,
+        comment: Optional[str] = None,
+    ):
+        """
+        Silence all alerts for a specific service.
+
+        Useful during service deployments or known maintenance.
+        """
+        request = CreateSilenceRequest(
+            matchers=[
+                SilenceMatcher(name="service", value=service, isRegex=False, isEqual=True)
+            ],
+            duration_minutes=duration_minutes,
+            comment=comment or f"Silencing all alerts for service {service}",
+            created_by="hydra-api",
+        )
+        return await create_silence(request)
+
+    @router.post("/silence/maintenance")
+    async def silence_for_maintenance(
+        nodes: Optional[List[str]] = None,
+        services: Optional[List[str]] = None,
+        duration_minutes: int = 120,
+        comment: Optional[str] = None,
+    ):
+        """
+        Create silences for planned maintenance.
+
+        Silences alerts for specified nodes and/or services.
+        If neither is specified, silences all non-critical alerts.
+        """
+        created_silences = []
+
+        if nodes:
+            for node in nodes:
+                result = await silence_by_node(
+                    node=node,
+                    duration_minutes=duration_minutes,
+                    comment=comment or f"Planned maintenance on {node}",
+                )
+                created_silences.append({"type": "node", "target": node, "silence_id": result.id})
+
+        if services:
+            for service in services:
+                result = await silence_by_service(
+                    service=service,
+                    duration_minutes=duration_minutes,
+                    comment=comment or f"Planned maintenance for {service}",
+                )
+                created_silences.append({"type": "service", "target": service, "silence_id": result.id})
+
+        # If nothing specified, silence all warnings (not criticals)
+        if not nodes and not services:
+            request = CreateSilenceRequest(
+                matchers=[
+                    SilenceMatcher(name="severity", value="warning", isRegex=False, isEqual=True)
+                ],
+                duration_minutes=duration_minutes,
+                comment=comment or "General maintenance - silencing warnings",
+                created_by="hydra-api",
+            )
+            result = await create_silence(request)
+            created_silences.append({"type": "severity", "target": "warning", "silence_id": result.id})
+
         return {
             "status": "silenced",
-            "alertname": alertname,
             "duration_minutes": duration_minutes,
-            "expires_at": datetime.utcnow().isoformat() + "Z",
-            "comment": comment,
-            "note": "Alertmanager integration pending",
+            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)).isoformat(),
+            "silences_created": len(created_silences),
+            "silences": created_silences,
         }
+
+    @router.get("/silence/check/{alertname}")
+    async def check_if_silenced(alertname: str):
+        """
+        Check if a specific alert is currently silenced.
+
+        Returns silence information if the alert is silenced, or indicates it's active.
+        """
+        silences = await list_silences(active_only=True)
+
+        matching_silences = []
+        for silence in silences.silences:
+            for matcher in silence.matchers:
+                if matcher.get("name") == "alertname" and matcher.get("value") == alertname:
+                    matching_silences.append(silence)
+                    break
+
+        if matching_silences:
+            return {
+                "alertname": alertname,
+                "is_silenced": True,
+                "silences": [s.model_dump() for s in matching_silences],
+            }
+        else:
+            return {
+                "alertname": alertname,
+                "is_silenced": False,
+                "silences": [],
+            }
 
     return router

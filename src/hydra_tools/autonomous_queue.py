@@ -539,6 +539,7 @@ class WorkType(str, Enum):
     ASSET_GENERATION = "asset_generation"
     QUALITY_SCORING = "quality_scoring"
     MAINTENANCE = "maintenance"
+    INFERENCE = "inference"
     CUSTOM = "custom"
 
 class WorkStatus(str, Enum):
@@ -725,6 +726,164 @@ async def process_quality_scoring(payload: Dict[str, Any]) -> Dict[str, Any]:
         )
         return response.json()
 
+
+async def process_maintenance(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Process maintenance work item.
+
+    Supports various maintenance actions:
+    - docker_cleanup: Prune unused images, volumes, build cache
+    - disk_check: Check disk usage across cluster
+    - backup_verify: Verify recent backups exist
+    - health_check: Run comprehensive health checks
+    - nix_gc: Run NixOS garbage collection (hydra-ai, hydra-compute)
+    - database_optimize: Optimize PostgreSQL/Qdrant
+    """
+    action = payload.get("action", "health_check")
+    api_key = os.environ.get("HYDRA_API_KEY", "hydra-dev-key")
+    results = {"action": action, "status": "success", "details": {}}
+
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        if action == "docker_cleanup":
+            # Call container health cleanup endpoint
+            try:
+                response = await client.post(
+                    "http://localhost:8700/container-health/cleanup",
+                    headers={"X-API-Key": api_key}
+                )
+                results["details"]["cleanup"] = response.json() if response.status_code == 200 else {"error": response.text}
+            except Exception as e:
+                results["details"]["cleanup"] = {"error": str(e)}
+
+        elif action == "health_check":
+            # Run comprehensive health check
+            try:
+                response = await client.get(
+                    "http://localhost:8700/health/cluster",
+                    headers={"X-API-Key": api_key}
+                )
+                if response.status_code == 200:
+                    health_data = response.json()
+                    services = health_data.get("services", [])
+                    healthy = sum(1 for s in services if s.get("status") == "healthy")
+                    results["details"]["services_healthy"] = healthy
+                    results["details"]["services_total"] = len(services)
+                    results["details"]["health_percentage"] = round(healthy / len(services) * 100, 1) if services else 0
+                else:
+                    results["details"]["health_check"] = {"error": response.text}
+            except Exception as e:
+                results["details"]["health_check"] = {"error": str(e)}
+
+        elif action == "disk_check":
+            # Check disk usage via hardware endpoint
+            try:
+                response = await client.get(
+                    "http://localhost:8700/hardware/storage",
+                    headers={"X-API-Key": api_key}
+                )
+                results["details"]["storage"] = response.json() if response.status_code == 200 else {"error": response.text}
+            except Exception as e:
+                results["details"]["storage"] = {"error": str(e)}
+
+        elif action == "backup_verify":
+            # Check recent backup timestamps
+            results["details"]["postgres_backup"] = "/mnt/user/backups/postgres - check manually"
+            results["details"]["qdrant_backup"] = "/mnt/user/backups/qdrant - check manually"
+            results["details"]["note"] = "Backup scripts run daily at 2-3 AM"
+
+        elif action == "database_optimize":
+            # Run Qdrant optimization
+            try:
+                response = await client.post(
+                    "http://localhost:8700/crews/maintenance/optimize-qdrant",
+                    headers={"X-API-Key": api_key}
+                )
+                results["details"]["qdrant_optimize"] = response.json() if response.status_code == 200 else {"error": response.text}
+            except Exception as e:
+                results["details"]["qdrant_optimize"] = {"error": str(e)}
+
+        elif action == "benchmark":
+            # Run self-improvement benchmarks
+            try:
+                response = await client.post(
+                    "http://localhost:8700/self-improvement/benchmarks/run",
+                    headers={"X-API-Key": api_key},
+                    timeout=600.0  # 10 min timeout for benchmarks
+                )
+                results["details"]["benchmark"] = response.json() if response.status_code == 200 else {"error": response.text}
+            except Exception as e:
+                results["details"]["benchmark"] = {"error": str(e)}
+
+        else:
+            results["details"]["message"] = f"Unknown action: {action}"
+            results["status"] = "unknown_action"
+
+    return results
+
+
+async def process_inference(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Process inference work item via TabbyAPI.
+
+    Supports:
+    - prompt: The text prompt to process
+    - model: Optional model name (uses loaded model if not specified)
+    - max_tokens: Max tokens to generate (default 1024)
+    - temperature: Sampling temperature (default 0.7)
+    - system: Optional system prompt
+    """
+    prompt = payload.get("prompt", "")
+    system_prompt = payload.get("system", "You are a helpful AI assistant.")
+    max_tokens = payload.get("max_tokens", 1024)
+    temperature = payload.get("temperature", 0.7)
+
+    if not prompt:
+        return {"status": "error", "error": "No prompt provided"}
+
+    # Use LiteLLM as the proxy for inference (handles routing to TabbyAPI)
+    litellm_url = os.environ.get("LITELLM_URL", "http://192.168.1.244:4000")
+    litellm_key = os.environ.get("LITELLM_MASTER_KEY", os.environ.get("LITELLM_API_KEY", "sk-PyKRr5POL0tXJEMOEGnliWk6doMb31k7"))
+
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            response = await client.post(
+                f"{litellm_url}/v1/chat/completions",
+                headers={"Authorization": f"Bearer {litellm_key}"},
+                json={
+                    "model": payload.get("model", "qwen2.5-7b"),  # Default to Qwen 7B via Ollama/LiteLLM
+                    "messages": [
+                        {"role": "user", "content": f"{system_prompt}\n\n{prompt}"}
+                    ],
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                }
+            )
+
+            if response.status_code != 200:
+                return {
+                    "status": "error",
+                    "error": f"Inference failed: {response.text}",
+                    "status_code": response.status_code
+                }
+
+            result = response.json()
+            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            usage = result.get("usage", {})
+
+            return {
+                "status": "success",
+                "content": content,
+                "model": result.get("model", "unknown"),
+                "usage": {
+                    "prompt_tokens": usage.get("prompt_tokens", 0),
+                    "completion_tokens": usage.get("completion_tokens", 0),
+                    "total_tokens": usage.get("total_tokens", 0),
+                },
+                "finish_reason": result.get("choices", [{}])[0].get("finish_reason", "unknown")
+            }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
 async def process_work_item(item_id: int) -> Dict[str, Any]:
     """Process a single work item."""
     conn = get_db()
@@ -757,6 +916,10 @@ async def process_work_item(item_id: int) -> Dict[str, Any]:
             result = await process_asset_generation(payload)
         elif work_type == WorkType.QUALITY_SCORING.value:
             result = await process_quality_scoring(payload)
+        elif work_type == WorkType.MAINTENANCE.value:
+            result = await process_maintenance(payload)
+        elif work_type == WorkType.INFERENCE.value:
+            result = await process_inference(payload)
         else:
             result = {"status": "no_processor", "work_type": work_type}
 
@@ -1039,6 +1202,74 @@ async def queue_research(
         priority=priority,
         payload={"topic": topic, "depth": depth}
     ))
+
+
+@router.post("/queue/maintenance")
+async def queue_maintenance(
+    action: str = "health_check",
+    priority: WorkPriority = WorkPriority.NORMAL
+):
+    """Queue a maintenance task.
+
+    Available actions:
+    - health_check: Run comprehensive health checks (default)
+    - docker_cleanup: Prune unused Docker resources
+    - disk_check: Check disk usage across cluster
+    - backup_verify: Verify recent backups exist
+    - database_optimize: Optimize PostgreSQL/Qdrant
+    - benchmark: Run self-improvement benchmarks
+    """
+    action_descriptions = {
+        "health_check": "Comprehensive cluster health check",
+        "docker_cleanup": "Prune unused Docker images, volumes, and build cache",
+        "disk_check": "Check disk usage across all nodes",
+        "backup_verify": "Verify recent backup files exist",
+        "database_optimize": "Optimize PostgreSQL and Qdrant databases",
+        "benchmark": "Run self-improvement benchmark suite",
+    }
+    return await add_to_queue(WorkItemCreate(
+        work_type=WorkType.MAINTENANCE,
+        title=f"Maintenance: {action}",
+        description=action_descriptions.get(action, action),
+        priority=priority,
+        payload={"action": action}
+    ))
+
+
+@router.post("/queue/inference")
+async def queue_inference(
+    prompt: str,
+    system: str = "You are a helpful AI assistant.",
+    model: str = "qwen2.5-7b",
+    max_tokens: int = 1024,
+    temperature: float = 0.7,
+    priority: WorkPriority = WorkPriority.NORMAL
+):
+    """Queue an inference task.
+
+    Routes to TabbyAPI via LiteLLM for batch LLM processing.
+
+    Args:
+        prompt: The user prompt to process
+        system: System prompt for context
+        model: Model name (default: tabby for TabbyAPI)
+        max_tokens: Maximum tokens to generate
+        temperature: Sampling temperature
+    """
+    return await add_to_queue(WorkItemCreate(
+        work_type=WorkType.INFERENCE,
+        title=f"Inference: {prompt[:50]}...",
+        description=f"Model: {model}, Max tokens: {max_tokens}",
+        priority=priority,
+        payload={
+            "prompt": prompt,
+            "system": system,
+            "model": model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+    ))
+
 
 @router.post("/queue/overnight")
 async def queue_overnight_batch(

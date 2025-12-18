@@ -745,10 +745,11 @@ class QdrantMemoryStore(MemoryStore):
             return False
 
     async def get_stats(self) -> Dict[str, Any]:
-        """Get Qdrant collection statistics."""
+        """Get Qdrant collection statistics including tier counts."""
         await self._ensure_collection()
 
         async with httpx.AsyncClient(timeout=30.0) as client:
+            # Get collection info
             response = await client.get(
                 f"{self.qdrant_url}/collections/{self.COLLECTION_NAME}"
             )
@@ -759,6 +760,30 @@ class QdrantMemoryStore(MemoryStore):
             result = response.json()
             collection = result.get("result", {})
 
+            # Get tier counts by scrolling and aggregating
+            tier_counts = {}
+            for tier in MemoryTier:
+                tier_counts[tier.value] = 0
+
+            try:
+                # Scroll through all points to count by tier
+                scroll_response = await client.post(
+                    f"{self.qdrant_url}/collections/{self.COLLECTION_NAME}/points/scroll",
+                    json={"limit": 1000, "with_payload": ["tier"]}
+                )
+                if scroll_response.status_code == 200:
+                    scroll_result = scroll_response.json()
+                    points = scroll_result.get("result", {}).get("points", [])
+                    for point in points:
+                        payload = point.get("payload", {})
+                        tier_value = payload.get("tier", "semantic")
+                        if tier_value in tier_counts:
+                            tier_counts[tier_value] += 1
+                        else:
+                            tier_counts[tier_value] = 1
+            except Exception as e:
+                logger.warning(f"Failed to get tier counts: {e}")
+
             return {
                 "collection": self.COLLECTION_NAME,
                 "points_count": collection.get("points_count", 0),
@@ -766,6 +791,7 @@ class QdrantMemoryStore(MemoryStore):
                 "status": collection.get("status", "unknown"),
                 "embedding_model": self.embedding_service.model,
                 "embedding_dimension": self.embedding_service.dimension,
+                "tier_counts": tier_counts,
             }
 
     async def migrate_from_json(self, json_store: JSONMemoryStore) -> Dict[str, int]:
@@ -1623,6 +1649,8 @@ Respond ONLY with the JSON object."""
             qdrant_stats = await self.store.get_stats()
             stats["qdrant"] = qdrant_stats
             stats["total_memories"] = qdrant_stats.get("points_count", 0)
+            # Use tier_counts from Qdrant stats
+            stats["tier_counts"] = qdrant_stats.get("tier_counts", {})
         elif isinstance(self.store, JSONMemoryStore):
             stats["storage_backend"] = "json"
             for tier, cache in self.store._cache.items():

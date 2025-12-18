@@ -19,10 +19,12 @@ Created: 2025-12-16
 import asyncio
 import json
 import os
+import sqlite3
 import time
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import logging
 
@@ -32,6 +34,88 @@ from pydantic import BaseModel
 
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# BENCHMARK PERSISTENCE
+# =============================================================================
+
+BENCHMARK_DB_PATH = Path(os.environ.get("HYDRA_DATA_DIR", "/data")) / "benchmarks.db"
+
+
+def init_benchmark_db():
+    """Initialize the benchmark results database."""
+    BENCHMARK_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(BENCHMARK_DB_PATH))
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS benchmark_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            suite_id TEXT UNIQUE NOT NULL,
+            started_at TEXT NOT NULL,
+            finished_at TEXT,
+            overall_score REAL,
+            category_scores TEXT,
+            results TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_started_at ON benchmark_runs(started_at DESC)")
+    conn.commit()
+    conn.close()
+
+
+def save_benchmark_results(suite: "BenchmarkSuite"):
+    """Save benchmark results to database."""
+    init_benchmark_db()
+    conn = sqlite3.connect(str(BENCHMARK_DB_PATH))
+    try:
+        conn.execute("""
+            INSERT OR REPLACE INTO benchmark_runs
+            (suite_id, started_at, finished_at, overall_score, category_scores, results)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            suite.suite_id,
+            suite.started_at,
+            suite.finished_at,
+            suite.overall_score,
+            json.dumps(suite.category_scores),
+            json.dumps([asdict(r) for r in suite.results])
+        ))
+        conn.commit()
+        logger.info(f"Saved benchmark results: {suite.suite_id}")
+    finally:
+        conn.close()
+
+
+def get_latest_benchmark_results(limit: int = 10) -> List[Dict[str, Any]]:
+    """Get latest benchmark results from database."""
+    init_benchmark_db()
+    conn = sqlite3.connect(str(BENCHMARK_DB_PATH))
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute("""
+            SELECT * FROM benchmark_runs
+            ORDER BY started_at DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+
+        results = []
+        for row in rows:
+            results.append({
+                "suite_id": row["suite_id"],
+                "started_at": row["started_at"],
+                "finished_at": row["finished_at"],
+                "overall_score": row["overall_score"],
+                "category_scores": json.loads(row["category_scores"]) if row["category_scores"] else {},
+                "results": json.loads(row["results"]) if row["results"] else [],
+            })
+        return results
+    finally:
+        conn.close()
+
+
+# Initialize database on module load
+init_benchmark_db()
 
 
 class BenchmarkCategory(str, Enum):
@@ -635,9 +719,12 @@ def create_benchmark_router() -> APIRouter:
 
     @router.post("/run")
     async def run_benchmarks():
-        """Run full benchmark suite."""
+        """Run full benchmark suite and persist results."""
         runner = get_benchmark_runner()
         suite = await runner.run_all()
+
+        # Persist results to SQLite
+        save_benchmark_results(suite)
 
         return {
             "suite_id": suite.suite_id,
@@ -646,12 +733,31 @@ def create_benchmark_router() -> APIRouter:
             "results": [asdict(r) for r in suite.results],
             "started_at": suite.started_at,
             "finished_at": suite.finished_at,
+            "persisted": True,
         }
 
     @router.get("/latest")
-    async def get_latest():
-        """Get latest benchmark results (placeholder)."""
-        return {"message": "Run /benchmark/run to generate results"}
+    async def get_latest(limit: int = 1):
+        """Get latest benchmark results from database."""
+        results = get_latest_benchmark_results(limit)
+        if not results:
+            return {
+                "message": "No benchmark results found. Run /benchmark/run to generate results.",
+                "results": []
+            }
+        return {
+            "count": len(results),
+            "results": results
+        }
+
+    @router.get("/history")
+    async def get_history(limit: int = 10):
+        """Get benchmark history."""
+        results = get_latest_benchmark_results(limit)
+        return {
+            "count": len(results),
+            "results": results
+        }
 
     @router.post("/single/{benchmark_name}")
     async def run_single_benchmark(benchmark_name: str):

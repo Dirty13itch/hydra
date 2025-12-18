@@ -6,19 +6,181 @@ Reports container health status to Prometheus metrics format.
 
 This module adds "soft" healthchecks via HTTP probes for containers that
 don't have Docker-level healthchecks defined.
+
+Also provides container remediation capabilities with full audit logging.
 """
 
 import asyncio
+import json
+import os
+import sqlite3
+import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Optional, List
 import httpx
 import docker
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from prometheus_client import Gauge, Counter, generate_latest, CONTENT_TYPE_LATEST
 from fastapi.responses import Response
+
+logger = logging.getLogger("container_health")
+
+# =============================================================================
+# AUDIT LOG DATABASE
+# =============================================================================
+
+AUDIT_DB_PATH = Path(os.environ.get("HYDRA_DATA_DIR", "/data")) / "remediation_audit.db"
+
+
+def init_audit_db():
+    """Initialize the remediation audit log database."""
+    AUDIT_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(AUDIT_DB_PATH))
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS remediation_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            container_name TEXT NOT NULL,
+            action TEXT NOT NULL,
+            reason TEXT,
+            status TEXT NOT NULL,
+            initiated_by TEXT DEFAULT 'api',
+            duration_ms REAL,
+            error_message TEXT,
+            metadata TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON remediation_log(timestamp DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_container ON remediation_log(container_name)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_action ON remediation_log(action)")
+    conn.commit()
+    conn.close()
+    logger.info(f"Initialized remediation audit database at {AUDIT_DB_PATH}")
+
+
+def log_remediation_action(
+    container_name: str,
+    action: str,
+    reason: str,
+    status: str,
+    initiated_by: str = "api",
+    duration_ms: float = None,
+    error_message: str = None,
+    metadata: dict = None,
+) -> int:
+    """Log a remediation action to the audit database."""
+    conn = sqlite3.connect(str(AUDIT_DB_PATH))
+    cursor = conn.execute(
+        """
+        INSERT INTO remediation_log
+        (timestamp, container_name, action, reason, status, initiated_by, duration_ms, error_message, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            datetime.now(timezone.utc).isoformat(),
+            container_name,
+            action,
+            reason,
+            status,
+            initiated_by,
+            duration_ms,
+            error_message,
+            json.dumps(metadata) if metadata else None,
+        )
+    )
+    conn.commit()
+    log_id = cursor.lastrowid
+    conn.close()
+    logger.info(f"Audit log {log_id}: {action} on {container_name} - {status}")
+    return log_id
+
+
+def get_remediation_history(
+    limit: int = 50,
+    container_name: str = None,
+    action: str = None,
+    status: str = None,
+    since: str = None,
+) -> list:
+    """Get remediation history from the audit database."""
+    conn = sqlite3.connect(str(AUDIT_DB_PATH))
+    conn.row_factory = sqlite3.Row
+
+    query = "SELECT * FROM remediation_log WHERE 1=1"
+    params = []
+
+    if container_name:
+        query += " AND container_name = ?"
+        params.append(container_name)
+    if action:
+        query += " AND action = ?"
+        params.append(action)
+    if status:
+        query += " AND status = ?"
+        params.append(status)
+    if since:
+        query += " AND timestamp >= ?"
+        params.append(since)
+
+    query += " ORDER BY timestamp DESC LIMIT ?"
+    params.append(limit)
+
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+
+    return [dict(row) for row in rows]
+
+
+def get_remediation_stats() -> dict:
+    """Get statistics from the remediation audit log."""
+    conn = sqlite3.connect(str(AUDIT_DB_PATH))
+
+    today = datetime.now(timezone.utc).date().isoformat()
+
+    total = conn.execute("SELECT COUNT(*) FROM remediation_log").fetchone()[0]
+    today_count = conn.execute(
+        "SELECT COUNT(*) FROM remediation_log WHERE timestamp LIKE ?",
+        (f"{today}%",)
+    ).fetchone()[0]
+
+    by_action = conn.execute("""
+        SELECT action, COUNT(*) as count
+        FROM remediation_log
+        GROUP BY action
+    """).fetchall()
+
+    by_status = conn.execute("""
+        SELECT status, COUNT(*) as count
+        FROM remediation_log
+        GROUP BY status
+    """).fetchall()
+
+    top_containers = conn.execute("""
+        SELECT container_name, COUNT(*) as count
+        FROM remediation_log
+        GROUP BY container_name
+        ORDER BY count DESC
+        LIMIT 10
+    """).fetchall()
+
+    conn.close()
+
+    return {
+        "total_actions": total,
+        "today_count": today_count,
+        "by_action": {row[0]: row[1] for row in by_action},
+        "by_status": {row[0]: row[1] for row in by_status},
+        "top_containers": {row[0]: row[1] for row in top_containers},
+    }
+
+
+# Initialize audit database on module load
+init_audit_db()
 
 
 class HealthStatus(str, Enum):
@@ -376,10 +538,20 @@ def create_container_health_router() -> APIRouter:
         reason: str = "auto-remediation"
 
     @router.post("/restart/{container_name}")
-    async def restart_container(container_name: str, reason: str = "manual"):
+    async def restart_container(container_name: str, reason: str = "manual", initiated_by: str = "api"):
         """Restart a container by name. Respects constitutional protections."""
+        start_time = datetime.now(timezone.utc)
+
         # Check constitutional protections
         if container_name in PROTECTED_CONTAINERS:
+            log_remediation_action(
+                container_name=container_name,
+                action="restart",
+                reason=reason,
+                status="blocked",
+                initiated_by=initiated_by,
+                error_message="Constitutionally protected container",
+            )
             raise HTTPException(
                 status_code=403,
                 detail=f"Container {container_name} is constitutionally protected. Manual approval required."
@@ -390,23 +562,70 @@ def create_container_health_router() -> APIRouter:
             container = client.containers.get(container_name)
             container.restart(timeout=30)
 
+            duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+
+            # Log successful action
+            log_id = log_remediation_action(
+                container_name=container_name,
+                action="restart",
+                reason=reason,
+                status="success",
+                initiated_by=initiated_by,
+                duration_ms=duration_ms,
+                metadata={"container_id": container.id[:12]},
+            )
+
             return {
                 "status": "success",
                 "container": container_name,
                 "action": "restart",
                 "reason": reason,
-                "timestamp": datetime.utcnow().isoformat() + "Z"
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "duration_ms": round(duration_ms, 2),
+                "audit_log_id": log_id,
             }
         except docker.errors.NotFound:
+            log_remediation_action(
+                container_name=container_name,
+                action="restart",
+                reason=reason,
+                status="error",
+                initiated_by=initiated_by,
+                error_message="Container not found",
+            )
             raise HTTPException(status_code=404, detail=f"Container {container_name} not found")
         except docker.errors.APIError as e:
+            log_remediation_action(
+                container_name=container_name,
+                action="restart",
+                reason=reason,
+                status="error",
+                initiated_by=initiated_by,
+                error_message=str(e)[:500],
+            )
             raise HTTPException(status_code=500, detail=f"Docker API error: {str(e)}")
 
+    class RemediationRequestFull(BaseModel):
+        container_name: str
+        action: str  # "restart", "stop", "start", "logs"
+        reason: str = "auto-remediation"
+        initiated_by: str = "api"
+
     @router.post("/remediate")
-    async def remediate_container(request: RemediationRequest):
-        """Execute a remediation action on a container."""
+    async def remediate_container(request: RemediationRequestFull):
+        """Execute a remediation action on a container with full audit logging."""
+        start_time = datetime.now(timezone.utc)
+
         # Check constitutional protections
         if request.container_name in PROTECTED_CONTAINERS and request.action in ["stop", "restart"]:
+            log_remediation_action(
+                container_name=request.container_name,
+                action=request.action,
+                reason=request.reason,
+                status="blocked",
+                initiated_by=request.initiated_by,
+                error_message="Constitutionally protected container",
+            )
             raise HTTPException(
                 status_code=403,
                 detail=f"Container {request.container_name} is constitutionally protected."
@@ -434,21 +653,113 @@ def create_container_health_router() -> APIRouter:
             else:
                 raise HTTPException(status_code=400, detail=f"Unknown action: {request.action}")
 
+            duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+
+            # Log successful action (except for log fetching which isn't a remediation)
+            if request.action != "logs":
+                log_id = log_remediation_action(
+                    container_name=request.container_name,
+                    action=request.action,
+                    reason=request.reason,
+                    status="success",
+                    initiated_by=request.initiated_by,
+                    duration_ms=duration_ms,
+                    metadata={"container_id": container.id[:12]},
+                )
+                result["audit_log_id"] = log_id
+
             result["reason"] = request.reason
-            result["timestamp"] = datetime.utcnow().isoformat() + "Z"
+            result["timestamp"] = datetime.now(timezone.utc).isoformat()
+            result["duration_ms"] = round(duration_ms, 2)
             return result
 
         except docker.errors.NotFound:
+            log_remediation_action(
+                container_name=request.container_name,
+                action=request.action,
+                reason=request.reason,
+                status="error",
+                initiated_by=request.initiated_by,
+                error_message="Container not found",
+            )
             raise HTTPException(status_code=404, detail=f"Container {request.container_name} not found")
         except docker.errors.APIError as e:
+            log_remediation_action(
+                container_name=request.container_name,
+                action=request.action,
+                reason=request.reason,
+                status="error",
+                initiated_by=request.initiated_by,
+                error_message=str(e)[:500],
+            )
             raise HTTPException(status_code=500, detail=f"Docker API error: {str(e)}")
 
     @router.get("/remediation-history")
-    async def get_remediation_history():
-        """Get recent remediation actions (placeholder for audit log integration)."""
+    async def get_history(
+        limit: int = 50,
+        container_name: Optional[str] = None,
+        action: Optional[str] = None,
+        status: Optional[str] = None,
+        since: Optional[str] = None,
+    ):
+        """
+        Get remediation audit log history.
+
+        Filters:
+        - container_name: Filter by specific container
+        - action: Filter by action type (restart, stop, start)
+        - status: Filter by status (success, error, blocked)
+        - since: ISO timestamp to filter from
+        """
+        history = get_remediation_history(
+            limit=limit,
+            container_name=container_name,
+            action=action,
+            status=status,
+            since=since,
+        )
+
         return {
-            "message": "Remediation history available via /audit endpoint",
-            "endpoint": "/audit?category=remediation"
+            "count": len(history),
+            "filters": {
+                "container_name": container_name,
+                "action": action,
+                "status": status,
+                "since": since,
+            },
+            "history": history,
         }
+
+    @router.get("/remediation-stats")
+    async def get_stats():
+        """Get statistics from the remediation audit log."""
+        stats = get_remediation_stats()
+        return {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            **stats,
+        }
+
+    @router.get("/list")
+    async def list_containers():
+        """List all running containers with their status."""
+        try:
+            client = docker.from_env()
+            containers = client.containers.list(all=True)
+
+            return {
+                "count": len(containers),
+                "containers": [
+                    {
+                        "name": c.name,
+                        "id": c.id[:12],
+                        "status": c.status,
+                        "image": c.image.tags[0] if c.image.tags else "unknown",
+                        "is_protected": c.name in PROTECTED_CONTAINERS,
+                    }
+                    for c in containers
+                ]
+            }
+        except docker.errors.APIError as e:
+            raise HTTPException(status_code=500, detail=f"Docker API error: {str(e)}")
 
     return router
