@@ -1,0 +1,101 @@
+{
+  "_meta": {
+    "name": "Character Consistency with CLIPVision",
+    "description": "Generates character portraits with style consistency using CLIPVision reference and ControlNet for structure",
+    "version": "1.0.0",
+    "variables": {
+      "POSITIVE_PROMPT": "Character description and emotion",
+      "NEGATIVE_PROMPT": "Quality negatives",
+      "CHARACTER_NAME": "Character name for output",
+      "REFERENCE_IMAGE": "Path to reference image for style consistency",
+      "CONTROLNET_IMAGE": "Path to structure reference (optional)",
+      "SEED": "Random seed for reproducibility",
+      "STRENGTH": "Style influence strength (0.0-1.0)"
+    }
+  },
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "NoobAI-XL-v1.0.safetensors"
+    }
+  },
+  "2": {
+    "class_type": "CLIPVisionLoader",
+    "inputs": {
+      "clip_name": "clip_vision_g.safetensors"
+    }
+  },
+  "3": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{REFERENCE_IMAGE}}"
+    }
+  },
+  "4": {
+    "class_type": "CLIPVisionEncode",
+    "inputs": {
+      "clip_vision": ["2", 0],
+      "image": ["3", 0]
+    }
+  },
+  "5": {
+    "class_type": "unCLIPConditioning",
+    "inputs": {
+      "conditioning": ["7", 0],
+      "clip_vision_output": ["4", 0],
+      "strength": "{{STRENGTH}}",
+      "noise_augmentation": 0.0
+    }
+  },
+  "6": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "{{POSITIVE_PROMPT}}, masterpiece, best quality, highres, detailed face, detailed eyes, anime illustration, visual novel style, consistent character design, clean lines, soft lighting",
+      "clip": ["1", 1]
+    }
+  },
+  "8": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "{{NEGATIVE_PROMPT}}, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, blurry, inconsistent face, multiple characters",
+      "clip": ["1", 1]
+    }
+  },
+  "9": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["1", 0],
+      "positive": ["5", 0],
+      "negative": ["8", 0],
+      "latent_image": ["6", 0],
+      "seed": "{{SEED}}",
+      "steps": 35,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m_sde",
+      "scheduler": "karras",
+      "denoise": 1.0
+    }
+  },
+  "10": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["9", 0],
+      "vae": ["1", 2]
+    }
+  },
+  "11": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["10", 0],
+      "filename_prefix": "{{CHARACTER_NAME}}_consistent"
+    }
+  }
+}

@@ -27,14 +27,16 @@ def _find_templates_dir():
     env_path = os.environ.get("COMFYUI_TEMPLATES_DIR")
     candidates = [
         Path(env_path) if env_path else None,  # Environment override
+        Path("/data/comfyui/workflows"),  # Data directory (mounted in container)
         Path("/app/repo/config/comfyui/workflows"),  # Docker mounted repo
         Path(__file__).parent.parent.parent / "config" / "comfyui" / "workflows",  # Relative to source
-        Path("/data/comfyui/workflows"),  # Data directory fallback
     ]
     for p in candidates:
         if p and p.exists() and p.is_dir():
+            logger.info(f"Using ComfyUI templates from: {p}")
             return p
-    return candidates[2]  # Default fallback
+    logger.warning(f"No ComfyUI templates found, using fallback: {candidates[1]}")
+    return candidates[1]  # Default to data directory
 
 TEMPLATES_DIR = _find_templates_dir()
 

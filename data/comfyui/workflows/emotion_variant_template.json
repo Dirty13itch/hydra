@@ -1,0 +1,76 @@
+{
+  "_meta": {
+    "name": "Emotion Variant Generator",
+    "description": "Generate emotion variants from a base character portrait",
+    "version": "1.0.0",
+    "variables": {
+      "BASE_IMAGE": "Path to base character portrait",
+      "EMOTION": "Target emotion (happy, sad, angry, etc)",
+      "CHARACTER_NAME": "Character name for output",
+      "INTENSITY": "Emotion intensity 0.3-0.8"
+    },
+    "use_case": "Creating emotion sprite variants for visual novels"
+  },
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "NoobAI-XL-v1.0.safetensors"
+    }
+  },
+  "2": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "{{BASE_IMAGE}}"
+    }
+  },
+  "3": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": ["2", 0],
+      "vae": ["1", 2]
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "same character, {{EMOTION}} expression, {{EMOTION}} face, emotional, expressive eyes, anime illustration, visual novel style, detailed face",
+      "clip": ["1", 1]
+    }
+  },
+  "5": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "different character, changed hair, changed clothes, changed body, lowres, bad quality, deformed",
+      "clip": ["1", 1]
+    }
+  },
+  "6": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["1", 0],
+      "positive": ["4", 0],
+      "negative": ["5", 0],
+      "latent_image": ["3", 0],
+      "seed": "{{SEED}}",
+      "steps": 25,
+      "cfg": 6.5,
+      "sampler_name": "dpmpp_2m_sde",
+      "scheduler": "karras",
+      "denoise": "{{INTENSITY}}"
+    }
+  },
+  "7": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["6", 0],
+      "vae": ["1", 2]
+    }
+  },
+  "8": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["7", 0],
+      "filename_prefix": "{{CHARACTER_NAME}}_{{EMOTION}}"
+    }
+  }
+}
