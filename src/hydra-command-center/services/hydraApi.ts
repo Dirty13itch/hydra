@@ -853,6 +853,155 @@ export async function webSearch(query: string, numResults?: number) {
   });
 }
 
+// ============= Unified Ingest API =============
+
+export interface IngestItem {
+  id: string;
+  source: 'upload' | 'clipboard' | 'url' | 'text' | 'api';
+  content_type: 'image' | 'pdf' | 'document' | 'code' | 'url' | 'text' | 'unknown';
+  status: 'pending' | 'processing' | 'extracting' | 'analyzing' | 'storing' | 'completed' | 'failed';
+  progress: number;
+  current_step: string;
+  filename?: string;
+  url?: string;
+  title?: string;
+  summary?: string;
+  key_insights: string[];
+  relevance_to_hydra?: string;
+  action_items: string[];
+  tags: string[];
+  error?: string;
+  created_at?: string;
+  completed_at?: string;
+}
+
+export interface IngestStats {
+  total: number;
+  by_status: Record<string, number>;
+  by_content_type: Record<string, number>;
+  by_source: Record<string, number>;
+}
+
+/**
+ * Upload a file for ingestion (images, PDFs, documents, code)
+ * Uses multipart/form-data for file upload
+ */
+export async function ingestFile(file: File, topic?: string): Promise<ApiResponse<IngestItem>> {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (topic) {
+      formData.append('topic', topic);
+    }
+
+    const response = await fetch(`${HYDRA_API_BASE}/ingest`, {
+      method: 'POST',
+      body: formData,
+      // Note: Don't set Content-Type header - browser will set it with boundary
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return { data, error: null };
+  } catch (err) {
+    console.error('File ingest failed:', err);
+    return { data: null, error: err instanceof Error ? err.message : 'Upload failed' };
+  }
+}
+
+/**
+ * Ingest a clipboard image (base64 encoded)
+ * For Ctrl+V paste support
+ */
+export async function ingestClipboard(imageBase64: string, topic?: string) {
+  return fetchApi<IngestItem>('/ingest/clipboard', {
+    method: 'POST',
+    body: JSON.stringify({
+      image_base64: imageBase64,
+      topic,
+    }),
+  });
+}
+
+/**
+ * Ingest a URL (delegates to research queue)
+ */
+export async function ingestUrlUnified(url: string, topic?: string) {
+  return fetchApi<IngestItem>('/ingest/url', {
+    method: 'POST',
+    body: JSON.stringify({ url, topic }),
+  });
+}
+
+/**
+ * Ingest raw text content
+ */
+export async function ingestTextContent(text: string, title?: string, topic?: string) {
+  return fetchApi<IngestItem>('/ingest/text', {
+    method: 'POST',
+    body: JSON.stringify({ text, title, topic }),
+  });
+}
+
+/**
+ * Get status of an ingest item
+ */
+export async function getIngestStatus(itemId: string) {
+  return fetchApi<IngestItem>(`/ingest/${itemId}`);
+}
+
+/**
+ * List recent ingestions
+ */
+export async function getIngestList(limit?: number) {
+  return fetchApi<IngestItem[]>(`/ingest?limit=${limit || 50}`);
+}
+
+/**
+ * Get ingest statistics
+ */
+export async function getIngestStats() {
+  return fetchApi<IngestStats>('/ingest/stats/summary');
+}
+
+/**
+ * Subscribe to real-time progress updates via SSE
+ * Returns an EventSource that emits progress events
+ */
+export function subscribeToIngestProgress(
+  itemId: string,
+  onProgress: (event: { id: string; progress: number; step: string; status: string }) => void,
+  onComplete?: () => void,
+  onError?: (error: string) => void
+): EventSource {
+  const eventSource = new EventSource(`${HYDRA_API_BASE}/ingest/${itemId}/stream`);
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      onProgress(data);
+
+      if (data.status === 'completed' || data.status === 'failed') {
+        eventSource.close();
+        onComplete?.();
+      }
+    } catch (err) {
+      console.error('Failed to parse SSE event:', err);
+    }
+  };
+
+  eventSource.onerror = (err) => {
+    console.error('SSE connection error:', err);
+    eventSource.close();
+    onError?.('Connection lost');
+  };
+
+  return eventSource;
+}
+
 export default {
   getSystemHealth,
   getContainerHealth,
@@ -879,4 +1028,13 @@ export default {
   getKnowledgeMetrics,
   crawlUrl,
   webSearch,
+  // Unified Ingest
+  ingestFile,
+  ingestClipboard,
+  ingestUrlUnified,
+  ingestTextContent,
+  getIngestStatus,
+  getIngestList,
+  getIngestStats,
+  subscribeToIngestProgress,
 };

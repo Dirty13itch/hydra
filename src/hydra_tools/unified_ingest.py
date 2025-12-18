@@ -532,7 +532,7 @@ class UnifiedIngestPipeline:
 
             if response.status_code == 200:
                 data = response.json()
-                item.image_description = data.get("description", "")
+                item.image_description = data.get("response", "") or data.get("description", "")
                 self._update_progress(item, 50, "description generated")
         except Exception as e:
             logger.warning(f"Vision describe failed: {e}")
@@ -548,7 +548,7 @@ class UnifiedIngestPipeline:
 
             if response.status_code == 200:
                 data = response.json()
-                item.ocr_text = data.get("description", "")
+                item.ocr_text = data.get("response", "") or data.get("text", "") or data.get("description", "")
                 if item.ocr_text:
                     item.extracted_text = item.ocr_text
                     item.extracted_length = len(item.ocr_text)

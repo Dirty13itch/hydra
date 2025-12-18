@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Tabs, Badge, ProgressBar, Modal } from '../components/UIComponents';
+import { IngestDropZone } from '../components/IngestDropZone';
 import { useDashboardData } from '../context/DashboardDataContext';
 import { useNotifications } from '../context/NotificationContext';
-import { Database, Search, Upload, Book, FileText, RefreshCw, Loader2, Link, Globe, FileUp, CheckCircle, XCircle, Clock, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { Database, Search, Upload, Book, FileText, RefreshCw, Loader2, Link, Globe, FileUp, CheckCircle, XCircle, Clock, AlertCircle, Plus, Trash2, Inbox } from 'lucide-react';
 import { searchMemory, ingestUrl as apiIngestUrl, getKnowledgeMetrics, getKnowledgeHealth, crawlUrl } from '../services/hydraApi';
 
 interface IngestionSource {
@@ -19,7 +20,7 @@ interface IngestionSource {
 export const Knowledge: React.FC = () => {
   const { collections, collectionsLoading, refreshCollections } = useDashboardData();
   const { addNotification } = useNotifications();
-  const [activeTab, setActiveTab] = useState('COLLECTIONS');
+  const [activeTab, setActiveTab] = useState('INGEST');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Array<{ id: string; content: string; score: number }>>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -52,6 +53,7 @@ export const Knowledge: React.FC = () => {
   }, []);
 
   const tabs = [
+    { id: 'INGEST', label: 'Ingest', icon: Inbox },
     { id: 'COLLECTIONS', label: 'Collections' },
     { id: 'SOURCES', label: 'Sources' },
     { id: 'SEARCH', label: 'Semantic Search' }
@@ -158,11 +160,39 @@ export const Knowledge: React.FC = () => {
           >
             Re-Index
           </Button>
-          <Button variant="primary" size="sm" className="bg-cyan-600 hover:bg-cyan-500" icon={<Upload size={14} />}>Ingest</Button>
+          <Button
+            variant="primary"
+            size="sm"
+            className="bg-cyan-600 hover:bg-cyan-500"
+            icon={<Upload size={14} />}
+            onClick={() => setActiveTab('INGEST')}
+          >
+            Ingest
+          </Button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
+
+        {activeTab === 'INGEST' && (
+          <div className="space-y-6">
+            <div className="max-w-4xl mx-auto">
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-neutral-300 mb-2">Quick Ingest</h3>
+                <p className="text-sm text-neutral-500">
+                  Drag & drop files, paste screenshots (Ctrl+V), submit URLs, or enter text directly.
+                  Content is automatically processed, analyzed, and stored in the knowledge base.
+                </p>
+              </div>
+              <IngestDropZone
+                onIngestComplete={(item) => {
+                  addNotification('success', 'Ingest Complete', `Processed: ${item.title || item.filename || 'content'}`);
+                  refreshCollections();
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         {activeTab === 'COLLECTIONS' && (
           <div className="space-y-6">

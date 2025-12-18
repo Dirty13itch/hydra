@@ -36,3 +36,7 @@ temp/
 
 # Archives (keep the source, not the archive)
 *.tar.gz
+
+# Runtime data (uploaded files, memory stores)
+data/ingest/
+data/memory/

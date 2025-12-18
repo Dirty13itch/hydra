@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-12-17T20:25:00Z",
+  "generated_at": "2025-12-18T00:00:00Z",
   "version": "2.9.0",
   "phase": "12-ACTIVE",
   "last_session": {
@@ -2142,8 +2142,18 @@
     ],
     "vision_capabilities": {
       "model": "llava:7b",
-      "task_types": ["describe", "question", "ocr", "analyze", "screenshot"],
-      "input_formats": ["base64", "file_path", "file_upload"],
+      "task_types": [
+        "describe",
+        "question",
+        "ocr",
+        "analyze",
+        "screenshot"
+      ],
+      "input_formats": [
+        "base64",
+        "file_path",
+        "file_upload"
+      ],
       "test_latency_ms": 2600,
       "image_size_tested": "3840x2076"
     },
@@ -2160,6 +2170,43 @@
       "services_healthy": 15,
       "services_total": 15,
       "api_version": "2.7.0"
+    }
+  },
+  "session_2025_12_18_ingest_pipeline": {
+    "operator": "Claude Code (Opus 4.5)",
+    "mode": "Feature Development",
+    "timestamp": "2025-12-18T00:00:00Z",
+    "api_version": "2.9.0",
+    "focus": "Unified Ingest Pipeline - Command Center Integration",
+    "completed_tasks": [
+      "Fixed Vision API response field mapping (response vs description)",
+      "Integrated IngestDropZone component into Knowledge.tsx",
+      "Added Ingest button with proper onClick handler",
+      "Rebuilt Command Center Docker image with new code",
+      "Simplified file upload to immediate processing (like ChatGPT)",
+      "Added fetchAndUpdateItem helper for complete analysis data on SSE completion",
+      "Tested end-to-end with PDF file upload",
+      "All 5 SSE subscription points properly fetch full item data"
+    ],
+    "frontend_features": {
+      "component": "IngestDropZone.tsx",
+      "lines": 1044,
+      "capabilities": [
+        "File upload with Browse button",
+        "Drag & drop support",
+        "Clipboard paste (Ctrl+V and button)",
+        "URL ingestion (GitHub, arXiv, web pages)",
+        "Text content ingestion",
+        "Real-time progress via SSE",
+        "LocalStorage history persistence",
+        "Expandable cards with full analysis display",
+        "Copy buttons for all fields",
+        "Clear history with confirmation"
+      ]
+    },
+    "backend_fixes": {
+      "unified_ingest.py": "Lines 535, 551 - Fixed Vision API response field (response vs description)",
+      "docker_rebuild": "Command Center image rebuilt to include new code changes"
     }
   }
 }

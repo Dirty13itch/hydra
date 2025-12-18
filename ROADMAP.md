@@ -7,9 +7,9 @@
 
 ## QUICK STATUS (Update Every Session)
 
-**Last Updated:** 2025-12-17T19:30:00Z
+**Last Updated:** 2025-12-18T00:00:00Z
 **Architecture Score:** 99/100
-**API Version:** 2.5.0 (370+ endpoints, API key auth)
+**API Version:** 2.9.0 (370+ endpoints, API key auth, vision, ingest)
 **Benchmark Score:** 96.5%
 
 | Component | Status |
@@ -27,6 +27,7 @@
 | Predictive Maintenance | ✅ Prometheus recording rules active |
 | Homepage Integration | ✅ /services/unified with 30 services, SSE real-time updates |
 | Command Center | ✅ ServiceGrid with SSE, favicon, live status indicator |
+| Knowledge Ingest | ✅ File/URL/text/clipboard ingestion with AI analysis |
 | n8n Automation | ✅ Chapter processor workflow for visual novel pipeline |
 
 **Active Priorities:**
@@ -57,6 +58,8 @@
 - [x] Character Portrait Generation - DONE (2025-12-17, 21 portraits via ComfyUI batch, 100% coverage)
 - [x] Chapter Processor Workflow Deploy - DONE (2025-12-17, n8n workflow active at /webhook/empire/process-chapter)
 - [x] Portrait Reference Linking - DONE (2025-12-17, all 22 characters linked to reference images)
+- [x] Unified Ingest Pipeline UI - DONE (2025-12-18, IngestDropZone with file/URL/text/clipboard support)
+- [x] Vision API Response Fix - DONE (2025-12-18, fixed response field mapping in unified_ingest.py)
 
 ---
 
