@@ -656,7 +656,7 @@ def create_dashboard_router() -> APIRouter:
                         "util": int(float(metrics.get("utilization", 0))),
                         "vram": round(float(metrics.get("memory_used", 0)) / (1024**3), 1),
                         "totalVram": round(float(metrics.get("memory_total", 0)) / (1024**3), 0),
-                        "temp": int(float(metrics.get("temperature", 0))),
+                        "temp": int((float(metrics.get("temperature", 0)) * 9/5) + 32),  # Fahrenheit
                         "power": int(float(metrics.get("power", 0))),  # already in watts
                     })
 
@@ -708,7 +708,7 @@ def create_dashboard_router() -> APIRouter:
                         "util": int(float(metrics.get("utilization", 0))),
                         "vram": round(mem_used_mb / 1024, 1),        # MB to GB
                         "totalVram": round(mem_total_mb / 1024, 0),  # MB to GB
-                        "temp": int(float(metrics.get("temperature", 0))),
+                        "temp": int((float(metrics.get("temperature", 0)) * 9/5) + 32),  # Fahrenheit
                         "power": int(float(metrics.get("power", 0))),
                     })
 

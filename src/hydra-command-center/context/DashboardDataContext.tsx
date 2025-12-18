@@ -254,17 +254,14 @@ export const DashboardDataProvider: React.FC<{ children: React.ReactNode }> = ({
     refreshAll();
   }, [refreshAll]);
 
-  // Auto-refresh nodes every 30 seconds (for GPU metrics)
+  // Auto-refresh all data every 5 seconds
   useEffect(() => {
-    const interval = setInterval(refreshNodes, 30000);
+    const interval = setInterval(() => {
+      // Refresh core data together for unified updates
+      Promise.all([refreshNodes(), refreshStats(), refreshServices()]);
+    }, 5000);
     return () => clearInterval(interval);
-  }, [refreshNodes]);
-
-  // Auto-refresh stats every 15 seconds
-  useEffect(() => {
-    const interval = setInterval(refreshStats, 15000);
-    return () => clearInterval(interval);
-  }, [refreshStats]);
+  }, [refreshNodes, refreshStats, refreshServices]);
 
   return (
     <DashboardDataContext.Provider

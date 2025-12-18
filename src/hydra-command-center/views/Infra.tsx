@@ -201,8 +201,8 @@ export const Infra: React.FC = () => {
                           <div key={idx} className="bg-neutral-900/50 rounded p-3 border border-neutral-800">
                             <div className="flex justify-between items-center mb-2">
                               <span className="font-semibold text-sm text-neutral-300">{gpu.name}</span>
-                              <span className={`text-xs font-mono ${gpu.temp > 80 ? 'text-red-400' : 'text-neutral-500'}`}>
-                                {gpu.temp}°C • {gpu.power}W
+                              <span className={`text-xs font-mono ${gpu.temp > 176 ? 'text-red-400' : 'text-neutral-500'}`}>
+                                {gpu.temp}°F • {gpu.power}W
                               </span>
                             </div>
                             <div className="space-y-3">

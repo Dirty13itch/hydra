@@ -5,9 +5,8 @@ import { Artifact } from '../types';
 import { useAgents } from '../context/AgentContext';
 import { useDashboardData } from '../context/DashboardDataContext';
 
-// Refresh intervals in seconds (should match DashboardDataContext)
-const STATS_REFRESH_INTERVAL = 15;
-const NODES_REFRESH_INTERVAL = 30;
+// Refresh interval in seconds (should match DashboardDataContext)
+const REFRESH_INTERVAL = 5;
 
 export const Mission: React.FC = () => {
   const { agents, isLoading: agentsLoading, isConnected } = useAgents();
@@ -15,35 +14,22 @@ export const Mission: React.FC = () => {
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
 
   // Update countdown state
-  const [statsCountdown, setStatsCountdown] = useState(STATS_REFRESH_INTERVAL);
-  const [nodesCountdown, setNodesCountdown] = useState(NODES_REFRESH_INTERVAL);
+  const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
-  const statsTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const nodesTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Reset countdowns when data changes
+  // Reset countdown when data changes
   useEffect(() => {
     setLastUpdate(new Date());
-    setStatsCountdown(STATS_REFRESH_INTERVAL);
-  }, [stats]);
+    setCountdown(REFRESH_INTERVAL);
+  }, [stats, nodes]);
 
+  // Countdown timer
   useEffect(() => {
-    setNodesCountdown(NODES_REFRESH_INTERVAL);
-  }, [nodes]);
-
-  // Countdown timers
-  useEffect(() => {
-    statsTimerRef.current = setInterval(() => {
-      setStatsCountdown(prev => (prev > 0 ? prev - 1 : STATS_REFRESH_INTERVAL));
+    timerRef.current = setInterval(() => {
+      setCountdown(prev => (prev > 0 ? prev - 1 : REFRESH_INTERVAL));
     }, 1000);
-    return () => { if (statsTimerRef.current) clearInterval(statsTimerRef.current); };
-  }, []);
-
-  useEffect(() => {
-    nodesTimerRef.current = setInterval(() => {
-      setNodesCountdown(prev => (prev > 0 ? prev - 1 : NODES_REFRESH_INTERVAL));
-    }, 1000);
-    return () => { if (nodesTimerRef.current) clearInterval(nodesTimerRef.current); };
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
   // Collect all GPUs from all nodes
@@ -132,11 +118,8 @@ export const Mission: React.FC = () => {
           <div className="flex items-center gap-3 text-xs font-mono text-neutral-500">
             <span>Updated: {lastUpdate.toLocaleTimeString()}</span>
             <span className="text-neutral-600">|</span>
-            <span className={statsCountdown <= 3 ? 'text-cyan-400' : ''}>
-              Stats: {statsCountdown}s
-            </span>
-            <span className={nodesCountdown <= 3 ? 'text-cyan-400' : ''}>
-              GPUs: {nodesCountdown}s
+            <span className={countdown <= 2 ? 'text-cyan-400 animate-pulse' : ''}>
+              Next: {countdown}s
             </span>
           </div>
         </div>
@@ -214,8 +197,8 @@ export const Mission: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {allGpus.map((gpu, idx) => {
               const vramPercent = (gpu.vram / gpu.totalVram) * 100;
-              const isHot = gpu.temp > 75;
-              const isWarm = gpu.temp > 60;
+              const isHot = gpu.temp > 167;  // 75°C in Fahrenheit
+              const isWarm = gpu.temp > 140; // 60°C in Fahrenheit
               return (
                 <Card key={idx} className="bg-surface-dim border-neutral-800/50 hover:border-purple-500/30 transition-colors">
                   <div className="flex justify-between items-start mb-2">
@@ -225,7 +208,7 @@ export const Mission: React.FC = () => {
                     </div>
                     <div className={`flex items-center gap-1 text-xs font-mono ${isHot ? 'text-red-400' : isWarm ? 'text-amber-400' : 'text-neutral-400'}`}>
                       <Thermometer size={12} />
-                      {gpu.temp}°C
+                      {gpu.temp}°F
                     </div>
                   </div>
 
