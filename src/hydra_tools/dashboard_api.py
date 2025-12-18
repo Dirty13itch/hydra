@@ -599,7 +599,12 @@ def create_dashboard_router() -> APIRouter:
     # ============= Infrastructure =============
 
     async def fetch_prometheus_gpu_metrics() -> Dict[str, List[Dict]]:
-        """Fetch GPU metrics from Prometheus for all nodes"""
+        """Fetch GPU metrics from Prometheus for all nodes.
+
+        Handles two metric formats:
+        - nvidia_gpu_* metrics from hydra-compute (custom nvidia-smi exporter)
+        - DCGM_FI_* metrics from hydra-ai (DCGM exporter)
+        """
         import httpx
 
         gpu_data = {"hydra-ai": [], "hydra-compute": []}
@@ -607,8 +612,8 @@ def create_dashboard_router() -> APIRouter:
 
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                # Fetch all GPU metrics in parallel
-                queries = {
+                # === Fetch nvidia_gpu_* metrics (hydra-compute) ===
+                nvidia_queries = {
                     "memory_used": "nvidia_gpu_memory_used_bytes",
                     "memory_total": "nvidia_gpu_memory_total_bytes",
                     "utilization": "nvidia_gpu_utilization_gpu",
@@ -616,19 +621,19 @@ def create_dashboard_router() -> APIRouter:
                     "power": "nvidia_gpu_power_usage_milliwatts",
                 }
 
-                results = {}
-                for metric_name, query in queries.items():
+                nvidia_results = {}
+                for metric_name, query in nvidia_queries.items():
                     try:
                         resp = await client.get(prometheus_url, params={"query": query})
                         if resp.status_code == 200:
                             data = resp.json()
-                            results[metric_name] = data.get("data", {}).get("result", [])
+                            nvidia_results[metric_name] = data.get("data", {}).get("result", [])
                     except Exception:
-                        results[metric_name] = []
+                        nvidia_results[metric_name] = []
 
-                # Group metrics by GPU
-                gpu_metrics = {}
-                for metric_name, result_list in results.items():
+                # Process nvidia_gpu_* metrics
+                nvidia_gpu_metrics = {}
+                for metric_name, result_list in nvidia_results.items():
                     for item in result_list:
                         metric = item.get("metric", {})
                         gpu_id = metric.get("gpu", "0")
@@ -636,27 +641,75 @@ def create_dashboard_router() -> APIRouter:
                         name = metric.get("name", "Unknown GPU").replace("_", " ")
                         value = item.get("value", [None, "0"])[1]
 
-                        # Determine node from instance
-                        node = "hydra-compute" if "203" in instance else "hydra-ai" if "250" in instance else None
+                        node = "hydra-compute" if "203" in instance else None
                         if not node:
                             continue
 
                         key = f"{node}_{gpu_id}"
-                        if key not in gpu_metrics:
-                            gpu_metrics[key] = {"node": node, "name": name, "gpu_id": gpu_id}
+                        if key not in nvidia_gpu_metrics:
+                            nvidia_gpu_metrics[key] = {"node": node, "name": name, "gpu_id": gpu_id}
+                        nvidia_gpu_metrics[key][metric_name] = value
 
-                        gpu_metrics[key][metric_name] = value
-
-                # Convert to node-grouped format
-                for key, metrics in gpu_metrics.items():
-                    node = metrics["node"]
-                    gpu_data[node].append({
+                for key, metrics in nvidia_gpu_metrics.items():
+                    gpu_data["hydra-compute"].append({
                         "name": metrics.get("name", "Unknown GPU"),
                         "util": int(float(metrics.get("utilization", 0))),
                         "vram": round(float(metrics.get("memory_used", 0)) / (1024**3), 1),
                         "totalVram": round(float(metrics.get("memory_total", 0)) / (1024**3), 0),
                         "temp": int(float(metrics.get("temperature", 0))),
-                        "power": int(float(metrics.get("power", 0)) / 1000),  # mW to W
+                        "power": int(float(metrics.get("power", 0)) / 1000),
+                    })
+
+                # === Fetch DCGM_FI_* metrics (hydra-ai) ===
+                dcgm_queries = {
+                    "memory_used": "DCGM_FI_DEV_FB_USED",        # in MB
+                    "memory_total": "DCGM_FI_DEV_FB_FREE",       # in MB (will add to used)
+                    "utilization": "DCGM_FI_DEV_GPU_UTIL",       # percentage
+                    "temperature": "DCGM_FI_DEV_GPU_TEMP",       # celsius
+                    "power": "DCGM_FI_DEV_POWER_USAGE",          # watts
+                }
+
+                dcgm_results = {}
+                for metric_name, query in dcgm_queries.items():
+                    try:
+                        resp = await client.get(prometheus_url, params={"query": query})
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            dcgm_results[metric_name] = data.get("data", {}).get("result", [])
+                    except Exception:
+                        dcgm_results[metric_name] = []
+
+                # Process DCGM metrics
+                dcgm_gpu_metrics = {}
+                for metric_name, result_list in dcgm_results.items():
+                    for item in result_list:
+                        metric = item.get("metric", {})
+                        gpu_id = metric.get("gpu", "0")
+                        instance = metric.get("instance", "")
+                        name = metric.get("modelName", "Unknown GPU").replace("_", " ")
+                        value = item.get("value", [None, "0"])[1]
+
+                        node = "hydra-ai" if "250" in instance else None
+                        if not node:
+                            continue
+
+                        key = f"{node}_{gpu_id}"
+                        if key not in dcgm_gpu_metrics:
+                            dcgm_gpu_metrics[key] = {"node": node, "name": name, "gpu_id": gpu_id}
+                        dcgm_gpu_metrics[key][metric_name] = value
+
+                for key, metrics in dcgm_gpu_metrics.items():
+                    mem_used_mb = float(metrics.get("memory_used", 0))
+                    mem_free_mb = float(metrics.get("memory_total", 0))
+                    mem_total_mb = mem_used_mb + mem_free_mb
+
+                    gpu_data["hydra-ai"].append({
+                        "name": metrics.get("name", "Unknown GPU"),
+                        "util": int(float(metrics.get("utilization", 0))),
+                        "vram": round(mem_used_mb / 1024, 1),        # MB to GB
+                        "totalVram": round(mem_total_mb / 1024, 0),  # MB to GB
+                        "temp": int(float(metrics.get("temperature", 0))),
+                        "power": int(float(metrics.get("power", 0))),
                     })
 
         except Exception as e:
