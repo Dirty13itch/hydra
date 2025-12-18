@@ -60,6 +60,7 @@
 - [x] Portrait Reference Linking - DONE (2025-12-17, all 22 characters linked to reference images)
 - [x] Unified Ingest Pipeline UI - DONE (2025-12-18, IngestDropZone with file/URL/text/clipboard support)
 - [x] Vision API Response Fix - DONE (2025-12-18, fixed response field mapping in unified_ingest.py)
+- [x] Dashboard GPU Metrics Fix - DONE (2025-12-18, Prometheus queries for real VRAM/power/temp)
 
 ---
 
