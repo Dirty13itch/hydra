@@ -204,10 +204,15 @@ class BenchmarkRunner:
         self.litellm_api_key = litellm_api_key or os.getenv(
             "LITELLM_API_KEY", "sk-PyKRr5POL0tXJEMOEGnliWk6doMb31k7"
         )
+        self.hydra_api_key = os.getenv("HYDRA_API_KEY", "hydra-dev-key")
         self._client = None
         self._llm_headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.litellm_api_key}",
+        }
+        self._hydra_headers = {
+            "Content-Type": "application/json",
+            "X-API-Key": self.hydra_api_key,
         }
 
     @property
@@ -518,6 +523,7 @@ Only output the Python code, no explanation."""
             try:
                 response = await self.client.post(
                     f"{self.hydra_api_url}/search/query",
+                    headers=self._hydra_headers,
                     json={"query": test["query"], "collection": "hydra_knowledge", "limit": 3},
                     timeout=30,
                 )
