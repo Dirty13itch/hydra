@@ -146,6 +146,7 @@ EXEMPT_PREFIXES = (
     "/diagnosis",         # Diagnosis endpoints for Command Center
     "/hardware",          # Hardware/GPU info for Command Center
     "/self-improvement",  # Benchmark/metrics for Command Center
+    "/letta-bridge",      # LiteLLM health checks for Letta proxy
 )
 
 
