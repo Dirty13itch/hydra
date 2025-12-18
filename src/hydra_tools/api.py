@@ -141,6 +141,7 @@ EXEMPT_PREFIXES = (
     "/services",   # Service status endpoints for UI
     "/home",       # Home automation endpoints
     "/ingest",     # Knowledge ingest endpoints
+    "/health",     # Health checks (used internally by dashboard)
 )
 
 
