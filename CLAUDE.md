@@ -43,12 +43,16 @@ Read these BEFORE implementing changes:
 | `knowledge/models.md` | Model selection, downloads |
 | `knowledge/observability.md` | Prometheus, Grafana, Loki |
 | `knowledge/automation.md` | n8n, workflows |
+| `knowledge/knowledge-ingest.md` | Unified ingest pipeline, file/URL/clipboard |
 
 ## Current Phase
 
-**Phase 11 COMPLETE** - Self-improvement tools at http://192.168.1.244:8700
+**Phase 12 ACTIVE** - Creative Pipeline + Knowledge Ingest at http://192.168.1.244:8700
 
-See `docs/phase-11-self-improvement.md` for details.
+- Character system with 22 queens and voice profiles
+- Unified ingest pipeline (file/URL/clipboard/text)
+- Vision API (LLaVA 7B)
+- Command Center at http://192.168.1.244:3210
 
 ## Key APIs
 
