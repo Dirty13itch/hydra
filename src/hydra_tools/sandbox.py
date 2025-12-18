@@ -139,8 +139,9 @@ class SandboxManager:
         if host_data_dir:
             self.host_data_dir = Path(host_data_dir)
         else:
-            # Default: /data in container maps to /mnt/user/appdata/hydra-stack/data on host
-            self.host_data_dir = Path("/mnt/user/appdata/hydra-stack/data/sandbox")
+            # Host path for sandbox - must match the volume mount in docker-compose
+            # /mnt/user/appdata/hydra-tools/sandbox is mounted at same path in container
+            self.host_data_dir = Path("/mnt/user/appdata/hydra-tools/sandbox")
 
         # Docker client
         self._client = None

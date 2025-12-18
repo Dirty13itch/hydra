@@ -697,6 +697,263 @@ class SelfImprovementEngine:
 
         return {"error": "Archive entry not found or rollback not available"}
 
+    # =========================================================================
+    # DGM Enhancement: Peer Review Mechanism
+    # =========================================================================
+
+    async def peer_review_proposal(
+        self,
+        proposal_id: str,
+        reviewing_model: str = "qwen2.5:7b",
+    ) -> Dict[str, Any]:
+        """
+        Have a second agent review an improvement proposal.
+
+        DGM Pattern: Peer review helps catch issues missed by the proposing agent.
+        """
+        import httpx
+
+        proposal = self.archive.get_proposal(proposal_id)
+        if not proposal:
+            return {"error": "Proposal not found"}
+
+        if proposal.status != ImprovementStatus.VALIDATED.value:
+            return {"error": "Proposal must be validated before peer review"}
+
+        # Build review prompt
+        review_prompt = f"""You are a senior code reviewer for the Hydra autonomous system.
+Review this improvement proposal and assess its safety and quality.
+
+PROPOSAL: {proposal.title}
+Description: {proposal.description}
+Expected Improvement: {proposal.expected_improvement}
+
+Test Results:
+- Baseline scores: {json.dumps(proposal.baseline_scores)}
+- Post-change scores: {json.dumps(proposal.test_scores)}
+
+FILES TO MODIFY:
+{chr(10).join(f"- {f}" for f in proposal.target_files)}
+
+CHANGES:
+{json.dumps(proposal.proposed_changes, indent=2)[:4000]}
+
+Evaluate:
+1. Safety: Could this break existing functionality?
+2. Quality: Is the change well-structured?
+3. Impact: Does the improvement justify the risk?
+4. Rollback: Can this be easily reverted?
+
+Respond with JSON:
+{{
+  "approved": true/false,
+  "confidence": 0.0-1.0,
+  "safety_score": 0.0-1.0,
+  "quality_score": 0.0-1.0,
+  "concerns": ["list", "of", "concerns"],
+  "recommendations": ["list", "of", "recommendations"],
+  "summary": "Brief review summary"
+}}"""
+
+        try:
+            ollama_url = os.environ.get("OLLAMA_URL", "http://192.168.1.203:11434")
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(
+                    f"{ollama_url}/v1/chat/completions",
+                    json={
+                        "model": reviewing_model,
+                        "messages": [{"role": "user", "content": review_prompt}],
+                        "max_tokens": 1024,
+                    },
+                    headers={"Content-Type": "application/json"}
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    content = data["choices"][0]["message"]["content"]
+
+                    # Parse JSON from response
+                    import re
+                    json_match = re.search(r'\{[^{}]*\}', content, re.DOTALL)
+                    if json_match:
+                        review_result = json.loads(json_match.group())
+                        review_result["proposal_id"] = proposal_id
+                        review_result["reviewer_model"] = reviewing_model
+                        review_result["reviewed_at"] = datetime.utcnow().isoformat()
+
+                        # Store review result
+                        if not hasattr(proposal, "peer_reviews"):
+                            proposal.peer_reviews = []
+                        proposal.peer_reviews = proposal.peer_reviews if hasattr(proposal, "peer_reviews") else []
+
+                        logger.info(f"Peer review completed for {proposal_id}: approved={review_result.get('approved')}")
+                        return review_result
+
+                return {"error": "Failed to parse review response", "raw": content[:500]}
+
+        except Exception as e:
+            logger.error(f"Peer review failed: {e}")
+            return {"error": str(e)}
+
+    # =========================================================================
+    # DGM Enhancement: Human-in-Loop Gates
+    # =========================================================================
+
+    def requires_human_approval(
+        self,
+        proposal_id: str,
+        improvement_threshold: float = 0.05,
+    ) -> Dict[str, Any]:
+        """
+        Check if a proposal requires human approval before deployment.
+
+        DGM Safety Protocol:
+        - Improvements > 5% require human review
+        - Changes to critical files require human review
+        - First deployment to production requires human review
+        """
+        proposal = self.archive.get_proposal(proposal_id)
+        if not proposal:
+            return {"error": "Proposal not found"}
+
+        reasons = []
+        requires_approval = False
+
+        # Check improvement magnitude
+        for benchmark_id, baseline in proposal.baseline_scores.items():
+            test_score = proposal.test_scores.get(benchmark_id, baseline)
+            if baseline > 0:
+                improvement = (test_score - baseline) / baseline
+                if improvement > improvement_threshold:
+                    requires_approval = True
+                    reasons.append(f"Large improvement in {benchmark_id}: {improvement:.1%}")
+
+        # Check for critical files
+        critical_patterns = [
+            "constitution",
+            "auth",
+            "security",
+            "database",
+            "config",
+            "api.py",
+        ]
+        for file_path in proposal.target_files:
+            for pattern in critical_patterns:
+                if pattern in file_path.lower():
+                    requires_approval = True
+                    reasons.append(f"Modifies critical file: {file_path}")
+                    break
+
+        # Check if this is the first deployment
+        if len(self.archive.archive) == 0:
+            requires_approval = True
+            reasons.append("First deployment to production")
+
+        return {
+            "proposal_id": proposal_id,
+            "requires_human_approval": requires_approval,
+            "reasons": reasons,
+            "improvement_threshold": improvement_threshold,
+        }
+
+    def approve_for_deployment(
+        self,
+        proposal_id: str,
+        approver: str = "human",
+        approval_notes: str = "",
+    ) -> Dict[str, Any]:
+        """
+        Approve a proposal for deployment after human review.
+        """
+        proposal = self.archive.get_proposal(proposal_id)
+        if not proposal:
+            return {"error": "Proposal not found"}
+
+        if proposal.status != ImprovementStatus.VALIDATED.value:
+            return {"error": "Proposal must be validated before approval"}
+
+        # Store approval metadata
+        approval = {
+            "approver": approver,
+            "approved_at": datetime.utcnow().isoformat(),
+            "notes": approval_notes,
+        }
+
+        logger.info(f"Proposal {proposal_id} approved for deployment by {approver}")
+
+        return {
+            "proposal_id": proposal_id,
+            "status": "approved",
+            "approval": approval,
+            "ready_for_deployment": True,
+        }
+
+    # =========================================================================
+    # DGM Enhancement: Skill Extraction from Improvements
+    # =========================================================================
+
+    async def extract_improvement_skill(
+        self,
+        proposal_id: str,
+    ) -> Dict[str, Any]:
+        """
+        Extract a reusable skill from a successful improvement.
+
+        When an improvement works, learn from it so similar improvements
+        can be made faster in the future.
+        """
+        import httpx
+
+        proposal = self.archive.get_proposal(proposal_id)
+        if not proposal or proposal.status != ImprovementStatus.DEPLOYED.value:
+            return {"error": "Only deployed improvements can be converted to skills"}
+
+        # Calculate improvement metrics
+        improvements = {}
+        for benchmark_id, baseline in proposal.baseline_scores.items():
+            test_score = proposal.test_scores.get(benchmark_id, baseline)
+            if baseline > 0:
+                improvements[benchmark_id] = (test_score - baseline) / baseline
+
+        skill_data = {
+            "name": f"improvement_{proposal.title.lower().replace(' ', '_')[:30]}",
+            "description": f"Improvement pattern: {proposal.description}",
+            "category": "self_improvement",
+            "trigger_conditions": [
+                f"Need to improve {b}" for b in proposal.benchmark_targets[:3]
+            ],
+            "steps": [
+                f"Identify target files: {', '.join(proposal.target_files[:3])}",
+                f"Apply changes: {proposal.expected_improvement}",
+                "Run benchmark suite",
+                "Validate improvement",
+                "Deploy if successful"
+            ],
+            "tags": ["dgm", "self-improvement", "automated"],
+        }
+
+        # Store as skill
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    "http://localhost:8700/skills/library",
+                    json=skill_data
+                )
+
+                if response.status_code in [200, 201]:
+                    result = response.json()
+                    logger.info(f"Extracted skill from improvement {proposal_id}: {result.get('skill_id')}")
+                    return {
+                        "status": "extracted",
+                        "skill_id": result.get("skill_id"),
+                        "improvements": improvements,
+                    }
+
+        except Exception as e:
+            logger.warning(f"Failed to extract skill: {e}")
+
+        return {"status": "extraction_failed", "skill_data": skill_data}
+
     def get_status(self) -> Dict[str, Any]:
         """Get current self-improvement status"""
         baseline = self.benchmarks.get_baseline()
@@ -806,6 +1063,126 @@ def create_self_improvement_router():
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         return result
+
+    # =========================================================================
+    # DGM Enhancement Endpoints
+    # =========================================================================
+
+    @router.post("/proposals/{proposal_id}/peer-review")
+    async def peer_review(proposal_id: str, reviewing_model: str = "qwen2.5:7b"):
+        """
+        Have a second agent review an improvement proposal.
+
+        DGM Pattern: Peer review helps catch issues missed by the proposing agent.
+        """
+        result = await engine.peer_review_proposal(proposal_id, reviewing_model)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+
+    @router.get("/proposals/{proposal_id}/requires-approval")
+    async def check_requires_approval(proposal_id: str, threshold: float = 0.05):
+        """
+        Check if a proposal requires human approval before deployment.
+
+        DGM Safety Protocol:
+        - Improvements > 5% require human review
+        - Changes to critical files require human review
+        - First deployment to production requires human review
+        """
+        result = engine.requires_human_approval(proposal_id, threshold)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+
+    @router.post("/proposals/{proposal_id}/approve")
+    async def approve_proposal(proposal_id: str, approver: str = "human", notes: str = ""):
+        """
+        Approve a proposal for deployment after human review.
+        """
+        result = engine.approve_for_deployment(proposal_id, approver, notes)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+
+    @router.post("/proposals/{proposal_id}/extract-skill")
+    async def extract_skill(proposal_id: str):
+        """
+        Extract a reusable skill from a successfully deployed improvement.
+
+        When an improvement works, learn from it so similar improvements
+        can be made faster in the future.
+        """
+        result = await engine.extract_improvement_skill(proposal_id)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+
+    @router.get("/dgm-workflow")
+    async def get_dgm_workflow():
+        """
+        Get the full DGM self-improvement workflow documentation.
+        """
+        return {
+            "workflow": "Darwin Gödel Machine Self-Improvement",
+            "steps": [
+                {
+                    "step": 1,
+                    "name": "Benchmark",
+                    "endpoint": "POST /self-improvement/benchmark",
+                    "description": "Run full benchmark suite to establish baseline"
+                },
+                {
+                    "step": 2,
+                    "name": "Propose",
+                    "endpoint": "POST /self-improvement/analyze-and-propose",
+                    "description": "Use LLM to analyze weak areas and propose improvements"
+                },
+                {
+                    "step": 3,
+                    "name": "Test",
+                    "endpoint": "POST /self-improvement/proposals/{id}/test",
+                    "description": "Test proposal in sandbox with benchmark validation"
+                },
+                {
+                    "step": 4,
+                    "name": "Peer Review",
+                    "endpoint": "POST /self-improvement/proposals/{id}/peer-review",
+                    "description": "Have second agent review the improvement"
+                },
+                {
+                    "step": 5,
+                    "name": "Check Approval",
+                    "endpoint": "GET /self-improvement/proposals/{id}/requires-approval",
+                    "description": "Check if human approval is needed"
+                },
+                {
+                    "step": 6,
+                    "name": "Approve",
+                    "endpoint": "POST /self-improvement/proposals/{id}/approve",
+                    "description": "Human approves (if required)"
+                },
+                {
+                    "step": 7,
+                    "name": "Deploy",
+                    "endpoint": "POST /self-improvement/proposals/{id}/deploy",
+                    "description": "Deploy validated improvement"
+                },
+                {
+                    "step": 8,
+                    "name": "Extract Skill",
+                    "endpoint": "POST /self-improvement/proposals/{id}/extract-skill",
+                    "description": "Learn from successful improvement"
+                },
+            ],
+            "safety_gates": [
+                "Sandbox testing required before deployment",
+                "Peer review for all validated proposals",
+                "Human approval for >5% improvements",
+                "Human approval for critical file changes",
+                "Automatic rollback on post-deploy failures",
+            ],
+        }
 
     @router.post("/analyze-and-propose")
     async def analyze_and_propose():

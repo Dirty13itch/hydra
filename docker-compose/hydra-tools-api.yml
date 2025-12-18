@@ -25,6 +25,12 @@ services:
       - hydra-tools-data:/data
       # Access to cluster shared storage (optional)
       - /mnt/user/appdata/hydra-stack/data:/mnt/data:rw
+      # Docker socket for sandbox execution (sibling containers)
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Sandbox temp directory (must be host-accessible for sibling container mounts)
+      - /mnt/user/appdata/hydra-tools/sandbox:/mnt/user/appdata/hydra-tools/sandbox
+      # Source code for self-improvement (read-only)
+      - /mnt/user/appdata/hydra-dev:/app/repo:ro
     networks:
       - hydra-network
     healthcheck:

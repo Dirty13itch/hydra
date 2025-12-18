@@ -76,6 +76,7 @@ class ConstitutionalEnforcer:
         if constitution_path is None:
             # Default locations to search (including Docker mount path)
             search_paths = [
+                "/data/CONSTITUTION.yaml",  # Primary: data volume mount
                 "/app/repo/CONSTITUTION.yaml",  # Docker mount in hydra-tools-api
                 "/mnt/user/appdata/hydra-dev/CONSTITUTION.yaml",  # Host path
                 "./CONSTITUTION.yaml",

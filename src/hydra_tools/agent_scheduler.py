@@ -166,6 +166,102 @@ class ResourceLimits:
 
 
 # =============================================================================
+# AIOS Kernel Enhancements
+# =============================================================================
+
+@dataclass
+class AgentToolACL:
+    """Tool access control list for an agent."""
+    agent_type: str
+    allowed_tools: List[str] = field(default_factory=list)
+    denied_tools: List[str] = field(default_factory=list)
+    allow_all: bool = False
+
+    def can_use_tool(self, tool_name: str) -> bool:
+        """Check if agent can use a specific tool."""
+        if self.allow_all:
+            return tool_name not in self.denied_tools
+        return tool_name in self.allowed_tools and tool_name not in self.denied_tools
+
+
+@dataclass
+class AgentMemoryIsolation:
+    """Memory isolation boundaries for an agent."""
+    agent_id: str
+    namespace: str  # Unique namespace for agent's memory
+    allowed_read_namespaces: List[str] = field(default_factory=list)  # Can read from these
+    allowed_write_namespaces: List[str] = field(default_factory=list)  # Can write to these
+    shared_regions: List[str] = field(default_factory=list)  # Explicit opt-in shared regions
+
+    def can_read(self, namespace: str) -> bool:
+        """Check if agent can read from a namespace."""
+        return namespace == self.namespace or namespace in self.allowed_read_namespaces or namespace in self.shared_regions
+
+    def can_write(self, namespace: str) -> bool:
+        """Check if agent can write to a namespace."""
+        return namespace == self.namespace or namespace in self.allowed_write_namespaces or namespace in self.shared_regions
+
+
+@dataclass
+class SharedMemoryRegion:
+    """A shared memory region for multi-agent collaboration."""
+    region_id: str
+    name: str
+    description: str
+    owner_agent: Optional[str] = None
+    allowed_agents: List[str] = field(default_factory=list)  # Empty = all agents
+    data: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    last_accessed: Optional[datetime] = None
+
+    def can_access(self, agent_id: str) -> bool:
+        """Check if agent can access this region."""
+        if not self.allowed_agents:  # Empty = all agents
+            return True
+        return agent_id in self.allowed_agents or agent_id == self.owner_agent
+
+
+# Default Tool ACLs for built-in agent types
+DEFAULT_TOOL_ACLS = {
+    "research": AgentToolACL(
+        agent_type="research",
+        allowed_tools=["searxng_search", "firecrawl_scrape", "memory_read", "knowledge_search", "ingest_document"],
+        denied_tools=["sandbox_execute", "container_restart", "constitution_modify"],
+    ),
+    "monitoring": AgentToolACL(
+        agent_type="monitoring",
+        allowed_tools=["health_check", "prometheus_query", "container_status", "gpu_status", "memory_read"],
+        denied_tools=["sandbox_execute", "constitution_modify"],
+    ),
+    "maintenance": AgentToolACL(
+        agent_type="maintenance",
+        allowed_tools=["docker_prune", "qdrant_optimize", "cache_clear", "log_rotate"],
+        denied_tools=["constitution_modify", "database_drop"],
+    ),
+    "llm": AgentToolACL(
+        agent_type="llm",
+        allowed_tools=["llm_inference", "memory_read", "memory_write", "knowledge_search"],
+        denied_tools=["sandbox_execute", "constitution_modify"],
+    ),
+    "character_creation": AgentToolACL(
+        agent_type="character_creation",
+        allowed_tools=["llm_inference", "character_create", "comfyui_queue", "memory_write"],
+        denied_tools=["sandbox_execute", "constitution_modify"],
+    ),
+    "deep_research": AgentToolACL(
+        agent_type="deep_research",
+        allowed_tools=["searxng_search", "firecrawl_scrape", "llm_inference", "memory_read", "memory_write", "ingest_document"],
+        denied_tools=["sandbox_execute", "constitution_modify"],
+    ),
+    "coding": AgentToolACL(
+        agent_type="coding",
+        allowed_tools=["sandbox_execute", "git_operations", "file_read", "file_write", "llm_inference"],
+        denied_tools=["constitution_modify", "database_drop", "network_modify"],
+    ),
+}
+
+
+# =============================================================================
 # Agent Scheduler
 # =============================================================================
 
@@ -174,10 +270,12 @@ class AgentScheduler:
     AIOS-style agent scheduler for Hydra.
 
     Features:
-    - Multiple scheduling policies
-    - Priority-based execution
-    - Context checkpointing
-    - Memory isolation
+    - Multiple scheduling policies (FIFO, Priority, Round Robin, SJF)
+    - Priority-based execution with CRITICAL preemption
+    - Context checkpointing for pause/resume
+    - Memory isolation between agents
+    - Shared memory regions for collaboration
+    - Tool access control per agent type
     - Resource enforcement
     - Task persistence
     """
@@ -187,11 +285,13 @@ class AgentScheduler:
         policy: SchedulingPolicy = SchedulingPolicy.PRIORITY,
         resource_limits: Optional[ResourceLimits] = None,
         checkpoint_dir: str = "/data/scheduler/checkpoints",
+        enable_preemption: bool = True,
     ):
         self.policy = policy
         self.limits = resource_limits or ResourceLimits()
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        self.enable_preemption = enable_preemption
 
         # Task queues
         self._priority_queue: List[AgentTask] = []  # heapq for priority
@@ -202,15 +302,27 @@ class AgentScheduler:
         self._running: Dict[str, AgentTask] = {}
         self._completed: Dict[str, AgentTask] = {}
         self._failed: Dict[str, AgentTask] = {}
+        self._paused: Dict[str, AgentTask] = {}  # Preempted tasks awaiting resume
 
         # Agent handlers registry
         self._handlers: Dict[str, Callable] = {}
+
+        # AIOS Kernel: Tool access control
+        self._tool_acls: Dict[str, AgentToolACL] = DEFAULT_TOOL_ACLS.copy()
+
+        # AIOS Kernel: Memory isolation
+        self._memory_isolation: Dict[str, AgentMemoryIsolation] = {}
+
+        # AIOS Kernel: Shared memory regions
+        self._shared_regions: Dict[str, SharedMemoryRegion] = {}
 
         # Stats
         self._stats = {
             "total_scheduled": 0,
             "total_completed": 0,
             "total_failed": 0,
+            "total_preempted": 0,
+            "total_resumed": 0,
             "avg_execution_time_ms": 0,
         }
 
@@ -221,7 +333,7 @@ class AgentScheduler:
         # Lock for thread safety
         self._lock = asyncio.Lock()
 
-        logger.info(f"AgentScheduler initialized with policy: {policy.value}")
+        logger.info(f"AgentScheduler initialized with policy: {policy.value}, preemption={enable_preemption}")
 
     def register_handler(
         self,
@@ -231,6 +343,224 @@ class AgentScheduler:
         """Register an async handler for an agent type."""
         self._handlers[agent_type] = handler
         logger.info(f"Registered handler for agent type: {agent_type}")
+
+    # =========================================================================
+    # AIOS Kernel: Tool Access Control
+    # =========================================================================
+
+    def register_tool_acl(self, acl: AgentToolACL):
+        """Register a tool ACL for an agent type."""
+        self._tool_acls[acl.agent_type] = acl
+        logger.info(f"Registered tool ACL for agent type: {acl.agent_type}")
+
+    def check_tool_access(self, agent_type: str, tool_name: str) -> bool:
+        """Check if an agent type can use a tool."""
+        acl = self._tool_acls.get(agent_type)
+        if not acl:
+            return True  # Default allow if no ACL defined
+        return acl.can_use_tool(tool_name)
+
+    def get_allowed_tools(self, agent_type: str) -> List[str]:
+        """Get list of allowed tools for an agent type."""
+        acl = self._tool_acls.get(agent_type)
+        if not acl:
+            return []
+        return acl.allowed_tools
+
+    # =========================================================================
+    # AIOS Kernel: Memory Isolation
+    # =========================================================================
+
+    def setup_memory_isolation(self, agent_id: str, agent_type: str) -> AgentMemoryIsolation:
+        """Set up memory isolation for an agent."""
+        namespace = f"agent_{agent_type}_{agent_id[:8]}"
+
+        # Default read access to common namespaces based on agent type
+        read_namespaces = ["hydra_knowledge", "hydra_config"]
+        if agent_type in ["research", "deep_research"]:
+            read_namespaces.extend(["hydra_research", "web_cache"])
+        elif agent_type in ["monitoring", "maintenance"]:
+            read_namespaces.extend(["system_metrics", "container_logs"])
+
+        isolation = AgentMemoryIsolation(
+            agent_id=agent_id,
+            namespace=namespace,
+            allowed_read_namespaces=read_namespaces,
+            allowed_write_namespaces=[namespace],  # Can only write to own namespace
+            shared_regions=[],
+        )
+        self._memory_isolation[agent_id] = isolation
+        logger.debug(f"Set up memory isolation for agent {agent_id}: namespace={namespace}")
+        return isolation
+
+    def get_memory_isolation(self, agent_id: str) -> Optional[AgentMemoryIsolation]:
+        """Get memory isolation config for an agent."""
+        return self._memory_isolation.get(agent_id)
+
+    def grant_memory_access(self, agent_id: str, namespace: str, access_type: str = "read"):
+        """Grant memory access to an agent."""
+        isolation = self._memory_isolation.get(agent_id)
+        if isolation:
+            if access_type == "read" and namespace not in isolation.allowed_read_namespaces:
+                isolation.allowed_read_namespaces.append(namespace)
+            elif access_type == "write" and namespace not in isolation.allowed_write_namespaces:
+                isolation.allowed_write_namespaces.append(namespace)
+            logger.info(f"Granted {access_type} access to {namespace} for agent {agent_id}")
+
+    # =========================================================================
+    # AIOS Kernel: Shared Memory Regions
+    # =========================================================================
+
+    def create_shared_region(
+        self,
+        name: str,
+        description: str,
+        owner_agent: Optional[str] = None,
+        allowed_agents: Optional[List[str]] = None
+    ) -> SharedMemoryRegion:
+        """Create a shared memory region for multi-agent collaboration."""
+        region = SharedMemoryRegion(
+            region_id=str(uuid.uuid4()),
+            name=name,
+            description=description,
+            owner_agent=owner_agent,
+            allowed_agents=allowed_agents or [],
+        )
+        self._shared_regions[region.region_id] = region
+        logger.info(f"Created shared region '{name}' (id={region.region_id})")
+        return region
+
+    def join_shared_region(self, agent_id: str, region_id: str) -> bool:
+        """Allow an agent to join a shared memory region."""
+        region = self._shared_regions.get(region_id)
+        isolation = self._memory_isolation.get(agent_id)
+
+        if not region or not isolation:
+            return False
+
+        if not region.can_access(agent_id):
+            logger.warning(f"Agent {agent_id} denied access to region {region_id}")
+            return False
+
+        isolation.shared_regions.append(region_id)
+        region.last_accessed = datetime.utcnow()
+        logger.info(f"Agent {agent_id} joined shared region {region.name}")
+        return True
+
+    def write_shared_data(self, agent_id: str, region_id: str, key: str, value: Any) -> bool:
+        """Write data to a shared memory region."""
+        region = self._shared_regions.get(region_id)
+        if not region or not region.can_access(agent_id):
+            return False
+
+        region.data[key] = {
+            "value": value,
+            "written_by": agent_id,
+            "written_at": datetime.utcnow().isoformat(),
+        }
+        region.last_accessed = datetime.utcnow()
+        return True
+
+    def read_shared_data(self, agent_id: str, region_id: str, key: str) -> Optional[Any]:
+        """Read data from a shared memory region."""
+        region = self._shared_regions.get(region_id)
+        if not region or not region.can_access(agent_id):
+            return None
+
+        region.last_accessed = datetime.utcnow()
+        data = region.data.get(key)
+        return data.get("value") if data else None
+
+    def get_shared_regions(self) -> List[Dict[str, Any]]:
+        """Get all shared memory regions."""
+        return [
+            {
+                "region_id": r.region_id,
+                "name": r.name,
+                "description": r.description,
+                "owner_agent": r.owner_agent,
+                "allowed_agents": r.allowed_agents,
+                "data_keys": list(r.data.keys()),
+                "created_at": r.created_at.isoformat(),
+                "last_accessed": r.last_accessed.isoformat() if r.last_accessed else None,
+            }
+            for r in self._shared_regions.values()
+        ]
+
+    # =========================================================================
+    # AIOS Kernel: Priority Preemption
+    # =========================================================================
+
+    async def _preempt_for_critical(self, critical_task: AgentTask) -> bool:
+        """
+        Preempt lower-priority tasks to make room for a CRITICAL task.
+
+        Returns True if preemption was successful.
+        """
+        if not self.enable_preemption:
+            return False
+
+        async with self._lock:
+            # Find lowest priority running task
+            running_tasks = list(self._running.values())
+            if not running_tasks:
+                return False
+
+            # Sort by priority (higher number = lower priority)
+            running_tasks.sort(key=lambda t: t.priority, reverse=True)
+
+            # Only preempt if we have a lower priority task
+            lowest = running_tasks[0]
+            if lowest.priority <= critical_task.priority:
+                return False  # Can't preempt equal or higher priority
+
+            # Checkpoint the task before preemption
+            if lowest.context:
+                lowest.context.checkpoint_time = datetime.utcnow()
+                checkpoint_path = self.checkpoint_dir / f"{lowest.task_id}.json"
+                with open(checkpoint_path, "w") as f:
+                    json.dump(lowest.context.to_dict(), f, indent=2)
+
+            # Move to paused state
+            lowest.status = AgentStatus.PAUSED
+            self._paused[lowest.task_id] = lowest
+            self._running.pop(lowest.task_id, None)
+            self._stats["total_preempted"] += 1
+
+            logger.info(f"Preempted task {lowest.task_id} ({lowest.description}) for CRITICAL task {critical_task.task_id}")
+            return True
+
+    async def resume_paused_task(self, task_id: str) -> bool:
+        """Resume a paused (preempted) task."""
+        async with self._lock:
+            task = self._paused.get(task_id)
+            if not task:
+                return False
+
+            # Restore context if available
+            checkpoint_path = self.checkpoint_dir / f"{task_id}.json"
+            if checkpoint_path.exists():
+                with open(checkpoint_path) as f:
+                    context_data = json.load(f)
+                    task.context = AgentContext.from_dict(context_data)
+
+            # Re-queue the task (with slightly boosted priority to avoid starvation)
+            task.status = AgentStatus.QUEUED
+            task.priority = max(0, task.priority - 1)  # Boost priority
+            self._paused.pop(task_id, None)
+
+            if self.policy == SchedulingPolicy.PRIORITY:
+                heapq.heappush(self._priority_queue, task)
+            else:
+                self._fifo_queue.appendleft(task)  # Add to front
+
+            self._stats["total_resumed"] += 1
+            logger.info(f"Resumed paused task {task_id}")
+            return True
+
+    def get_paused_tasks(self) -> List[Dict[str, Any]]:
+        """Get all paused (preempted) tasks."""
+        return [t.to_dict() for t in self._paused.values()]
 
     async def schedule(
         self,
@@ -243,8 +573,14 @@ class AgentScheduler:
         """
         Schedule an agent task for execution.
 
+        AIOS Kernel Features:
+        - Sets up memory isolation for the agent
+        - Validates tool ACL for the agent type
+        - Attempts preemption for CRITICAL tasks if queue is full
+
         Returns the task ID.
         """
+        agent_id = str(uuid.uuid4())
         task = AgentTask(
             priority=priority.value,
             created_at=datetime.utcnow(),
@@ -252,8 +588,17 @@ class AgentScheduler:
             description=description,
             payload=payload,
             timeout_seconds=timeout_seconds,
-            context=AgentContext(agent_id=str(uuid.uuid4())),
+            context=AgentContext(agent_id=agent_id),
         )
+
+        # AIOS Kernel: Set up memory isolation for this agent
+        self.setup_memory_isolation(agent_id, agent_type)
+
+        # AIOS Kernel: Check if this is a CRITICAL task that needs preemption
+        if priority == AgentPriority.CRITICAL and len(self._running) >= self.limits.max_concurrent_agents:
+            preempted = await self._preempt_for_critical(task)
+            if preempted:
+                logger.info(f"Preempted lower-priority task for CRITICAL: {description}")
 
         async with self._lock:
             if self.policy == SchedulingPolicy.PRIORITY:
@@ -1112,5 +1457,127 @@ def create_scheduler_router() -> APIRouter:
         scheduler = get_scheduler()
         await scheduler.stop()
         return {"status": "stopped"}
+
+    # =========================================================================
+    # AIOS Kernel Endpoints
+    # =========================================================================
+
+    @router.get("/paused")
+    async def get_paused_tasks():
+        """Get all paused (preempted) tasks waiting for resumption."""
+        scheduler = get_scheduler()
+        return {
+            "tasks": scheduler.get_paused_tasks(),
+            "count": len(scheduler._paused),
+        }
+
+    @router.post("/task/{task_id}/resume")
+    async def resume_task(task_id: str):
+        """Resume a paused (preempted) task."""
+        scheduler = get_scheduler()
+        success = await scheduler.resume_paused_task(task_id)
+
+        if not success:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot resume task (not paused or not found)"
+            )
+
+        return {"task_id": task_id, "status": "resumed"}
+
+    @router.get("/tool-acls")
+    async def get_tool_acls():
+        """Get all registered tool access control lists."""
+        scheduler = get_scheduler()
+        return {
+            "acls": {
+                agent_type: {
+                    "allowed_tools": acl.allowed_tools,
+                    "denied_tools": acl.denied_tools,
+                    "allow_all": acl.allow_all,
+                }
+                for agent_type, acl in scheduler._tool_acls.items()
+            }
+        }
+
+    @router.get("/tool-acls/{agent_type}")
+    async def get_agent_tools(agent_type: str):
+        """Get allowed tools for an agent type."""
+        scheduler = get_scheduler()
+        return {
+            "agent_type": agent_type,
+            "allowed_tools": scheduler.get_allowed_tools(agent_type),
+        }
+
+    @router.get("/tool-acls/{agent_type}/check/{tool_name}")
+    async def check_tool_access(agent_type: str, tool_name: str):
+        """Check if an agent type can use a specific tool."""
+        scheduler = get_scheduler()
+        allowed = scheduler.check_tool_access(agent_type, tool_name)
+        return {
+            "agent_type": agent_type,
+            "tool_name": tool_name,
+            "allowed": allowed,
+        }
+
+    @router.get("/shared-regions")
+    async def get_shared_regions():
+        """Get all shared memory regions."""
+        scheduler = get_scheduler()
+        return {
+            "regions": scheduler.get_shared_regions(),
+            "count": len(scheduler._shared_regions),
+        }
+
+    @router.post("/shared-regions")
+    async def create_shared_region(
+        name: str,
+        description: str,
+        owner_agent: Optional[str] = None,
+        allowed_agents: Optional[List[str]] = None
+    ):
+        """Create a new shared memory region."""
+        scheduler = get_scheduler()
+        region = scheduler.create_shared_region(
+            name=name,
+            description=description,
+            owner_agent=owner_agent,
+            allowed_agents=allowed_agents or []
+        )
+        return {
+            "region_id": region.region_id,
+            "name": region.name,
+            "status": "created",
+        }
+
+    @router.get("/memory-isolation/{agent_id}")
+    async def get_agent_memory_isolation(agent_id: str):
+        """Get memory isolation config for an agent."""
+        scheduler = get_scheduler()
+        isolation = scheduler.get_memory_isolation(agent_id)
+
+        if not isolation:
+            raise HTTPException(status_code=404, detail="Agent not found")
+
+        return {
+            "agent_id": isolation.agent_id,
+            "namespace": isolation.namespace,
+            "allowed_read_namespaces": isolation.allowed_read_namespaces,
+            "allowed_write_namespaces": isolation.allowed_write_namespaces,
+            "shared_regions": isolation.shared_regions,
+        }
+
+    @router.get("/kernel-stats")
+    async def get_kernel_stats():
+        """Get comprehensive AIOS kernel statistics."""
+        scheduler = get_scheduler()
+        return {
+            "scheduler": scheduler.get_stats(),
+            "preemption_enabled": scheduler.enable_preemption,
+            "tool_acls_count": len(scheduler._tool_acls),
+            "memory_isolations_count": len(scheduler._memory_isolation),
+            "shared_regions_count": len(scheduler._shared_regions),
+            "paused_tasks_count": len(scheduler._paused),
+        }
 
     return router

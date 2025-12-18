@@ -13,6 +13,7 @@ Created: 2025-12-17
 """
 
 import asyncio
+import json
 import logging
 import os
 from datetime import datetime
@@ -484,6 +485,310 @@ async def hybrid_search(
 
 
 # =============================================================================
+# Knowledge Graph Enhancement (3.3)
+# =============================================================================
+
+class KnowledgeGraphEnhancer:
+    """
+    Enhanced knowledge graph capabilities for multi-hop reasoning.
+
+    Features:
+    - Import knowledge documents as graph nodes
+    - Entity relationship extraction
+    - Multi-hop traversal queries
+    - Temporal relationship tracking
+    """
+
+    def __init__(self, graphiti_memory: GraphitiMemory):
+        self.memory = graphiti_memory
+        self.import_stats = {"documents": 0, "nodes": 0, "relationships": 0}
+
+    async def import_knowledge_docs(self, knowledge_dir: str = "/mnt/user/appdata/hydra-dev/knowledge") -> Dict[str, Any]:
+        """
+        Import knowledge/*.md files as graph nodes.
+
+        Creates nodes for each document and extracts relationships.
+        """
+        from pathlib import Path
+        import re
+
+        knowledge_path = Path(knowledge_dir)
+        if not knowledge_path.exists():
+            return {"error": f"Directory not found: {knowledge_dir}"}
+
+        results = {"imported": [], "errors": [], "stats": {}}
+
+        for md_file in knowledge_path.glob("*.md"):
+            try:
+                content = md_file.read_text()
+                doc_name = md_file.stem
+
+                # Extract sections as separate nodes
+                sections = self._extract_sections(content)
+
+                # Add document as episode
+                episode_id = await self.memory.add_episode(
+                    content=f"Knowledge document: {doc_name}\n\n{content[:2000]}",
+                    source=f"knowledge/{doc_name}.md",
+                    source_description=f"Hydra knowledge document: {doc_name}",
+                    metadata={"type": "knowledge_doc", "filename": md_file.name}
+                )
+
+                results["imported"].append({
+                    "file": md_file.name,
+                    "episode_id": episode_id,
+                    "sections": len(sections),
+                })
+                self.import_stats["documents"] += 1
+                self.import_stats["nodes"] += len(sections) + 1
+
+            except Exception as e:
+                results["errors"].append({"file": md_file.name, "error": str(e)})
+
+        results["stats"] = self.import_stats
+        logger.info(f"Imported {len(results['imported'])} knowledge documents")
+        return results
+
+    def _extract_sections(self, content: str) -> List[Dict[str, str]]:
+        """Extract sections from markdown content."""
+        import re
+        sections = []
+        current_header = ""
+        current_content = []
+
+        for line in content.split("\n"):
+            if line.startswith("#"):
+                if current_header and current_content:
+                    sections.append({
+                        "header": current_header,
+                        "content": "\n".join(current_content)
+                    })
+                current_header = line.lstrip("#").strip()
+                current_content = []
+            else:
+                current_content.append(line)
+
+        if current_header and current_content:
+            sections.append({
+                "header": current_header,
+                "content": "\n".join(current_content)
+            })
+
+        return sections
+
+    async def multi_hop_query(
+        self,
+        start_query: str,
+        hops: int = 2,
+        relationship_types: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Execute a multi-hop reasoning query.
+
+        Starting from initial search results, traverses relationships
+        to find connected information.
+        """
+        if not self.memory._initialized:
+            await self.memory.initialize()
+
+        results = {
+            "query": start_query,
+            "hops": hops,
+            "paths": [],
+            "entities": [],
+        }
+
+        # Initial search
+        initial_results = await self.memory.search(start_query, limit=5)
+        if not initial_results:
+            return results
+
+        # Track visited nodes
+        visited = set()
+        paths = []
+
+        for result in initial_results[:3]:  # Limit starting points
+            node_uuid = result.get("uuid")
+            if not node_uuid:
+                continue
+
+            path = [{"node": result, "hop": 0}]
+            visited.add(node_uuid)
+
+            # Traverse hops
+            current_nodes = [node_uuid]
+            for hop in range(1, hops + 1):
+                next_nodes = []
+                for current_uuid in current_nodes:
+                    edges = await self.memory.get_edges(current_uuid)
+                    for edge in edges:
+                        # Filter by relationship type if specified
+                        if relationship_types and edge.get("type") not in relationship_types:
+                            continue
+
+                        target_uuid = edge.get("target_uuid") or edge.get("source_uuid")
+                        if target_uuid and target_uuid not in visited:
+                            visited.add(target_uuid)
+                            next_nodes.append(target_uuid)
+
+                            target_node = await self.memory.get_node(target_uuid)
+                            if target_node:
+                                path.append({
+                                    "node": target_node,
+                                    "hop": hop,
+                                    "relationship": edge.get("type", "RELATED_TO"),
+                                })
+
+                current_nodes = next_nodes[:5]  # Limit branching
+
+            if len(path) > 1:
+                paths.append(path)
+
+        results["paths"] = paths
+        results["entities"] = [p["node"].get("name") or p["node"].get("content", "")[:50] for path in paths for p in path]
+        results["total_nodes_explored"] = len(visited)
+
+        return results
+
+    async def extract_relationships(
+        self,
+        text: str,
+        entity_types: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Extract entities and relationships from text using LLM.
+
+        Returns list of (entity1, relationship, entity2) triples.
+        """
+        import httpx
+        import json
+        import re
+
+        entity_types = entity_types or ["Service", "Concept", "Node", "Agent", "Capability"]
+
+        extraction_prompt = f"""Extract entities and relationships from this text.
+
+TEXT:
+{text[:2000]}
+
+Entity types to look for: {', '.join(entity_types)}
+
+Return a JSON array of relationship triples:
+[
+  {{"entity1": "name", "type1": "type", "relationship": "RELATES_TO", "entity2": "name", "type2": "type"}},
+  ...
+]
+
+Only return valid JSON, no explanation."""
+
+        try:
+            ollama_url = os.environ.get("OLLAMA_URL", "http://192.168.1.203:11434")
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    f"{ollama_url}/v1/chat/completions",
+                    json={
+                        "model": "qwen2.5:7b",
+                        "messages": [{"role": "user", "content": extraction_prompt}],
+                        "max_tokens": 1024,
+                    }
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    content = data["choices"][0]["message"]["content"]
+
+                    # Parse JSON from response
+                    json_match = re.search(r'\[[\s\S]*\]', content)
+                    if json_match:
+                        relationships = json.loads(json_match.group())
+                        self.import_stats["relationships"] += len(relationships)
+                        return relationships
+
+        except Exception as e:
+            logger.error(f"Relationship extraction failed: {e}")
+
+        return []
+
+    async def add_temporal_relationship(
+        self,
+        entity1_uuid: str,
+        entity2_uuid: str,
+        relationship_type: str,
+        valid_from: Optional[datetime] = None,
+        valid_to: Optional[datetime] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """
+        Add a temporal relationship between entities.
+
+        Tracks when relationships are valid (e.g., "Service A runs on Node B from date X")
+        """
+        if not self.memory._initialized:
+            await self.memory.initialize()
+
+        try:
+            from neo4j import AsyncGraphDatabase
+
+            driver = AsyncGraphDatabase.driver(
+                self.memory.config.neo4j_uri,
+                auth=(self.memory.config.neo4j_user, self.memory.config.neo4j_password),
+            )
+
+            valid_from_str = valid_from.isoformat() if valid_from else datetime.utcnow().isoformat()
+            valid_to_str = valid_to.isoformat() if valid_to else None
+
+            async with driver.session(database=self.memory.config.neo4j_database) as session:
+                query = f"""
+                MATCH (a {{uuid: $uuid1}}), (b {{uuid: $uuid2}})
+                CREATE (a)-[r:{relationship_type} {{
+                    valid_from: $valid_from,
+                    valid_to: $valid_to,
+                    created_at: $created_at,
+                    metadata: $metadata
+                }}]->(b)
+                RETURN type(r) as relationship
+                """
+                result = await session.run(
+                    query,
+                    uuid1=entity1_uuid,
+                    uuid2=entity2_uuid,
+                    valid_from=valid_from_str,
+                    valid_to=valid_to_str,
+                    created_at=datetime.utcnow().isoformat(),
+                    metadata=json.dumps(metadata or {}),
+                )
+                record = await result.single()
+                await driver.close()
+
+                if record:
+                    self.import_stats["relationships"] += 1
+                    return True
+
+        except Exception as e:
+            logger.error(f"Failed to add temporal relationship: {e}")
+
+        return False
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get knowledge graph enhancement statistics."""
+        return {
+            "import_stats": self.import_stats,
+        }
+
+
+# Global enhancer instance
+_enhancer: Optional[KnowledgeGraphEnhancer] = None
+
+
+def get_graph_enhancer() -> KnowledgeGraphEnhancer:
+    """Get or create the knowledge graph enhancer."""
+    global _enhancer
+    if _enhancer is None:
+        _enhancer = KnowledgeGraphEnhancer(get_graphiti_memory())
+    return _enhancer
+
+
+# =============================================================================
 # FastAPI Router
 # =============================================================================
 
@@ -580,5 +885,118 @@ def create_graphiti_router():
         memory = get_graphiti_memory()
         edges = await memory.get_edges(uuid)
         return {"node_uuid": uuid, "edges": edges, "count": len(edges)}
+
+    # =========================================================================
+    # Knowledge Graph Enhancement Endpoints (3.3)
+    # =========================================================================
+
+    class MultiHopRequest(BaseModel):
+        query: str
+        hops: int = 2
+        relationship_types: Optional[List[str]] = None
+
+    class RelationshipExtractionRequest(BaseModel):
+        text: str
+        entity_types: Optional[List[str]] = None
+
+    class TemporalRelationshipRequest(BaseModel):
+        entity1_uuid: str
+        entity2_uuid: str
+        relationship_type: str
+        valid_from: Optional[str] = None
+        valid_to: Optional[str] = None
+        metadata: Optional[Dict[str, Any]] = None
+
+    @router.post("/enhance/import-knowledge")
+    async def import_knowledge_docs(knowledge_dir: str = "/mnt/user/appdata/hydra-dev/knowledge"):
+        """
+        Import knowledge/*.md files as graph nodes.
+
+        Creates nodes for each document and extracts relationships.
+        This is the primary way to bootstrap the knowledge graph.
+        """
+        enhancer = get_graph_enhancer()
+        results = await enhancer.import_knowledge_docs(knowledge_dir)
+        return results
+
+    @router.post("/enhance/multi-hop")
+    async def multi_hop_query(request: MultiHopRequest):
+        """
+        Execute a multi-hop reasoning query.
+
+        Starting from initial search results, traverses relationships
+        to find connected information. Supports up to 5 hops.
+
+        Example: Start with "TabbyAPI" and traverse 2 hops to find
+        related services, configurations, and dependencies.
+        """
+        enhancer = get_graph_enhancer()
+        if request.hops > 5:
+            raise HTTPException(status_code=400, detail="Maximum hops is 5")
+        results = await enhancer.multi_hop_query(
+            start_query=request.query,
+            hops=request.hops,
+            relationship_types=request.relationship_types,
+        )
+        return results
+
+    @router.post("/enhance/extract-relationships")
+    async def extract_relationships(request: RelationshipExtractionRequest):
+        """
+        Extract entities and relationships from text using LLM.
+
+        Returns list of (entity1, relationship, entity2) triples.
+        Useful for ingesting unstructured text into the knowledge graph.
+        """
+        enhancer = get_graph_enhancer()
+        relationships = await enhancer.extract_relationships(
+            text=request.text,
+            entity_types=request.entity_types,
+        )
+        return {
+            "text_length": len(request.text),
+            "relationships": relationships,
+            "count": len(relationships),
+        }
+
+    @router.post("/enhance/temporal-relationship")
+    async def add_temporal_relationship(request: TemporalRelationshipRequest):
+        """
+        Add a temporal relationship between entities.
+
+        Tracks when relationships are valid (e.g., "Service A runs on Node B from date X").
+        Useful for tracking configuration changes over time.
+        """
+        enhancer = get_graph_enhancer()
+        valid_from = datetime.fromisoformat(request.valid_from) if request.valid_from else None
+        valid_to = datetime.fromisoformat(request.valid_to) if request.valid_to else None
+
+        success = await enhancer.add_temporal_relationship(
+            entity1_uuid=request.entity1_uuid,
+            entity2_uuid=request.entity2_uuid,
+            relationship_type=request.relationship_type,
+            valid_from=valid_from,
+            valid_to=valid_to,
+            metadata=request.metadata,
+        )
+
+        if success:
+            return {"status": "created", "relationship_type": request.relationship_type}
+        raise HTTPException(status_code=500, detail="Failed to create temporal relationship")
+
+    @router.get("/enhance/stats")
+    async def get_enhancer_stats():
+        """
+        Get knowledge graph enhancement statistics.
+
+        Returns import counts, relationship counts, and enhancement status.
+        """
+        enhancer = get_graph_enhancer()
+        stats = enhancer.get_stats()
+        memory_stats = await get_graphiti_memory().get_stats()
+        return {
+            "enhancer": stats,
+            "knowledge_graph": memory_stats,
+        }
 
     return router

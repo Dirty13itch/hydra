@@ -111,6 +111,16 @@ from hydra_tools.agentic_rag import create_agentic_rag_router
 from hydra_tools.vision import create_vision_router
 from hydra_tools.research_queue import create_research_queue_router, get_research_queue
 from hydra_tools.unified_ingest import create_ingest_router, get_ingest_pipeline
+from hydra_tools.mcp_registry import create_mcp_registry_router
+from hydra_tools.skill_learning import create_skill_learning_router
+from hydra_tools.speculative_decoding import create_speculative_router
+from hydra_tools.routellm import create_routing_router
+from hydra_tools.openhands_integration import create_openhands_router
+from hydra_tools.multi_agent_memory import create_multi_agent_memory_router
+from hydra_tools.autonomous_research import create_autonomous_research_router
+from hydra_tools.feedback_integration_loop import create_feedback_loop_router
+from hydra_tools.test_automation import create_test_automation_router
+from hydra_tools.disaster_recovery import create_disaster_recovery_router
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -334,6 +344,11 @@ Self-improvement and optimization toolkit for the Hydra cluster.
 * **Alert Routing** - Notification routing to Discord, Slack
 * **Discovery Archive** - Cross-session learning and improvement tracking
 * **Dashboard API** - Real-time SSE streaming for Command Center
+
+## Tool Ecosystem
+
+* **MCP Registry** - Model Context Protocol tool discovery and statistics
+* **Official MCP Mapping** - Migration path to standard MCP servers
 """
 APP_VERSION = "2.9.0"  # Unified ingest, Research queue, Vision, Agentic RAG
 
@@ -634,6 +649,36 @@ app.include_router(create_research_queue_router())
 # Include Unified Ingest router (Drag & drop, clipboard, file upload)
 app.include_router(create_ingest_router())
 
+# Include MCP Registry router (MCP server and tool discovery)
+app.include_router(create_mcp_registry_router())
+
+# Include Skill Learning router (Agent Files, skill library, skill sharing)
+app.include_router(create_skill_learning_router())
+
+# Include Speculative Decoding router (Performance optimization)
+app.include_router(create_speculative_router())
+
+# Include Enhanced Routing router (Queue-aware routing, cost tracking)
+app.include_router(create_routing_router())
+
+# OpenHands Coding Autonomy (4.1)
+app.include_router(create_openhands_router())
+
+# Multi-Agent Memory Sharing (4.2 - MIRIX 6-tier)
+app.include_router(create_multi_agent_memory_router())
+
+# Autonomous Research Pipeline (4.3)
+app.include_router(create_autonomous_research_router())
+
+# Human Feedback Integration Loop (5.1)
+app.include_router(create_feedback_loop_router())
+
+# Test Automation (5.2)
+app.include_router(create_test_automation_router())
+
+# Disaster Recovery (5.3)
+app.include_router(create_disaster_recovery_router())
+
 
 # Root endpoints
 @app.get("/", tags=["info"])
@@ -686,6 +731,13 @@ async def root():
             "vision": "/vision",
             "research-queue": "/research/queue",
             "ingest": "/ingest",
+            "mcp-registry": "/mcp-registry",
+            "openhands": "/openhands",
+            "multi-memory": "/multi-memory",
+            "autonomous-research": "/autonomous-research",
+            "feedback-loop": "/feedback-loop",
+            "tests": "/tests",
+            "disaster-recovery": "/disaster-recovery",
         },
     }
 

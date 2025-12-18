@@ -305,6 +305,408 @@ def classify_prompt(prompt: str, **kwargs) -> str:
     return decision.model
 
 
+# =============================================================================
+# Enhanced Routing Manager (3.2 Enhancement)
+# =============================================================================
+
+class TaskType(Enum):
+    """Extended task type classification."""
+    CHAT = "chat"           # Conversational
+    CODE = "code"           # Programming
+    REASONING = "reasoning" # Complex analysis
+    RESEARCH = "research"   # Web research tasks
+    CREATIVE = "creative"   # Creative writing
+    SYSTEM = "system"       # System/admin tasks
+    SIMPLE = "simple"       # Simple queries
+
+
+@dataclass
+class ModelCost:
+    """Cost tracking for a model."""
+    model: str
+    cost_per_1k_input: float
+    cost_per_1k_output: float
+    avg_latency_ms: float
+
+
+@dataclass
+class QueueStatus:
+    """Current queue status for a model."""
+    model: str
+    queue_depth: int
+    estimated_wait_ms: float
+    is_available: bool
+
+
+class EnhancedRoutingManager:
+    """
+    Enhanced routing with queue awareness, cost tracking, and batch support.
+
+    Improvements over basic RouteLLM:
+    - More task types (research, creative, system)
+    - Queue-depth aware routing
+    - Cost tracking per model tier
+    - Batch inference for background tasks
+    - Adaptive routing based on load
+    """
+
+    # Extended task patterns
+    RESEARCH_PATTERNS = [
+        r"(research|investigate|find out|look up|search for)",
+        r"(latest|current|recent) (news|updates|developments)",
+        r"(what is happening|what's new) (in|with|about)",
+    ]
+
+    CREATIVE_PATTERNS = [
+        r"(write|create|compose) (a |an )?(story|poem|essay|script|song)",
+        r"(imagine|pretend|roleplay|act as)",
+        r"(creative|artistic|fictional|fantasy)",
+        r"(brainstorm|generate ideas|come up with)",
+    ]
+
+    SYSTEM_PATTERNS = [
+        r"(docker|kubernetes|container|service|server)",
+        r"(deploy|restart|configure|setup|install)",
+        r"(monitor|check status|health|logs)",
+        r"(database|cache|queue|storage)",
+    ]
+
+    # Cost per 1K tokens (estimated for local models based on power + time)
+    MODEL_COSTS = {
+        "qwen2.5-7b": ModelCost("qwen2.5-7b", 0.001, 0.002, 50),
+        "qwen2.5-coder-7b": ModelCost("qwen2.5-coder-7b", 0.001, 0.002, 55),
+        "midnight-miqu-70b": ModelCost("midnight-miqu-70b", 0.01, 0.02, 500),
+        "codestral-22b": ModelCost("codestral-22b", 0.003, 0.006, 150),
+        "qwen2.5-32b": ModelCost("qwen2.5-32b", 0.005, 0.01, 200),
+    }
+
+    # Routing matrix: TaskType -> QueueDepth -> Model
+    ROUTING_MATRIX = {
+        TaskType.SIMPLE: {"low": "qwen2.5-7b", "high": "qwen2.5-7b"},
+        TaskType.CHAT: {"low": "qwen2.5-7b", "high": "qwen2.5-7b"},
+        TaskType.CODE: {"low": "codestral-22b", "high": "qwen2.5-coder-7b"},
+        TaskType.REASONING: {"low": "midnight-miqu-70b", "high": "qwen2.5-32b"},
+        TaskType.RESEARCH: {"low": "qwen2.5-7b", "high": "qwen2.5-7b"},
+        TaskType.CREATIVE: {"low": "midnight-miqu-70b", "high": "qwen2.5-32b"},
+        TaskType.SYSTEM: {"low": "qwen2.5-7b", "high": "qwen2.5-7b"},
+    }
+
+    def __init__(self, high_queue_threshold: int = 5):
+        self.base_classifier = RouteClassifier()
+        self.high_queue_threshold = high_queue_threshold
+
+        # Compile patterns
+        self.research_patterns = [re.compile(p, re.IGNORECASE) for p in self.RESEARCH_PATTERNS]
+        self.creative_patterns = [re.compile(p, re.IGNORECASE) for p in self.CREATIVE_PATTERNS]
+        self.system_patterns = [re.compile(p, re.IGNORECASE) for p in self.SYSTEM_PATTERNS]
+
+        # Cost tracking
+        self.cost_history: list[dict] = []
+        self.total_cost = 0.0
+
+    def _classify_task_type(self, prompt: str) -> TaskType:
+        """Classify prompt into extended task type."""
+        # Check patterns
+        research_matches = sum(1 for p in self.research_patterns if p.search(prompt))
+        creative_matches = sum(1 for p in self.creative_patterns if p.search(prompt))
+        system_matches = sum(1 for p in self.system_patterns if p.search(prompt))
+
+        # Code check (reuse base classifier)
+        if self.base_classifier._is_code_task(prompt):
+            return TaskType.CODE
+
+        # Pattern-based classification
+        if research_matches >= 1:
+            return TaskType.RESEARCH
+        if creative_matches >= 1:
+            return TaskType.CREATIVE
+        if system_matches >= 1:
+            return TaskType.SYSTEM
+
+        # Complexity-based classification
+        complexity = self.base_classifier._calculate_complexity(prompt)
+        if complexity < 0.3:
+            return TaskType.SIMPLE
+        elif complexity > 0.6:
+            return TaskType.REASONING
+
+        return TaskType.CHAT
+
+    def route_with_queue_awareness(
+        self,
+        prompt: str,
+        queue_status: dict[str, int] | None = None,
+    ) -> RoutingDecision:
+        """
+        Route with queue depth awareness.
+
+        Args:
+            prompt: User prompt
+            queue_status: Dict of model -> queue depth
+
+        Returns:
+            RoutingDecision with optimal model for current load
+        """
+        task_type = self._classify_task_type(prompt)
+        queue_status = queue_status or {}
+
+        # Determine queue level (high if any preferred model is busy)
+        preferred_model = self.ROUTING_MATRIX[task_type]["low"]
+        queue_depth = queue_status.get(preferred_model, 0)
+        queue_level = "high" if queue_depth >= self.high_queue_threshold else "low"
+
+        # Get model from matrix
+        selected_model = self.ROUTING_MATRIX[task_type][queue_level]
+
+        return RoutingDecision(
+            model=selected_model,
+            tier=ModelTier.QUALITY if "70b" in selected_model or "32b" in selected_model else ModelTier.FAST,
+            confidence=0.85,
+            reason=f"Task: {task_type.value}, Queue: {queue_level}, Depth: {queue_depth}"
+        )
+
+    def estimate_cost(
+        self,
+        model: str,
+        input_tokens: int,
+        output_tokens: int,
+    ) -> float:
+        """Estimate cost for a request."""
+        cost_info = self.MODEL_COSTS.get(model)
+        if not cost_info:
+            return 0.0
+
+        input_cost = (input_tokens / 1000) * cost_info.cost_per_1k_input
+        output_cost = (output_tokens / 1000) * cost_info.cost_per_1k_output
+        return input_cost + output_cost
+
+    def record_cost(
+        self,
+        model: str,
+        input_tokens: int,
+        output_tokens: int,
+        latency_ms: float,
+    ):
+        """Record cost for tracking."""
+        cost = self.estimate_cost(model, input_tokens, output_tokens)
+        self.total_cost += cost
+
+        self.cost_history.append({
+            "model": model,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cost": cost,
+            "latency_ms": latency_ms,
+            "timestamp": datetime.utcnow().isoformat() if 'datetime' in dir() else None,
+        })
+
+        # Keep last 1000 records
+        self.cost_history = self.cost_history[-1000:]
+
+    def get_cost_summary(self) -> dict:
+        """Get cost summary."""
+        from collections import defaultdict
+
+        by_model = defaultdict(lambda: {"requests": 0, "cost": 0, "tokens": 0})
+
+        for record in self.cost_history:
+            model = record["model"]
+            by_model[model]["requests"] += 1
+            by_model[model]["cost"] += record["cost"]
+            by_model[model]["tokens"] += record["input_tokens"] + record["output_tokens"]
+
+        return {
+            "total_cost": round(self.total_cost, 4),
+            "total_requests": len(self.cost_history),
+            "by_model": dict(by_model),
+        }
+
+    def batch_route(
+        self,
+        prompts: list[str],
+        priority: str = "background",
+    ) -> list[RoutingDecision]:
+        """
+        Route multiple prompts for batch processing.
+
+        For background tasks, always uses cheaper models.
+        """
+        results = []
+
+        for prompt in prompts:
+            task_type = self._classify_task_type(prompt)
+
+            if priority == "background":
+                # Always use fast tier for background
+                model = "qwen2.5-7b"
+                tier = ModelTier.FAST
+            else:
+                model = self.ROUTING_MATRIX[task_type]["low"]
+                tier = ModelTier.QUALITY if "70b" in model or "32b" in model else ModelTier.FAST
+
+            results.append(RoutingDecision(
+                model=model,
+                tier=tier,
+                confidence=0.8,
+                reason=f"Batch {priority}: {task_type.value}"
+            ))
+
+        return results
+
+
+# Import datetime for cost tracking
+from datetime import datetime
+
+
+# =============================================================================
+# FastAPI Router for Enhanced Routing
+# =============================================================================
+
+_enhanced_manager: EnhancedRoutingManager | None = None
+
+
+def get_enhanced_manager() -> EnhancedRoutingManager:
+    """Get or create enhanced routing manager."""
+    global _enhanced_manager
+    if _enhanced_manager is None:
+        _enhanced_manager = EnhancedRoutingManager()
+    return _enhanced_manager
+
+
+def create_routing_router():
+    """Create FastAPI router for enhanced routing."""
+    from fastapi import APIRouter
+    from pydantic import BaseModel
+
+    router = APIRouter(prefix="/routing", tags=["routing"])
+
+    class RouteRequest(BaseModel):
+        prompt: str
+        queue_status: dict[str, int] | None = None
+
+    class BatchRouteRequest(BaseModel):
+        prompts: list[str]
+        priority: str = "background"
+
+    class RecordCostRequest(BaseModel):
+        model: str
+        input_tokens: int
+        output_tokens: int
+        latency_ms: float
+
+    @router.post("/route")
+    async def route_prompt(request: RouteRequest):
+        """Route a prompt to optimal model with queue awareness."""
+        manager = get_enhanced_manager()
+        decision = manager.route_with_queue_awareness(
+            request.prompt,
+            request.queue_status,
+        )
+        return {
+            "model": decision.model,
+            "tier": decision.tier.value,
+            "confidence": decision.confidence,
+            "reason": decision.reason,
+        }
+
+    @router.post("/route/batch")
+    async def batch_route(request: BatchRouteRequest):
+        """Route multiple prompts for batch processing."""
+        manager = get_enhanced_manager()
+        decisions = manager.batch_route(request.prompts, request.priority)
+        return {
+            "decisions": [
+                {
+                    "model": d.model,
+                    "tier": d.tier.value,
+                    "confidence": d.confidence,
+                    "reason": d.reason,
+                }
+                for d in decisions
+            ]
+        }
+
+    @router.get("/classify/{prompt}")
+    async def classify_prompt_endpoint(prompt: str):
+        """Classify a prompt's task type."""
+        manager = get_enhanced_manager()
+        task_type = manager._classify_task_type(prompt)
+        return {
+            "prompt": prompt[:100],
+            "task_type": task_type.value,
+        }
+
+    @router.post("/cost/record")
+    async def record_cost(request: RecordCostRequest):
+        """Record cost for a completed request."""
+        manager = get_enhanced_manager()
+        manager.record_cost(
+            request.model,
+            request.input_tokens,
+            request.output_tokens,
+            request.latency_ms,
+        )
+        return {"status": "recorded"}
+
+    @router.get("/cost/summary")
+    async def get_cost_summary():
+        """Get cost tracking summary."""
+        manager = get_enhanced_manager()
+        return manager.get_cost_summary()
+
+    @router.get("/cost/estimate")
+    async def estimate_cost(model: str, input_tokens: int, output_tokens: int):
+        """Estimate cost for a request."""
+        manager = get_enhanced_manager()
+        cost = manager.estimate_cost(model, input_tokens, output_tokens)
+        return {
+            "model": model,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "estimated_cost": round(cost, 6),
+        }
+
+    @router.get("/matrix")
+    async def get_routing_matrix():
+        """Get the routing matrix configuration."""
+        manager = get_enhanced_manager()
+        return {
+            "matrix": {
+                task_type.value: models
+                for task_type, models in manager.ROUTING_MATRIX.items()
+            },
+            "high_queue_threshold": manager.high_queue_threshold,
+        }
+
+    @router.get("/models")
+    async def get_model_costs():
+        """Get model cost information."""
+        manager = get_enhanced_manager()
+        return {
+            "models": {
+                name: {
+                    "cost_per_1k_input": cost.cost_per_1k_input,
+                    "cost_per_1k_output": cost.cost_per_1k_output,
+                    "avg_latency_ms": cost.avg_latency_ms,
+                }
+                for name, cost in manager.MODEL_COSTS.items()
+            }
+        }
+
+    @router.get("/stats")
+    async def get_routing_stats():
+        """Get routing statistics."""
+        manager = get_enhanced_manager()
+        cost_summary = manager.get_cost_summary()
+        return {
+            "cost_summary": cost_summary,
+            "task_types": [t.value for t in TaskType],
+            "models_configured": len(manager.MODEL_COSTS),
+        }
+
+    return router
+
+
 if __name__ == "__main__":
     # Test examples
     classifier = RouteClassifier()
