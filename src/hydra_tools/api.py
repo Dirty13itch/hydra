@@ -89,6 +89,9 @@ from hydra_tools.discovery_archive import create_discovery_router
 from hydra_tools.character_consistency import create_character_router
 from hydra_tools.comfyui_client import create_comfyui_router
 from hydra_tools.scene_backgrounds import create_scene_backgrounds_router
+from hydra_tools.model_hotswap import create_model_hotswap_router
+from hydra_tools.human_feedback import create_human_feedback_router
+from hydra_tools.daily_digest import create_daily_digest_router
 from hydra_tools.dashboard_api import create_dashboard_router, get_dashboard_state
 from hydra_tools.home_automation import create_home_automation_router
 from hydra_tools.logs_api import create_logs_router
@@ -573,6 +576,9 @@ app.include_router(create_comfyui_router())
 
 # Include Scene Backgrounds router (Phase 12: visual novel backgrounds)
 app.include_router(create_scene_backgrounds_router())
+app.include_router(create_model_hotswap_router())
+app.include_router(create_human_feedback_router())
+app.include_router(create_daily_digest_router())
 
 # Include Dashboard router (Command Center UI backend)
 app.include_router(create_dashboard_router())

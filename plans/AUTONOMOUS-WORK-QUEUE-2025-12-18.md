@@ -15,7 +15,8 @@
 | Prometheus Targets Down | 0 |
 | Architecture Score | 99/100 |
 | Benchmark Score | 96.5% |
-| Phase 12 Completion | 95% |
+| Phase 12 Completion | 97% |
+| Scene Generator | ✅ COMPLETE |
 
 ---
 
@@ -82,13 +83,14 @@
 - `POST /models/load` - Load a model
 - `POST /models/unload` - Unload current model
 
-### 2.4 Create Background Scene Generator
+### 2.4 Create Background Scene Generator ✅ COMPLETE
 **Priority:** HIGH | **Effort:** 3 hr | **Impact:** Empire pipeline
-**Task:** Build ComfyUI workflow for scene backgrounds
-**Components:**
-- Location-to-prompt mapping
-- Time-of-day variations
-- Integration with chapter processor
+**Status:** IMPLEMENTED - src/hydra_tools/scene_backgrounds.py (717 lines)
+**Completed:**
+- 18 location definitions with architectural styles
+- Time/weather/mood modifiers
+- ComfyUI integration tested and working
+- API endpoints: /scenes/generate, /scenes/locations, /scenes/modifiers
 
 ### 2.5 Implement Human Feedback Collection API
 **Priority:** MEDIUM | **Effort:** 2 hr | **Impact:** Learning loop
