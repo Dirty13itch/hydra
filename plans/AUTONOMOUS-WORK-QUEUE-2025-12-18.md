@@ -15,8 +15,11 @@
 | Prometheus Targets Down | 0 |
 | Architecture Score | 99/100 |
 | Benchmark Score | 96.5% |
-| Phase 12 Completion | 97% |
+| Phase 12 Completion | 98% |
 | Scene Generator | ✅ COMPLETE |
+| Model Hot-Swap API | ✅ COMPLETE |
+| Human Feedback API | ✅ COMPLETE |
+| Daily Digest API | ✅ COMPLETE |
 
 ---
 
@@ -76,12 +79,16 @@
 **Location:** `autonomous_queue.py`
 **Task:** Implement `process_inference()` for batch LLM tasks
 
-### 2.3 Build Model Hot-Swap API
+### 2.3 Build Model Hot-Swap API ✅ COMPLETE
 **Priority:** MEDIUM | **Effort:** 2 hr | **Impact:** Model flexibility
-**Endpoints needed:**
-- `GET /models/available` - List model files
-- `POST /models/load` - Load a model
+**Status:** IMPLEMENTED - src/hydra_tools/model_hotswap.py
+**Endpoints:**
+- `GET /models/available` - List EXL2 and Ollama models
+- `GET /models/loaded` - Current model status across all backends
+- `GET /models/status` - Comprehensive status with backend info
+- `POST /models/load` - Load a model on TabbyAPI/Ollama
 - `POST /models/unload` - Unload current model
+- `POST /models/switch` - Atomic unload/load switch
 
 ### 2.4 Create Background Scene Generator ✅ COMPLETE
 **Priority:** HIGH | **Effort:** 3 hr | **Impact:** Empire pipeline
@@ -92,21 +99,27 @@
 - ComfyUI integration tested and working
 - API endpoints: /scenes/generate, /scenes/locations, /scenes/modifiers
 
-### 2.5 Implement Human Feedback Collection API
+### 2.5 Implement Human Feedback Collection API ✅ COMPLETE
 **Priority:** MEDIUM | **Effort:** 2 hr | **Impact:** Learning loop
-**Endpoints needed:**
-- `POST /feedback/asset` - Rate an asset
-- `POST /feedback/generation` - Rate a generation
-- `GET /feedback/stats` - Feedback statistics
-**Store:** Connect to preference_collector.py
+**Status:** IMPLEMENTED - src/hydra_tools/human_feedback.py
+**Endpoints:**
+- `POST /feedback/asset` - Rate generated assets (images, audio)
+- `POST /feedback/generation` - Rate text generations
+- `POST /feedback/comparison` - A/B preference testing
+- `GET /feedback/stats` - Feedback statistics and trends
+- `GET /feedback/by-model` - Stats grouped by model
+- `GET /feedback/pending` - Assets needing regeneration
 
-### 2.6 Build Daily Digest Generator
+### 2.6 Build Daily Digest Generator ✅ COMPLETE
 **Priority:** LOW | **Effort:** 1 hr | **Impact:** Awareness
-**Task:** Create endpoint that compiles:
-- Overnight work results
-- Cluster health summary
-- Resource usage trends
-- Pending task count
+**Status:** IMPLEMENTED - src/hydra_tools/daily_digest.py
+**Endpoints:**
+- `GET /digest/daily` - Full 24h digest with all sections
+- `GET /digest/overnight` - 8h overnight summary
+- `GET /digest/weekly` - Weekly summary
+- `GET /digest/quick` - One-line status summary
+- `GET /digest/trends` - Performance trends from Prometheus
+- `POST /digest/send` - Generate and send to Discord
 
 ### 2.7 Create Test Scaffolding
 **Priority:** LOW | **Effort:** 2 hr | **Impact:** Code quality
