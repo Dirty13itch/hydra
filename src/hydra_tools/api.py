@@ -92,6 +92,7 @@ from hydra_tools.dashboard_api import create_dashboard_router, get_dashboard_sta
 from hydra_tools.home_automation import create_home_automation_router
 from hydra_tools.logs_api import create_logs_router
 from hydra_tools.autonomous_controller import create_autonomous_router, get_controller
+from hydra_tools.autonomous_queue import router as autonomous_queue_router
 from hydra_tools.routers.unraid import router as unraid_router
 from hydra_tools.routers.events import router as events_router
 from hydra_tools.routers.services import create_services_router
@@ -147,6 +148,7 @@ EXEMPT_PREFIXES = (
     "/hardware",          # Hardware/GPU info for Command Center
     "/self-improvement",  # Benchmark/metrics for Command Center
     "/letta-bridge",      # LiteLLM health checks for Letta proxy
+    "/autonomous",        # Autonomous scheduler and queue for Command Center
 )
 
 
@@ -579,6 +581,9 @@ app.include_router(create_logs_router())
 
 # Include Autonomous Controller router (proactive task spawning)
 app.include_router(create_autonomous_router())
+
+# Include Autonomous Queue router (24/7 resource-aware work queue)
+app.include_router(autonomous_queue_router)
 
 # Include Unraid router (Unified Control Plane - storage management)
 app.include_router(unraid_router)
