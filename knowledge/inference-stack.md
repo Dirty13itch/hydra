@@ -380,3 +380,58 @@ journalctl -u tabbyapi -f
 # - Model file corruption
 # - Insufficient VRAM
 ```
+
+## Stability Improvements (Dec 2025)
+
+### Pre-Start Script
+TabbyAPI uses a pre-start script (`/opt/tabbyapi/prestart.sh`) that runs before each startup:
+- Kills orphan processes holding ports 5000/5001
+- Clears CUDA memory cache
+- Checks VRAM availability
+- Verifies model directory is mounted
+
+### Systemd Service Configuration
+The NixOS systemd service (`/etc/nixos/configuration.nix`) includes:
+```nix
+systemd.services.tabbyapi = {
+  description = "TabbyAPI - OpenAI-compatible LLM API Server";
+  after = [ "network.target" "mnt-models.mount" ];
+  wantedBy = [ "multi-user.target" ];
+  startLimitIntervalSec = 300;  # 5 min window
+  startLimitBurst = 5;          # Max 5 restarts in window
+
+  serviceConfig = {
+    Type = "simple";
+    User = "typhon";
+    WorkingDirectory = "/opt/tabbyapi";
+    ExecStartPre = "/opt/tabbyapi/prestart.sh";
+    ExecStart = "/opt/tabbyapi/venv/bin/python /opt/tabbyapi/main.py";
+    Restart = "on-failure";
+    RestartSec = 30;            # Wait 30s between restarts
+    TimeoutStartSec = 300;      # 5 min for model loading
+    Environment = [
+      "CUDA_DEVICE_ORDER=PCI_BUS_ID"
+      "CUDA_VISIBLE_DEVICES=0,1"
+      "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True"
+    ];
+  };
+};
+```
+
+### Port Conflict Prevention
+The prestart script prevents the common issue where TabbyAPI crashes, restarts, but the old process still holds port 5000, causing the new instance to start on 5001.
+
+### VRAM Exhaustion Recovery
+If TabbyAPI crashes due to insufficient VRAM:
+1. Prestart script clears CUDA cache on next attempt
+2. RestartSec of 30s gives time for GPU memory to release
+3. StartLimitBurst prevents infinite restart loops
+
+### Manual Recovery
+```bash
+# Force cleanup and restart
+ssh typhon@192.168.1.250 "sudo systemctl stop tabbyapi && /opt/tabbyapi/prestart.sh && sudo systemctl start tabbyapi"
+
+# Monitor startup
+ssh typhon@192.168.1.250 "journalctl -u tabbyapi -f"
+```

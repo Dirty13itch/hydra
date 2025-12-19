@@ -40,6 +40,7 @@ from hydra_tools.auth_metrics import (
     record_http_request,
     metrics_endpoint,
     HTTP_REQUESTS_IN_PROGRESS,
+    start_inference_metrics_updater,
 )
 
 # Structured logging - configure at import time before FastAPI starts
@@ -414,6 +415,10 @@ async def lifespan(app: FastAPI):
     await agent_scheduler.start()
     app.state.agent_scheduler = agent_scheduler
     print(f"[{datetime.utcnow().isoformat()}] Agent scheduler started")
+
+    # Start inference metrics background updater (for Prometheus alerting)
+    start_inference_metrics_updater()
+    print(f"[{datetime.utcnow().isoformat()}] Inference metrics updater started")
 
     # Register agent handlers
     from hydra_tools.character_consistency import CharacterManager
@@ -860,6 +865,26 @@ async def health_check():
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "version": APP_VERSION,
         "auth_enabled": is_auth_enabled(),
+    }
+
+
+@app.get("/health/circuit-breakers", tags=["info"])
+async def circuit_breaker_status():
+    """
+    Get circuit breaker status for all inference services.
+
+    Circuit breakers prevent cascading failures by stopping requests
+    to services that are consistently failing.
+
+    States:
+    - closed: Normal operation, requests allowed
+    - open: Service failing, requests blocked
+    - half_open: Testing if service recovered
+    """
+    from hydra_tools.auth_metrics import get_circuit_breaker_status
+    return {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "circuit_breakers": get_circuit_breaker_status(),
     }
 
 
