@@ -33,26 +33,157 @@
 - ~85% faster than llama.cpp for generation
 - EXL2 quantization format optimized for this engine
 
-### ExLlamaV3 Status (Updated 2025-12-17)
-- **Tensor parallelism added in v0.0.6** (experimental, current: v0.0.18)
-- **Heterogeneous GPU support**: Yes, but requires manual `gpu_split` configuration
-- **Stability**: Experimental - multiple TP fixes in recent releases (v0.0.9, v0.0.16)
-- **TabbyAPI integration**: Draft PR #173, not yet in main branch
-- **Performance**: Limited benchmarks available, Ampere (4090) optimization in progress
-- **Recommendation**: Stay on ExLlamaV2 until V3 TP stabilizes and TabbyAPI merges support
+### ExLlamaV3 Status (Updated 2025-12-19)
 
-**Future Migration Path**:
-- Monitor TabbyAPI PR #173 for stable TP support
-- Test ExLlamaV3 v0.1.0+ when released
-- EXL3 conversion faster than EXL2 (minutes vs. hours for 70B models)
-- May enable speculative decoding with better VRAM efficiency
+**Current State**:
+- **ExLlamaV3 version**: 0.0.15 (latest as of Dec 2025)
+- **Current Hydra setup**: ExLlamaV2 0.3.2 on TabbyAPI
+- **New EXL3 format**: Based on QTIP from Cornell RelaxML
+- **Tensor parallelism**: Supported, experimental
+- **Speculative decoding**: Yes, native support
+- **TabbyAPI**: Official recommended backend for ExLlamaV3
 
-**V3 Configuration (for future reference)**:
+**Key ExLlamaV3 Improvements**:
+1. **EXL3 quantization** - Faster conversion (minutes vs hours for 70B)
+2. **Speculative decoding** - Up to 2-4x inference speedup
+3. **Tensor-parallel + Expert-parallel** - Better multi-GPU support
+4. **2-8 bit cache quantization** - More VRAM efficient
+5. **Multimodal support** - Vision models
+6. **Continuous dynamic batching** - Better throughput
+
+**Migration Readiness**:
+| Criterion | Status | Notes |
+|-----------|--------|-------|
+| TabbyAPI support | Ready | Native backend |
+| Tensor parallel | Experimental | Manual gpu_split config |
+| Heterogeneous GPUs | Supported | 5090+4090 viable |
+| EXL3 models | Limited | Need to convert or download |
+| Stability | Experimental | Wait for v0.1.0 |
+
+**Recommendation**: Migrate when ExLlamaV3 reaches v0.1.0 stable
+
+## ExLlamaV3 Migration Guide
+
+### Pre-Migration Checklist
+```bash
+# 1. Backup current config
+ssh typhon@192.168.1.250 "cp /opt/tabbyapi/config.yml /opt/tabbyapi/config.yml.v2-backup"
+
+# 2. Check VRAM availability
+ssh typhon@192.168.1.250 "nvidia-smi --query-gpu=memory.total,memory.free --format=csv"
+
+# 3. Verify current model performance as baseline
+curl -s http://192.168.1.250:5000/v1/model | jq .
+```
+
+### Step 1: Install ExLlamaV3 (Parallel Test Environment)
+```bash
+# Create separate V3 environment
+ssh typhon@192.168.1.250 << 'EOF'
+cd /opt
+python -m venv exllamav3-test
+source exllamav3-test/bin/activate
+
+# Install with CUDA 12.8
+pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+pip install exllamav3
+pip install tabbyapi  # Updated TabbyAPI with V3 support
+EOF
+```
+
+### Step 2: Convert Model to EXL3 (or Download)
+```bash
+# Option A: Convert existing model
+ssh typhon@192.168.1.250 << 'EOF'
+source /opt/exllamav3-test/bin/activate
+python -m exllamav3.convert \
+    --input /mnt/models/Midnight-Miqu-70B-v1.5-exl2-2.5bpw \
+    --output /mnt/models/Midnight-Miqu-70B-exl3-2.5bpw \
+    --bits 2.5
+EOF
+
+# Option B: Download pre-converted EXL3 model
+# Check HuggingFace for turboderp-org EXL3 releases
+```
+
+### Step 3: Test Configuration
 ```yaml
-# When TabbyAPI merges V3 support
+# /opt/tabbyapi-v3/config.yml
+network:
+  host: 0.0.0.0
+  port: 5001  # Different port for testing
+
+model:
+  model_dir: /mnt/models
+  model_name: Midnight-Miqu-70B-exl3-2.5bpw
+
+  # V3 tensor parallelism
+  tensor_parallel: true
+  gpu_split: [28, 24]  # 5090 (32GB), 4090 (24GB), leave buffer
+
+  # Speculative decoding (V3 feature)
+  speculative_decoding:
+    enabled: true
+    draft_model: Llama-3.2-1B-exl3
+    num_speculative_tokens: 5
+
+  # V3 cache quantization
+  cache_mode: Q4
+  cache_size: 32768  # Larger context with efficient cache
+  max_seq_len: 32768
+```
+
+### Step 4: Performance Comparison
+```bash
+# Run benchmark on both versions
+# V2 (port 5000)
+curl -s http://192.168.1.250:5000/v1/completions \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Write a poem about AI", "max_tokens": 200}' | jq .usage
+
+# V3 (port 5001)
+curl -s http://192.168.1.250:5001/v1/completions \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Write a poem about AI", "max_tokens": 200}' | jq .usage
+```
+
+### Step 5: Full Migration (When Ready)
+```bash
+# Stop current TabbyAPI
+ssh typhon@192.168.1.250 "sudo systemctl stop tabbyapi"
+
+# Update systemd service to use V3
+ssh typhon@192.168.1.250 << 'EOF'
+sudo sed -i 's|/opt/tabbyapi/venv|/opt/tabbyapi-v3/venv|g' /etc/systemd/system/tabbyapi.service
+sudo systemctl daemon-reload
+sudo systemctl start tabbyapi
+EOF
+
+# Verify
+curl -s http://192.168.1.250:5000/v1/model | jq .
+```
+
+### Rollback Procedure
+```bash
+# Restore V2 if issues
+ssh typhon@192.168.1.250 << 'EOF'
+sudo systemctl stop tabbyapi
+sudo sed -i 's|/opt/tabbyapi-v3/venv|/opt/tabbyapi/venv|g' /etc/systemd/system/tabbyapi.service
+cp /opt/tabbyapi/config.yml.v2-backup /opt/tabbyapi/config.yml
+sudo systemctl daemon-reload
+sudo systemctl start tabbyapi
+EOF
+```
+
+**V3 Target Configuration**:
+```yaml
+# When TabbyAPI V3 is stable
 tensor_parallel: true
-gpu_split: [28, 24]  # Manual split for 5090+4090
+gpu_split: [28, 24]  # 5090+4090 with buffer
 autosplit_reserve: [4096, 2048]  # MB per GPU
+speculative_decoding:
+  enabled: true
+  draft_model: Llama-3.2-1B-exl3
 ```
 
 ### Installation (NixOS)

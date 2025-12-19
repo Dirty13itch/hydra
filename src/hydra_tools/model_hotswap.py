@@ -40,8 +40,41 @@ router = APIRouter(prefix="/models", tags=["models"])
 # =============================================================================
 
 # Model directories
-EXL2_MODEL_DIR = Path(os.environ.get("EXL2_MODEL_DIR", "/mnt/models/exl2"))
+EXL2_MODEL_DIR = Path(os.environ.get("EXL2_MODEL_DIR", "/mnt/models"))
 OLLAMA_MODEL_DIR = Path(os.environ.get("OLLAMA_MODEL_DIR", "/mnt/user/appdata/ollama"))
+
+# Model categories for discovery and routing
+MODEL_CATEGORIES = {
+    # NSFW/Uncensored creative models
+    "euryale": ["creative", "nsfw", "roleplay", "writing"],
+    "lumimaid": ["creative", "nsfw", "roleplay", "writing"],
+    "celeste": ["creative", "nsfw", "roleplay", "writing"],
+    "starcannon": ["creative", "nsfw", "roleplay", "writing"],
+    "midnight-miqu": ["creative", "nsfw", "roleplay", "writing"],
+    "abliterated": ["creative", "nsfw", "uncensored", "general"],
+    "dolphin": ["creative", "nsfw", "general"],
+    "fimbulvetr": ["creative", "nsfw", "horror", "writing"],
+    "hermes": ["creative", "roleplay", "agentic", "general"],
+
+    # Coding models
+    "devstral": ["coding", "agentic", "software"],
+    "deepseek-coder": ["coding", "software"],
+    "qwen-coder": ["coding", "software"],
+    "codestral": ["coding", "software"],
+
+    # Reasoning models
+    "deepseek-r1": ["reasoning", "thinking", "math", "logic"],
+    "qwen3": ["reasoning", "general"],
+    "nemotron": ["reasoning", "general"],
+
+    # General purpose
+    "llama-3": ["general", "instruction"],
+    "llama-3.1": ["general", "instruction", "long-context"],
+    "llama-3.2": ["general", "instruction"],
+    "llama-3.3": ["general", "instruction"],
+    "qwen2.5": ["general", "instruction"],
+    "mistral": ["general", "instruction"],
+}
 
 # Service URLs
 TABBYAPI_URL = os.environ.get("TABBYAPI_URL", "http://192.168.1.250:5000")
@@ -61,6 +94,45 @@ class ModelInfo(BaseModel):
     quantization: Optional[str] = None
     context_length: Optional[int] = None
     vram_estimate_gb: Optional[float] = None
+    categories: List[str] = Field(default_factory=list)
+    is_nsfw: bool = False
+    is_coding: bool = False
+    is_reasoning: bool = False
+
+
+class ChatRequest(BaseModel):
+    model: str = Field(..., description="Model name or 'current' to use loaded model")
+    messages: List[Dict[str, str]] = Field(..., description="Chat messages in OpenAI format")
+    max_tokens: Optional[int] = Field(2048, description="Max tokens to generate")
+    temperature: Optional[float] = Field(0.7, description="Sampling temperature")
+    stream: bool = Field(False, description="Enable streaming response")
+
+
+class ChatResponse(BaseModel):
+    model: str
+    response: str
+    tokens_used: Optional[int] = None
+    backend: str
+
+
+def get_model_categories(model_name: str) -> List[str]:
+    """Get categories for a model based on its name."""
+    name_lower = model_name.lower()
+    categories = []
+
+    for keyword, cats in MODEL_CATEGORIES.items():
+        if keyword in name_lower:
+            categories.extend(cats)
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_categories = []
+    for cat in categories:
+        if cat not in seen:
+            seen.add(cat)
+            unique_categories.append(cat)
+
+    return unique_categories if unique_categories else ["general"]
 
 
 class LoadedModel(BaseModel):
@@ -101,46 +173,71 @@ class ModelStatus(BaseModel):
 # =============================================================================
 
 async def scan_exl2_models() -> List[ModelInfo]:
-    """Scan the EXL2 model directory for available models."""
+    """Fetch EXL2 models from TabbyAPI (models are on hydra-ai, not local)."""
     models = []
 
-    if not EXL2_MODEL_DIR.exists():
-        logger.warning(f"EXL2 model directory not found: {EXL2_MODEL_DIR}")
-        return models
-
     try:
-        for model_dir in EXL2_MODEL_DIR.iterdir():
-            if model_dir.is_dir():
-                # Look for model files
-                safetensors = list(model_dir.glob("*.safetensors"))
-                config_file = model_dir / "config.json"
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(f"{TABBYAPI_URL}/v1/model/list")
+            if response.status_code == 200:
+                data = response.json()
+                model_list = data.get("data", [])
 
-                if safetensors or config_file.exists():
-                    # Calculate total size
-                    total_size = sum(f.stat().st_size for f in model_dir.rglob("*") if f.is_file())
-                    size_gb = round(total_size / (1024**3), 2)
+                # Filter to only EXL2 models (exclude special entries like 'diffusion', 'whisper', 'ollama')
+                skip_names = {"diffusion", "whisper", "ollama"}
+
+                for model in model_list:
+                    model_name = model.get("id", "")
+                    if not model_name or model_name in skip_names:
+                        continue
 
                     # Parse quantization from name (e.g., 4.0bpw, 3.5bpw)
                     quant = None
-                    name_lower = model_dir.name.lower()
-                    for q in ["8.0bpw", "6.0bpw", "5.0bpw", "4.5bpw", "4.0bpw", "3.5bpw", "3.0bpw", "2.5bpw"]:
+                    name_lower = model_name.lower()
+                    for q in ["8.0bpw", "6.0bpw", "5.0bpw", "4.65bpw", "4.5bpw", "4.25bpw", "4.0bpw", "3.5bpw", "3.0bpw", "2.5bpw"]:
                         if q in name_lower:
                             quant = q
                             break
 
-                    # Estimate VRAM (rough: ~1.1x model size for EXL2)
-                    vram_estimate = round(size_gb * 1.1, 1)
+                    # Estimate size and VRAM based on quantization and model class
+                    size_gb = 0.0
+                    vram_estimate = 0.0
+
+                    # Rough size estimates based on model name patterns
+                    if "70b" in name_lower:
+                        if quant:
+                            bpw = float(quant.replace("bpw", ""))
+                            size_gb = round(70 * bpw / 8, 1)  # 70B params * bpw / 8
+                        else:
+                            size_gb = 35.0
+                    elif "12b" in name_lower:
+                        size_gb = round(12 * (float(quant.replace("bpw", "")) if quant else 4.0) / 8, 1)
+                    elif "8b" in name_lower:
+                        size_gb = round(8 * (float(quant.replace("bpw", "")) if quant else 4.0) / 8, 1)
+                    elif "1b" in name_lower:
+                        size_gb = round(1 * (float(quant.replace("bpw", "")) if quant else 4.0) / 8, 1)
+
+                    vram_estimate = round(size_gb * 1.2, 1)  # Add 20% for KV cache
+
+                    # Get categories based on model name
+                    categories = get_model_categories(model_name)
 
                     models.append(ModelInfo(
-                        name=model_dir.name,
+                        name=model_name,
                         type="exl2",
                         size_gb=size_gb,
-                        path=str(model_dir),
+                        path=f"/mnt/models/{model_name}",
                         quantization=quant,
                         vram_estimate_gb=vram_estimate,
+                        categories=categories,
+                        is_nsfw="nsfw" in categories or "creative" in categories,
+                        is_coding="coding" in categories or "software" in categories,
+                        is_reasoning="reasoning" in categories or "thinking" in categories,
                     ))
+            else:
+                logger.warning(f"TabbyAPI returned status {response.status_code}")
     except Exception as e:
-        logger.error(f"Error scanning EXL2 models: {e}")
+        logger.error(f"Error fetching models from TabbyAPI: {e}")
 
     return sorted(models, key=lambda m: m.name)
 
@@ -179,13 +276,17 @@ async def get_tabbyapi_status() -> Optional[Dict[str, Any]]:
             response = await client.get(f"{TABBYAPI_URL}/v1/model")
             if response.status_code == 200:
                 data = response.json()
+                # TabbyAPI returns 'id' for model name, not 'model_name'
+                model_id = data.get("id")
+                params = data.get("parameters", {})
                 return {
-                    "model_name": data.get("model_name"),
+                    "model_name": model_id,
                     "model_type": "exl2",
-                    "max_seq_len": data.get("max_seq_len"),
-                    "cache_size": data.get("cache_size"),
+                    "max_seq_len": params.get("max_seq_len"),
+                    "cache_size": params.get("cache_size"),
+                    "cache_mode": params.get("cache_mode"),
                     "backend": "tabbyapi",
-                    "status": "loaded" if data.get("model_name") else "idle",
+                    "status": "loaded" if model_id else "idle",
                 }
     except Exception as e:
         logger.warning(f"TabbyAPI status check failed: {e}")
@@ -520,6 +621,175 @@ async def get_model_recommendations():
     }
 
     return recommendations
+
+
+# =============================================================================
+# CHAT ENDPOINT
+# =============================================================================
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat_with_model(request: ChatRequest):
+    """
+    Chat with a model via the unified interface.
+
+    This endpoint provides a simple chat interface for the Command Center,
+    automatically routing to the appropriate backend based on the model.
+    """
+    model_name = request.model
+    backend = "tabbyapi"  # Default to TabbyAPI for EXL2 models
+
+    # Determine backend from model name
+    if model_name == "current":
+        # Use currently loaded TabbyAPI model
+        status = await get_tabbyapi_status()
+        if status and status.get("status") == "loaded":
+            model_name = status.get("model_name", "default")
+        else:
+            raise HTTPException(status_code=400, detail="No model currently loaded on TabbyAPI")
+    elif "ollama" in model_name.lower() or model_name in ["qwen2.5-7b", "llama3.2", "qwen-coder"]:
+        backend = "ollama"
+    elif "cpu" in model_name.lower():
+        backend = "ollama-cpu"
+
+    # Build the request payload
+    payload = {
+        "model": model_name if backend != "tabbyapi" else "default",
+        "messages": request.messages,
+        "max_tokens": request.max_tokens,
+        "temperature": request.temperature,
+        "stream": request.stream,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            if backend == "tabbyapi":
+                response = await client.post(
+                    f"{TABBYAPI_URL}/v1/chat/completions",
+                    json=payload,
+                )
+            elif backend == "ollama":
+                # Convert to Ollama format
+                ollama_payload = {
+                    "model": model_name,
+                    "messages": request.messages,
+                    "stream": False,
+                    "options": {
+                        "temperature": request.temperature,
+                        "num_predict": request.max_tokens,
+                    }
+                }
+                response = await client.post(
+                    f"{OLLAMA_URL}/api/chat",
+                    json=ollama_payload,
+                )
+            else:  # ollama-cpu
+                ollama_payload = {
+                    "model": model_name.replace("-cpu", ""),
+                    "messages": request.messages,
+                    "stream": False,
+                }
+                response = await client.post(
+                    f"{OLLAMA_CPU_URL}/api/chat",
+                    json=ollama_payload,
+                )
+
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Backend error: {response.text}"
+                )
+
+            data = response.json()
+
+            # Parse response based on backend
+            if backend == "tabbyapi":
+                content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                tokens = data.get("usage", {}).get("total_tokens")
+            else:
+                content = data.get("message", {}).get("content", "")
+                tokens = data.get("eval_count")
+
+            return ChatResponse(
+                model=model_name,
+                response=content,
+                tokens_used=tokens,
+                backend=backend,
+            )
+
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Request timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/registry")
+async def get_model_registry():
+    """
+    Get a comprehensive model registry with categories for the Command Center.
+
+    Returns models organized by category for easy selection.
+    """
+    available = await list_available_models()
+    loaded = await get_loaded_models()
+
+    # Organize models by category
+    by_category = {
+        "creative_nsfw": [],
+        "coding": [],
+        "reasoning": [],
+        "general": [],
+    }
+
+    # Process EXL2 models
+    for model in available.get("exl2", []):
+        model_data = {
+            "name": model["name"],
+            "type": "exl2",
+            "size_gb": model.get("size_gb"),
+            "quantization": model.get("quantization"),
+            "vram_gb": model.get("vram_estimate_gb"),
+            "backend": "tabbyapi",
+            "categories": model.get("categories", ["general"]),
+            "is_nsfw": model.get("is_nsfw", False),
+        }
+
+        # Add to appropriate category
+        if model.get("is_nsfw") or "creative" in model.get("categories", []):
+            by_category["creative_nsfw"].append(model_data)
+        elif model.get("is_coding") or "coding" in model.get("categories", []):
+            by_category["coding"].append(model_data)
+        elif model.get("is_reasoning") or "reasoning" in model.get("categories", []):
+            by_category["reasoning"].append(model_data)
+        else:
+            by_category["general"].append(model_data)
+
+    # Process Ollama models
+    for model in available.get("ollama_gpu", []):
+        model_data = {
+            "name": model["name"],
+            "type": "ollama",
+            "size_gb": model.get("size_gb"),
+            "backend": "ollama",
+            "categories": get_model_categories(model["name"]),
+        }
+        by_category["general"].append(model_data)
+
+    return {
+        "by_category": by_category,
+        "loaded": loaded,
+        "backends": {
+            "tabbyapi": {"url": TABBYAPI_URL, "node": "hydra-ai", "vram": "56GB"},
+            "ollama": {"url": OLLAMA_URL, "node": "hydra-compute", "vram": "32GB"},
+            "ollama_cpu": {"url": OLLAMA_CPU_URL, "node": "hydra-storage", "vram": "0GB"},
+        },
+        "quick_picks": {
+            "nsfw_creative": "L3.3-70B-Euryale-v2.3-exl2-3.5bpw",
+            "coding": "Devstral-Small-2505-exl2-4.25bpw",
+            "reasoning": "DeepSeek-R1-Distill-Llama-70B-exl2-4.25bpw",
+            "general": "Llama-3.1-70B-Instruct-exl2-3.5bpw",
+            "fast": "qwen2.5-7b",
+        },
+    }
 
 
 # =============================================================================

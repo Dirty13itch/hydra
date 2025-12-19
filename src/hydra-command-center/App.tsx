@@ -8,6 +8,13 @@ import { Infra } from './views/Infra';
 import { Knowledge } from './views/Knowledge';
 import { Lab } from './views/Lab';
 import { Home } from './views/Home';
+import { Chat } from './views/Chat';
+import { Research } from './views/Research';
+import { Feedback } from './views/Feedback';
+import Briefing from './views/Briefing';
+import Settings from './views/Settings';
+import { Autonomy } from './views/Autonomy';
+import { Games } from './views/Games';
 import { Login } from './views/Login';
 import { ViewState } from './types';
 import { NotificationProvider, useNotifications } from './context/NotificationContext';
@@ -15,6 +22,7 @@ import { AgentWatchProvider } from './context/AgentWatchContext';
 import { AgentProvider } from './context/AgentContext';
 import { DashboardDataProvider } from './context/DashboardDataContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { UserDataProvider } from './context/UserDataContext';
 import { ToastContainer } from './components/UIComponents';
 
 // Loading screen component
@@ -50,6 +58,20 @@ const AuthenticatedApp: React.FC = () => {
         return <Infra />;
       case 'HOME':
         return <Home />;
+      case 'CHAT':
+        return <Chat />;
+      case 'RESEARCH':
+        return <Research />;
+      case 'FEEDBACK':
+        return <Feedback />;
+      case 'BRIEFING':
+        return <Briefing />;
+      case 'SETTINGS':
+        return <Settings />;
+      case 'AUTONOMY':
+        return <Autonomy />;
+      case 'GAMES':
+        return <Games />;
       default:
         return <Mission />;
     }
@@ -82,13 +104,15 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <NotificationProvider>
-        <DashboardDataProvider>
-          <AgentProvider>
-            <AgentWatchProvider>
-              <AppContent />
-            </AgentWatchProvider>
-          </AgentProvider>
-        </DashboardDataProvider>
+        <UserDataProvider>
+          <DashboardDataProvider>
+            <AgentProvider>
+              <AgentWatchProvider>
+                <AppContent />
+              </AgentWatchProvider>
+            </AgentProvider>
+          </DashboardDataProvider>
+        </UserDataProvider>
       </NotificationProvider>
     </AuthProvider>
   );

@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, StatusDot, ProgressBar, Badge, Button, Tabs } from '../components/UIComponents';
 import { ThinkingStream, ThinkingStreamCompact } from '../components/ThinkingStream';
-import { Pause, Play, XCircle, Plus, ChevronLeft, Terminal, Activity, FileText, Eye, EyeOff, Sliders, Cpu, Link, Code, Settings, Save, RotateCcw, History, Trash2, CheckCircle, Network, Power, Search, Brain, RefreshCw, Loader2, Wifi, WifiOff, Clock, Zap, AlertCircle, CheckCircle2, XOctagon, AlertTriangle } from 'lucide-react';
+import { CodingAgents } from '../components/CodingAgents';
+import { Pause, Play, XCircle, Plus, ChevronLeft, Terminal, Activity, FileText, Eye, EyeOff, Sliders, Cpu, Link, Code, Settings, Save, RotateCcw, History, Trash2, CheckCircle, Network, Power, Search, Brain, RefreshCw, Loader2, Wifi, WifiOff, Clock, Zap, AlertCircle, CheckCircle2, XOctagon, AlertTriangle, Bot } from 'lucide-react';
 import { Agent, LogEntry, AgentConfig, ActionHistoryEntry } from '../types';
 import { useAgentWatch } from '../context/AgentWatchContext';
 import { useAgents } from '../context/AgentContext';
 
+type AgentViewMode = 'WORKERS' | 'CODING';
+
 export const Agents: React.FC = () => {
   const { agents, updateAgentStatus, stopAgent, isLoading, isConnected, refreshAgents } = useAgents();
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<AgentViewMode>('CODING');
 
   const toggleAgentStatus = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -28,20 +32,56 @@ export const Agents: React.FC = () => {
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
 
+  const viewModeTabs = [
+    { id: 'CODING', label: 'Coding Agents', icon: <Code size={14} /> },
+    { id: 'WORKERS', label: 'Neural Workers', icon: <Brain size={14} /> }
+  ];
+
   return (
     <div className="h-full flex flex-col">
-      {selectedAgent ? (
-        <AgentDetail 
-          agent={selectedAgent} 
-          onBack={() => setSelectedAgentId(null)} 
+      {/* Top-level View Mode Toggle */}
+      <div className="px-6 pt-4 pb-2 border-b border-neutral-800">
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-mono font-bold text-neutral-200">AGENTS</h2>
+          <div className="flex bg-neutral-900 rounded-lg p-1">
+            {viewModeTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setViewMode(tab.id as AgentViewMode)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-mono transition-all ${
+                  viewMode === tab.id
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Coding Agents View */}
+      {viewMode === 'CODING' && (
+        <div className="p-6 h-full overflow-y-auto">
+          <CodingAgents />
+        </div>
+      )}
+
+      {/* Neural Workers View */}
+      {viewMode === 'WORKERS' && selectedAgent ? (
+        <AgentDetail
+          agent={selectedAgent}
+          onBack={() => setSelectedAgentId(null)}
           onToggleStatus={(id) => toggleAgentStatus(id)}
           onStop={(id) => handleStopAgent(id)}
         />
-      ) : (
+      ) : viewMode === 'WORKERS' && (
         <div className="p-6 h-full overflow-y-auto">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-2xl font-mono font-bold text-neutral-200">AGENTS_OVERVIEW</h2>
+              <h3 className="text-lg font-mono font-bold text-neutral-200">NEURAL_WORKERS</h3>
               <div className="flex items-center gap-3 mt-1">
                 <p className="text-sm text-neutral-500 font-mono">Orchestrate autonomous neural workers</p>
                 <div className="flex items-center gap-1.5 text-xs">

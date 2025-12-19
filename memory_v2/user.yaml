@@ -1,0 +1,110 @@
+# HYDRA USER MEMORY
+# Who: Shaun
+# Last Updated: 2025-12-18
+# Purpose: Store learned preferences, patterns, and communication style
+
+---
+user:
+  name: "Shaun"
+  timezone: "America/Los_Angeles"  # Inferred from activity patterns
+
+communication_style:
+  tone: "direct"
+  prefers_concise: true
+  appreciates:
+    - "Proactive work without asking permission"
+    - "Completing tasks fully before reporting"
+    - "Working autonomously on obvious next steps"
+    - "Technical depth when relevant"
+  dislikes:
+    - "Asking permission for obvious tasks"
+    - "Excessive explanations before taking action"
+    - "Waiting for feedback instead of continuing work"
+    - "Incomplete solutions"
+    - "Disorganized files and documentation"
+    - "Redundant or duplicate planning documents"
+
+technical_preferences:
+  languages:
+    primary: ["Python", "TypeScript"]
+    secondary: ["Bash", "SQL", "YAML"]
+
+  frameworks:
+    frontend: "React with TypeScript"
+    backend: "FastAPI"
+    styling: "Tailwind CSS"
+    database: "SQLite for simple, PostgreSQL for complex"
+
+  patterns:
+    api_design: "Factory functions for routers (create_X_router())"
+    ui_components: "Match patterns in UIComponents.tsx"
+    state_management: "React Context"
+
+  tools:
+    container_runtime: "Docker"
+    version_control: "Git"
+    ai_inference: "TabbyAPI (primary), Ollama (secondary)"
+    vector_db: "Qdrant"
+
+work_patterns:
+  active_hours: "Variable, often late night/early morning"
+  session_style: "Long focused sessions"
+  iteration_preference: "Build first, refine after feedback"
+  response_expectation: "Complete the task, don't wait"
+
+project_priorities:
+  # Ordered by importance
+  1_primary:
+    - name: "Empire of Broken Queens"
+      type: "Adult visual novel"
+      notes: "22 queens, character consistency important"
+    - name: "Hydra Infrastructure"
+      type: "AI cluster management"
+      notes: "Self-healing, autonomous operation"
+
+  2_secondary:
+    - name: "Home Automation"
+      type: "Smart home"
+      notes: "Lutron, Bond, Nest, Roborock integration"
+    - name: "Knowledge Pipeline"
+      type: "RAG system"
+      notes: "Research and learning automation"
+
+  3_personal:
+    - name: "Game Library"
+      type: "Adult game collection"
+      notes: "NSFW content acceptable, organization important"
+
+content_preferences:
+  nsfw_content: "acceptable"
+  adult_themes: "acceptable"
+  notes: "User has adult game collection, visual novel with mature themes"
+
+learned_preferences:
+  # Add new learnings here with dates
+  - date: "2025-12-18"
+    context: "Game library request"
+    learned: "User has adult game collection from F95zone, VNDB sources"
+    preference: "NSFW/adult content is normal for this user"
+
+  - date: "2025-12-18"
+    context: "File organization request"
+    learned: "User frustrated by disorganized documentation"
+    preference: "Keep files organized, archive old docs, don't create duplicates"
+
+  - date: "2025-12-18"
+    context: "Multi-agent research"
+    learned: "User interested in flexibility and options"
+    preference: "Design for interchangeability, not lock-in"
+
+feedback_history:
+  positive:
+    - date: "2025-12-18"
+      context: "Autonomous agent research"
+      feedback: "Appreciation for proactive deep research"
+
+  corrections:
+    - date: "2025-12-18"
+      context: "Game library architecture"
+      feedback: "Data sources shouldn't be under library"
+      learning: "Separate concerns cleanly"

@@ -1,0 +1,181 @@
+# HYDRA PATTERNS MEMORY
+# Purpose: Learned patterns - what works, what doesn't, debugging playbooks
+# Last Updated: 2025-12-18
+# Update: When patterns are discovered or validated
+
+---
+effective_patterns:
+  # Patterns that work well - use these
+
+  docker_container_debugging:
+    description: "Standard approach for debugging Docker container issues"
+    steps:
+      - "docker logs <container> --tail 100"
+      - "docker exec -it <container> /bin/bash (or sh)"
+      - "Check environment variables with env"
+      - "Verify file paths exist"
+    learned_from: "Multiple debugging sessions"
+    confidence: "high"
+
+  api_router_factory:
+    description: "Create routers using factory functions"
+    pattern: |
+      def create_X_router() -> APIRouter:
+          router = APIRouter(prefix="/x", tags=["X"])
+
+          @router.get("/")
+          async def list_items():
+              ...
+
+          return router
+    usage: "app.include_router(create_X_router())"
+    benefit: "Clean DI, testable, self-contained"
+    example: "game_library.py"
+    confidence: "high"
+
+  react_view_integration:
+    description: "Steps to add new view to Command Center"
+    steps:
+      - "Create views/NewView.tsx"
+      - "Add 'NEWVIEW' to ViewState in types.ts"
+      - "Import and add case in App.tsx renderView()"
+      - "Add icon import and nav item in MasterLayout.tsx"
+      - "npm run build && deploy"
+    learned_from: "Games.tsx integration"
+    confidence: "high"
+
+  ui_component_props:
+    description: "UIComponents.tsx prop patterns"
+    components:
+      Badge:
+        props: "children, variant"
+        variants: ["emerald", "cyan", "amber", "neutral", "purple", "red"]
+        note: "NO className prop, NO 'gray' or 'blue' variants"
+      Card:
+        props: "children, className, title, headerAction, onClick"
+        note: "onClick is () => void, doesn't pass event"
+      Tabs:
+        props: "tabs, activeTab, onChange, className, variant"
+        note: "onChange not onTabChange"
+      ProgressBar:
+        props: "value, colorClass"
+        note: "colorClass not variant, e.g. 'bg-emerald-500'"
+    confidence: "high"
+
+  container_path_handling:
+    description: "Docker containers use different paths than host"
+    pattern: |
+      DATA_DIR = os.environ.get("HYDRA_DATA_DIR", "/data")
+      DB_PATH = f"{DATA_DIR}/mydb.db"
+    note: "Container sees /data, not /mnt/user/appdata/hydra-dev/data"
+    confidence: "high"
+
+  session_bootstrap:
+    description: "Standard session start procedure"
+    steps:
+      - "cat ROADMAP.md | head -50"
+      - "curl -s http://192.168.1.244:8700/health | jq ."
+      - "cat STATE.json"
+      - "cat memory_v2/working.yaml"
+    confidence: "high"
+
+anti_patterns:
+  # Things that cause problems - avoid these
+
+  - name: "Host paths in container code"
+    problem: "Using /mnt/user/appdata/... in code that runs in Docker"
+    symptom: "sqlite3.OperationalError: unable to open database file"
+    solution: "Use environment variables or /data prefix"
+    confidence: "high"
+
+  - name: "Creating alternative planning documents"
+    problem: "Making new planning files instead of updating ROADMAP.md"
+    symptom: "Confusion, duplicated information, outdated docs"
+    solution: "Always update ROADMAP.md, archive old docs"
+    confidence: "high"
+
+  - name: "Gray/blue Badge variants"
+    problem: "UIComponents Badge doesn't support 'gray' or 'blue'"
+    symptom: "TypeScript compile error"
+    solution: "Use 'neutral' instead of 'gray', 'cyan' instead of 'blue'"
+    confidence: "high"
+
+  - name: "Card onClick with event parameter"
+    problem: "Card's onClick prop is () => void, not (e) => void"
+    symptom: "TypeScript error about function signature"
+    solution: "Wrap Card in div if need event access for stopPropagation"
+    confidence: "high"
+
+  - name: "Starting work without reading knowledge files"
+    problem: "Making changes without understanding existing patterns"
+    symptom: "Inconsistent implementations, rediscovering solved problems"
+    solution: "Read knowledge/*.md files for relevant domain first"
+    confidence: "high"
+
+debugging_playbooks:
+  # Step-by-step guides for common issues
+
+  api_not_starting:
+    symptoms:
+      - "Container exits immediately"
+      - "Health check fails"
+      - "Can't connect on port 8700"
+    steps:
+      - cmd: "docker logs hydra-tools-api --tail 200"
+        looking_for: "Import errors, missing dependencies, syntax errors"
+      - cmd: "docker exec -it hydra-tools-api pip list"
+        looking_for: "Missing packages"
+      - cmd: "Check requirements.txt has all imports"
+      - cmd: "Verify .env file exists and is mounted"
+
+  typescript_build_errors:
+    symptoms:
+      - "npm run build fails"
+      - "Type errors in .tsx files"
+    steps:
+      - cmd: "Read the full error message"
+        looking_for: "Which file and line"
+      - cmd: "Check UIComponents.tsx for correct prop types"
+      - cmd: "Check types.ts for type definitions"
+      - cmd: "Ensure imports match exports (named vs default)"
+
+  command_center_not_loading:
+    symptoms:
+      - "Blank page at :3210"
+      - "Console errors in browser"
+    steps:
+      - cmd: "docker logs hydra-command-center"
+      - cmd: "Check if dist/ folder was copied correctly"
+      - cmd: "Verify nginx config serves index.html for SPA routes"
+
+  model_not_loading:
+    symptoms:
+      - "TabbyAPI returns error"
+      - "Out of memory"
+    steps:
+      - cmd: "ssh typhon@192.168.1.250"
+      - cmd: "nvidia-smi"
+        looking_for: "Available VRAM, other processes"
+      - cmd: "Check model size vs available VRAM"
+      - cmd: "Set power limits if needed: sudo nvidia-smi -pl 450"
+
+performance_optimizations:
+  # Discovered optimizations
+
+  - name: "Parallel tool calls"
+    description: "Make independent API/tool calls in parallel"
+    benefit: "Faster execution"
+    example: "Read multiple files simultaneously"
+
+  - name: "Cost-aware model routing"
+    description: "Use cheaper models for simple tasks"
+    ratios:
+      claude_sonnet: "1x (baseline)"
+      mistral_devstral: "0.14x (7x cheaper)"
+      local_models: "0x (free, electricity only)"
+    recommendation: "Use local/Mistral for bulk, Claude for complex reasoning"
+
+  - name: "Task agent delegation"
+    description: "Use Task tool for exploratory searches"
+    benefit: "Reduces context usage in main conversation"
+    when: "Open-ended searches, multiple file exploration"

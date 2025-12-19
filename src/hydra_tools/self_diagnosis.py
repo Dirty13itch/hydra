@@ -844,4 +844,54 @@ def create_diagnosis_router():
             "trend": report.trend,
         }
 
+    @router.get("/inference")
+    async def diagnosis_inference():
+        """Get inference-specific diagnostics."""
+        import httpx
+
+        # Check inference endpoints (use endpoints that don't require auth)
+        inference_status = {
+            "tabbyapi": {"url": "http://192.168.1.250:5000/health", "status": "unknown"},
+            "ollama": {"url": "http://192.168.1.203:11434/api/tags", "status": "unknown"},
+            "litellm": {"url": "http://192.168.1.244:4000/health/liveliness", "status": "unknown"},
+        }
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            for name, info in inference_status.items():
+                try:
+                    resp = await client.get(info["url"])
+                    inference_status[name]["status"] = "healthy" if resp.status_code == 200 else "degraded"
+                    inference_status[name]["status_code"] = resp.status_code
+                except Exception as e:
+                    inference_status[name]["status"] = "down"
+                    inference_status[name]["error"] = str(e)
+
+        # Get inference-specific failures from diagnosis engine
+        inference_failures = [
+            e for e in engine.events[-50:]
+            if e.category == "inference" and not e.resolved
+        ]
+
+        # Calculate inference health score
+        healthy_count = sum(1 for s in inference_status.values() if s["status"] == "healthy")
+        total_count = len(inference_status)
+        health_pct = (healthy_count / total_count) * 100 if total_count > 0 else 0
+
+        return {
+            "status": "healthy" if health_pct >= 66 else "degraded" if health_pct >= 33 else "critical",
+            "health_score": health_pct,
+            "services": inference_status,
+            "recent_failures": len(inference_failures),
+            "failure_details": [
+                {
+                    "id": f.id,
+                    "service": f.service,
+                    "message": f.error_message[:200],
+                    "timestamp": f.timestamp,
+                    "severity": f.severity,
+                }
+                for f in inference_failures[:5]
+            ],
+        }
+
     return router

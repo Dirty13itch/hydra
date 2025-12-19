@@ -143,6 +143,11 @@ from hydra_tools.financial_awareness import create_financial_router
 from hydra_tools.user_data import create_user_data_router
 from hydra_tools.intelligent_model_selector import create_model_intelligence_router, get_model_selector
 from hydra_tools.model_task_queue import create_task_queue_router, get_task_queue
+from hydra_tools.aider_agent import create_aider_router
+from hydra_tools.cost_tracking import create_cost_tracking_router
+from hydra_tools.unified_search import create_unified_search_router
+from hydra_tools.character_generation_agent import create_character_generation_router
+from hydra_tools.a2a_protocol import create_a2a_router
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -192,6 +197,15 @@ EXEMPT_PREFIXES = (
     "/financial",         # Financial awareness endpoints
     "/user-data",         # User profile and preferences
     "/credentials",       # Credential status (not actual credentials)
+    "/aider",             # Aider autonomous coding agent
+    "/inference",         # Intelligent model routing
+    "/agents",            # Agent orchestration
+    "/costs",             # Cost tracking dashboard
+    "/openhands",         # OpenHands coding agent
+    "/search",            # Unified search
+    "/character-gen",     # Character generation agent
+    "/.well-known",       # A2A agent card discovery
+    "/a2a",               # A2A protocol endpoints
 )
 
 
@@ -789,6 +803,21 @@ app.include_router(create_model_intelligence_router())
 
 # Task Queue - Batch tasks by optimal model
 app.include_router(create_task_queue_router())
+
+# Aider Autonomous Coding Agent
+app.include_router(create_aider_router())
+
+# Cost Tracking Dashboard
+app.include_router(create_cost_tracking_router())
+
+# Unified Search Engine
+app.include_router(create_unified_search_router())
+
+# Agent-Based Character Generation
+app.include_router(create_character_generation_router())
+
+# A2A Protocol for Agent Collaboration
+app.include_router(create_a2a_router())
 
 
 # Root endpoints

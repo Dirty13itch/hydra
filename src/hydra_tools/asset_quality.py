@@ -755,4 +755,109 @@ def create_quality_router() -> APIRouter:
             ],
         }
 
+    class AutoScoreRequest(BaseModel):
+        """Request to auto-score a generated image."""
+        image_path: str = Field(..., description="Path to the generated image")
+        character_name: Optional[str] = Field(None, description="Character name if applicable")
+        prompt_used: Optional[str] = Field(None, description="Generation prompt")
+        model_used: Optional[str] = Field(None, description="Model used for generation")
+        webhook_url: Optional[str] = Field(None, description="Optional webhook to call with results")
+
+    @router.post("/auto-score")
+    async def auto_score_image(request: AutoScoreRequest):
+        """
+        Automatically score a generated image and add to review queue if needed.
+
+        This endpoint is designed to be called by ComfyUI, n8n, or other generation
+        pipelines after an image is created. It:
+        1. Scores the image using all quality dimensions
+        2. If score < auto_approve_threshold, adds to review queue
+        3. Optionally sends webhook notification
+
+        Returns the quality report with recommended action.
+        """
+        try:
+            # Score the image
+            report = scorer.score_image(request.image_path)
+
+            result = {
+                "asset_id": report.asset_id,
+                "asset_path": report.asset_path,
+                "overall_score": report.overall_score,
+                "tier": report.tier.value,
+                "passed": report.passed,
+                "action": report.auto_action,
+                "dimensions": {
+                    dim: {
+                        "score": score.score,
+                        "issues": score.issues,
+                        "suggestions": score.suggestions,
+                    }
+                    for dim, score in report.dimension_scores.items()
+                },
+                "metadata": {
+                    "character_name": request.character_name,
+                    "prompt_used": request.prompt_used,
+                    "model_used": request.model_used,
+                }
+            }
+
+            # If needs review, add metadata for the feedback UI
+            if report.auto_action == "review":
+                result["needs_review"] = True
+                result["review_reason"] = "Score below auto-approve threshold"
+
+            # Send webhook notification if configured
+            if request.webhook_url:
+                try:
+                    async with httpx.AsyncClient() as client:
+                        await client.post(
+                            request.webhook_url,
+                            json=result,
+                            timeout=10.0
+                        )
+                except Exception as e:
+                    result["webhook_error"] = str(e)
+
+            return result
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Scoring failed: {str(e)}")
+
+    @router.post("/batch-auto-score")
+    async def batch_auto_score(image_paths: List[str], character_name: Optional[str] = None):
+        """
+        Auto-score multiple images in a batch.
+
+        Useful for scoring all outputs from a generation run.
+        """
+        results = []
+        for path in image_paths:
+            try:
+                report = scorer.score_image(path)
+                results.append({
+                    "asset_id": report.asset_id,
+                    "path": path,
+                    "overall_score": report.overall_score,
+                    "tier": report.tier.value,
+                    "action": report.auto_action,
+                })
+            except Exception as e:
+                results.append({
+                    "path": path,
+                    "error": str(e),
+                })
+
+        # Summary
+        valid_scores = [r["overall_score"] for r in results if "overall_score" in r]
+        needs_review = [r for r in results if r.get("action") == "review"]
+
+        return {
+            "total": len(image_paths),
+            "scored": len(valid_scores),
+            "needs_review": len(needs_review),
+            "average_score": round(sum(valid_scores) / len(valid_scores), 1) if valid_scores else None,
+            "results": results,
+        }
+
     return router

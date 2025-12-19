@@ -1,4 +1,123 @@
-export type ViewState = 'MISSION' | 'AGENTS' | 'PROJECTS' | 'STUDIO' | 'KNOWLEDGE' | 'LAB' | 'INFRA' | 'HOME';
+export type ViewState = 'MISSION' | 'AGENTS' | 'PROJECTS' | 'STUDIO' | 'KNOWLEDGE' | 'LAB' | 'INFRA' | 'HOME' | 'CHAT' | 'RESEARCH' | 'FEEDBACK' | 'BRIEFING' | 'SETTINGS' | 'AUTONOMY' | 'GAMES';
+
+// Credential and User Data types
+export interface ServiceCredentialStatus {
+  configured: boolean;
+  valid: boolean | null;
+  lastValidated: string | null;
+  type: 'oauth' | 'api_key' | 'account';
+  featuresUnlocked: string[];
+  setupUrl?: string;
+  error?: string;
+}
+
+export interface CredentialStatus {
+  services: Record<string, ServiceCredentialStatus>;
+  summary: {
+    configured: number;
+    total: number;
+    valid: number;
+    featuresEnabled: string[];
+    featuresDisabled: string[];
+  };
+}
+
+export interface UserPreferences {
+  notifications: {
+    enabled: boolean;
+    types: string[];
+    quietHoursStart?: string;
+    quietHoursEnd?: string;
+  };
+  dashboard: {
+    defaultView: ViewState;
+    refreshInterval: number;
+  };
+  ai: {
+    preferredModel: string;
+    temperature: number;
+    maxTokens: number;
+  };
+}
+
+export interface PriorityContact {
+  id: string;
+  name: string;
+  email: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+export interface UserLocation {
+  id: string;
+  name: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  type: 'home' | 'work' | 'other';
+}
+
+export interface UserSchedule {
+  id: string;
+  name: string;
+  type: 'work' | 'quiet' | 'focus' | 'custom';
+  days: number[];
+  startTime: string;
+  endTime: string;
+}
+
+export interface UserProfile {
+  userId: string;
+  displayName: string;
+  timezone: string;
+  theme: 'dark' | 'light' | 'system';
+  preferences: UserPreferences;
+  contacts: PriorityContact[];
+  locations: UserLocation[];
+  schedules: UserSchedule[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Feedback types for human feedback UI
+export interface FeedbackAsset {
+  asset_id: string;
+  asset_type: 'character_portrait' | 'scene_background' | 'emotion_variant' | 'voice_audio' | 'other';
+  character_name?: string;
+  prompt_used?: string;
+  model_used?: string;
+  quality_score?: number;
+  consistency_score?: number;
+  style_score?: number;
+  image_url?: string;
+  created_at?: string;
+}
+
+export interface FeedbackStats {
+  total_feedback: number;
+  asset_feedback: number;
+  generation_feedback: number;
+  comparison_feedback: number;
+  avg_asset_rating: number;
+  avg_generation_rating: number;
+  top_issues: Array<{ issue: string; count: number }>;
+  feedback_by_day: Array<{ date: string; count: number }>;
+  needs_regeneration: number;
+}
+
+export interface QualityReport {
+  asset_id: string;
+  asset_path: string;
+  overall_score: number;
+  tier: 'excellent' | 'good' | 'acceptable' | 'poor' | 'reject';
+  passed: boolean;
+  action: 'approve' | 'review' | 'reject';
+  dimensions?: {
+    technical: { score: number; issues: string[] };
+    composition: { score: number; issues: string[] };
+    style: { score: number; issues: string[] };
+    character: { score: number; issues: string[] };
+  };
+}
 
 export interface Notification {
   id: string;

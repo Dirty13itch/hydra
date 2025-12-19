@@ -1,0 +1,154 @@
+# HYDRA DECISIONS MEMORY
+# Purpose: Architectural Decision Records (ADRs) - why we chose what we chose
+# Last Updated: 2025-12-18
+# Update: When significant architectural decisions are made
+
+---
+decisions:
+  # Template:
+  # - id: "ADR-XXX"
+  #   date: "YYYY-MM-DD"
+  #   title: "Short title"
+  #   status: "accepted" | "superseded" | "deprecated"
+  #   context: "What prompted this decision"
+  #   decision: "What we decided"
+  #   rationale: "Why we decided this"
+  #   alternatives:
+  #     - "Option we didn't choose"
+  #   consequences: "What this means going forward"
+  #   outcome: "How it turned out (filled in later)"
+
+  - id: "ADR-001"
+    date: "2025-12-18"
+    title: "Game library data source separation"
+    status: "accepted"
+    context: |
+      User requested a game library for adult games from sources like F95zone, VNDB.
+      Initial design had data sources tightly coupled to the library.
+    decision: "Separate data sources from library core"
+    rationale: |
+      Data sources (F95zone, VNDB, itch.io) should be pluggable adapters, not
+      embedded in the library. This allows adding new sources without modifying
+      library code, and keeps concerns separated.
+    alternatives:
+      - "Monolithic library with embedded scrapers"
+      - "External microservice for each data source"
+    consequences:
+      - "Need adapter interface for data sources"
+      - "VNDB client is first adapter implementation"
+      - "Future sources can be added independently"
+    outcome: "Successfully implemented. Clean architecture, easy to extend."
+
+  - id: "ADR-002"
+    date: "2025-12-18"
+    title: "Multi-agent orchestration via protocols"
+    status: "accepted"
+    context: |
+      User wants ability to switch between Claude Code, Mistral Vibe, Aider,
+      OpenHands, and other AI coding tools within Hydra.
+    decision: "Build orchestration layer using MCP and A2A protocols"
+    rationale: |
+      - MCP (Model Context Protocol) is now a Linux Foundation standard
+      - A2A (Agent-to-Agent) enables agent collaboration
+      - Standard protocols avoid custom integration per tool
+      - Tools like Aider, Continue.dev already support these protocols
+    alternatives:
+      - "Custom adapters for each tool"
+      - "Use only one tool (Claude Code)"
+      - "Build custom agent from scratch"
+    consequences:
+      - "Need to implement protocol adapters"
+      - "Can leverage existing MCP servers"
+      - "Future tools automatically compatible if they support protocols"
+    outcome: "Research complete, plan at plans/multi-agent-coding-integration-dec2025.md"
+
+  - id: "ADR-003"
+    date: "2025-12-18"
+    title: "Persistent memory architecture"
+    status: "accepted"
+    context: |
+      Need to maintain context, preferences, and learnings across sessions.
+      Current approach (STATE.json, CLAUDE.md, semantic.json) is ad-hoc.
+    decision: "Implement cognitive memory tiers in YAML files"
+    rationale: |
+      - YAML is human-readable and editable
+      - Tiered approach (core, user, working, decisions, patterns) mirrors cognition
+      - Separates immutable truths from mutable learnings
+      - Easy to bootstrap at session start
+    alternatives:
+      - "Single large JSON file"
+      - "Database-backed memory"
+      - "Vector-only memory (Qdrant)"
+    consequences:
+      - "Need session start/end protocols"
+      - "Memory files should be version controlled (selectively)"
+      - "Need to maintain memory hygiene (decay old working memory)"
+    outcome: "Implementing now"
+
+  - id: "ADR-004"
+    date: "2025-12-18"
+    title: "API router factory pattern"
+    status: "accepted"
+    context: |
+      Adding new feature modules to the Hydra API (game library, etc.)
+    decision: "Use factory functions like create_X_router() that return APIRouter"
+    rationale: |
+      - Clean dependency injection
+      - Testable (can create router with mock dependencies)
+      - Consistent pattern across all modules
+      - Router is self-contained with all its routes
+    alternatives:
+      - "Global router with routes defined at module level"
+      - "Class-based routers"
+    consequences:
+      - "All new API modules should follow this pattern"
+      - "Import and include_router in api.py"
+    outcome: "Working well, used in game_library.py"
+
+  - id: "ADR-005"
+    date: "2025-12-15"
+    title: "Single planning document (ROADMAP.md)"
+    status: "accepted"
+    context: |
+      Multiple planning documents were causing confusion and duplication.
+    decision: "ROADMAP.md is the single canonical planning document"
+    rationale: |
+      - Single source of truth
+      - No confusion about which doc is current
+      - Easy to find and reference
+    alternatives:
+      - "Multiple phase-specific planning docs"
+      - "Wiki-style distributed planning"
+    consequences:
+      - "Never create new planning files"
+      - "Always update ROADMAP.md instead"
+      - "Archive old planning docs"
+    outcome: "Enforced consistently since adoption"
+
+pending_decisions:
+  - id: "PENDING-001"
+    title: "First agent to integrate"
+    context: "Multi-agent system needs first implementation"
+    options:
+      - option: "Aider"
+        pros: ["CLI-based", "Easy to wrap", "Supports any model"]
+        cons: ["Less autonomous than OpenHands"]
+      - option: "OpenHands"
+        pros: ["Most autonomous", "SDK available"]
+        cons: ["Heavier setup"]
+    leaning_toward: "Aider"
+    reason: "Quickest path to working integration"
+
+  - id: "PENDING-002"
+    title: "Memory file version control"
+    context: "Should memory_v2/ files be in git?"
+    options:
+      - option: "All in git"
+        pros: ["Tracked history", "Backup"]
+        cons: ["working.yaml changes constantly"]
+      - option: "core.yaml and decisions.yaml only"
+        pros: ["Important stuff tracked", "Less noise"]
+        cons: ["user.yaml learnings not backed up"]
+      - option: "All in git but working.yaml in .gitignore"
+        pros: ["Balance of tracking and practicality"]
+    leaning_toward: "All in git but working.yaml in .gitignore"

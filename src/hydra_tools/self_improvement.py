@@ -1006,6 +1006,30 @@ def create_self_improvement_router():
         """Get baseline benchmark scores"""
         return engine.benchmarks.get_baseline()
 
+    @router.get("/benchmarks/latest")
+    async def get_latest_benchmarks():
+        """Get latest benchmark results from history."""
+        from .benchmark_suite import get_latest_benchmark_results
+        results = get_latest_benchmark_results(limit=1)
+        if not results:
+            return {
+                "message": "No benchmark results found",
+                "latest": None
+            }
+        return {
+            "latest": results[0]
+        }
+
+    @router.get("/benchmarks/history")
+    async def get_benchmark_history(limit: int = 10):
+        """Get benchmark history."""
+        from .benchmark_suite import get_latest_benchmark_results
+        results = get_latest_benchmark_results(limit=limit)
+        return {
+            "count": len(results),
+            "results": results
+        }
+
     @router.post("/proposals")
     async def create_proposal(proposal: ProposalCreate):
         """Create an improvement proposal"""

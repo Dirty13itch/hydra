@@ -237,27 +237,27 @@ container_health_checks_total = Counter(
 HOST_IP = "192.168.1.244"
 
 # Default healthcheck configurations for containers without Docker healthchecks
+# NOTE: hydra-tools-api runs on bridge network only, so ALL containers must use HOST_IP
 DEFAULT_HEALTHCHECKS = [
     # ===========================================
-    # hydra-network (can use container hostnames)
+    # Core Hydra Services (all via HOST_IP since we're on bridge network)
     # ===========================================
-    ContainerHealthConfig("hydra-n8n", "http", "http://hydra-n8n:5678/healthz"),
-    ContainerHealthConfig("hydra-neo4j", "http", "http://hydra-neo4j:7474"),
-    ContainerHealthConfig("hydra-litellm", "http", "http://hydra-litellm:4000/health/liveliness"),
-    ContainerHealthConfig("hydra-grafana", "http", "http://hydra-grafana:3000/api/health"),
-    ContainerHealthConfig("hydra-loki", "http", "http://hydra-loki:3100/ready"),
-    ContainerHealthConfig("hydra-prometheus", "http", "http://hydra-prometheus:9090/-/healthy"),
-    ContainerHealthConfig("hydra-miniflux", "http", "http://hydra-miniflux:8080/healthcheck"),
-    ContainerHealthConfig("hydra-qdrant", "http", "http://hydra-qdrant:6333/readyz"),
-    ContainerHealthConfig("hydra-alertmanager", "http", "http://hydra-alertmanager:9093/-/healthy"),
-    ContainerHealthConfig("hydra-searxng", "http", "http://hydra-searxng:8080/healthz"),
-    ContainerHealthConfig("hydra-letta", "http", "http://hydra-letta:8283/v1/health"),
-    ContainerHealthConfig("hydra-docling", "http", "http://hydra-docling:5001/health"),
-    ContainerHealthConfig("hydra-crewai", "http", "http://hydra-crewai:8500/"),
-    ContainerHealthConfig("hydra-uptime-kuma", "http", f"http://{HOST_IP}:3001"),
-    ContainerHealthConfig("hydra-meilisearch", "http", "http://hydra-meilisearch:7700/health"),
-    ContainerHealthConfig("hydra-tools-api", "http", "http://hydra-tools-api:8700/health"),
-    # hydra-command-center uses host IP (different network)
+    ContainerHealthConfig("hydra-n8n", "http", f"http://{HOST_IP}:5678/healthz"),
+    ContainerHealthConfig("hydra-neo4j", "http", f"http://{HOST_IP}:7474"),
+    ContainerHealthConfig("hydra-litellm", "http", f"http://{HOST_IP}:4000/health/liveliness"),
+    ContainerHealthConfig("hydra-grafana", "http", f"http://{HOST_IP}:3003/api/health"),
+    ContainerHealthConfig("hydra-loki", "http", f"http://{HOST_IP}:3100/ready"),
+    ContainerHealthConfig("hydra-prometheus", "http", f"http://{HOST_IP}:9090/-/healthy"),
+    ContainerHealthConfig("hydra-miniflux", "http", f"http://{HOST_IP}:8180/healthcheck"),
+    ContainerHealthConfig("hydra-qdrant", "http", f"http://{HOST_IP}:6333/readyz"),
+    ContainerHealthConfig("hydra-alertmanager", "http", f"http://{HOST_IP}:9093/-/healthy"),
+    ContainerHealthConfig("hydra-searxng", "http", f"http://{HOST_IP}:8888/healthz"),
+    ContainerHealthConfig("hydra-letta", "http", f"http://{HOST_IP}:8283/v1/health"),
+    ContainerHealthConfig("hydra-docling", "http", f"http://{HOST_IP}:5001/health"),
+    ContainerHealthConfig("hydra-crewai", "http", f"http://{HOST_IP}:8500/"),
+    ContainerHealthConfig("hydra-uptime-kuma", "http", f"http://{HOST_IP}:3002"),
+    ContainerHealthConfig("hydra-meilisearch", "http", f"http://{HOST_IP}:7700/health"),
+    ContainerHealthConfig("hydra-tools-api", "http", f"http://{HOST_IP}:8700/health"),
     ContainerHealthConfig("hydra-command-center", "http", f"http://{HOST_IP}:3210/"),
 
     # Firecrawl stack (port 3005 on host)
@@ -266,7 +266,7 @@ DEFAULT_HEALTHCHECKS = [
     # Control plane (various ports)
     ContainerHealthConfig("hydra-control-plane-ui", "http", f"http://{HOST_IP}:3200"),
     ContainerHealthConfig("hydra-control-plane-backend", "http", f"http://{HOST_IP}:3100/"),
-    ContainerHealthConfig("hydra-task-hub", "http", "http://hydra-task-hub:8800"),
+    ContainerHealthConfig("hydra-task-hub", "http", f"http://{HOST_IP}:8800"),
 
     # Open-webui (bridge network)
     ContainerHealthConfig("open-webui", "http", f"http://{HOST_IP}:3001/"),
@@ -420,6 +420,28 @@ _monitor = ContainerHealthMonitor()
 def create_container_health_router() -> APIRouter:
     """Create the container health API router."""
     router = APIRouter(prefix="/container-health", tags=["container-health"])
+
+    @router.get("")
+    @router.get("/")
+    async def container_health_summary():
+        """Get container health summary (same as /check-all)."""
+        results = await _monitor.check_all()
+        summary = _monitor.get_summary()
+
+        return {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "summary": summary,
+            "containers": [
+                {
+                    "name": r.name,
+                    "status": r.status.value,
+                    "latency_ms": r.latency_ms,
+                    "message": r.message,
+                    "consecutive_failures": r.consecutive_failures,
+                }
+                for r in results
+            ]
+        }
 
     @router.get("/check-all")
     async def check_all_containers():

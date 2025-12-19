@@ -13,12 +13,18 @@ import {
   FlaskConical,
   Server,
   Home as HomeIcon,
-  Settings,
+  Settings as SettingsIcon,
   Bell,
   MessageSquare,
   X,
   LogOut,
-  Shield
+  Shield,
+  BookOpen,
+  ThumbsUp,
+  Sun,
+  Cog,
+  Brain,
+  Gamepad2
 } from 'lucide-react';
 
 interface MasterLayoutProps {
@@ -41,12 +47,19 @@ export const MasterLayout: React.FC<MasterLayoutProps> = ({ currentView, onNavig
   const navItems: { id: ViewState; label: string; icon: React.ReactNode }[] = [
     { id: 'MISSION', label: 'Mission', icon: <LayoutDashboard size={20} /> },
     { id: 'AGENTS', label: 'Agents', icon: <Users size={20} /> },
+    { id: 'CHAT', label: 'Chat', icon: <MessageSquare size={20} /> },
     { id: 'PROJECTS', label: 'Projects', icon: <Briefcase size={20} /> },
     { id: 'STUDIO', label: 'Studio', icon: <Palette size={20} /> },
     { id: 'KNOWLEDGE', label: 'Knowl.', icon: <Database size={20} /> },
+    { id: 'RESEARCH', label: 'Research', icon: <BookOpen size={20} /> },
+    { id: 'FEEDBACK', label: 'Feedback', icon: <ThumbsUp size={20} /> },
+    { id: 'BRIEFING', label: 'Briefing', icon: <Sun size={20} /> },
     { id: 'LAB', label: 'Lab', icon: <FlaskConical size={20} /> },
     { id: 'INFRA', label: 'Infra', icon: <Server size={20} /> },
     { id: 'HOME', label: 'Home', icon: <HomeIcon size={20} /> },
+    { id: 'AUTONOMY', label: 'Autonomy', icon: <Brain size={20} /> },
+    { id: 'GAMES', label: 'Games', icon: <Gamepad2 size={20} /> },
+    { id: 'SETTINGS', label: 'Settings', icon: <Cog size={20} /> },
   ];
 
   return (
@@ -91,7 +104,7 @@ export const MasterLayout: React.FC<MasterLayoutProps> = ({ currentView, onNavig
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-surface-base"></span>
           </button>
           <button className="p-2 text-neutral-400 hover:text-white transition-colors">
-            <Settings size={20} />
+            <SettingsIcon size={20} />
           </button>
 
           {/* User Profile Section */}

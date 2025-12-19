@@ -3,7 +3,28 @@ import { Card, Badge, ProgressBar, StatusDot, Tabs, Button } from '../components
 import { useDashboardData } from '../context/DashboardDataContext';
 import { queryLogs, getLogsServices, getLogsHealth, LogEntry } from '../services/hydraApi';
 import { ServiceGrid } from '../components/ServiceGrid';
-import { Server, Activity, RefreshCw, Power, Loader2, Search, Filter, AlertTriangle, Info, Bug, AlertCircle, Terminal, Clock, LayoutGrid } from 'lucide-react';
+import { Server, Activity, RefreshCw, Power, Loader2, Search, Filter, AlertTriangle, Info, Bug, AlertCircle, Terminal, Clock, LayoutGrid, Wrench, Zap, Hash } from 'lucide-react';
+
+const API_BASE = 'http://192.168.1.244:8700';
+
+interface MCPTool {
+  name: string;
+  description: string;
+  category: string;
+  status: string;
+  endpoint?: string;
+  method?: string;
+  call_count: number;
+  last_called?: string;
+  avg_latency_ms: number;
+}
+
+interface MCPStats {
+  total_tools: number;
+  total_calls: number;
+  categories: number;
+  top_tools: Array<{ name: string; calls: number }>;
+}
 
 export const Infra: React.FC = () => {
   const { nodes, services, nodesLoading, servicesLoading, refreshNodes, refreshServices } = useDashboardData();
@@ -22,10 +43,18 @@ export const Infra: React.FC = () => {
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [hoursFilter, setHoursFilter] = useState<number>(1);
 
+  // MCP Tools state
+  const [mcpTools, setMcpTools] = useState<MCPTool[]>([]);
+  const [mcpStats, setMcpStats] = useState<MCPStats | null>(null);
+  const [mcpLoading, setMcpLoading] = useState(false);
+  const [mcpCategoryFilter, setMcpCategoryFilter] = useState<string>('');
+  const [mcpSearchFilter, setMcpSearchFilter] = useState<string>('');
+
   const tabs = [
     { id: 'NODES', label: 'Nodes & Resources' },
     { id: 'SERVICES', label: 'Services & Containers' },
     { id: 'SERVICE_GRID', label: 'Service Grid' },
+    { id: 'MCP_TOOLS', label: 'MCP Tools' },
     { id: 'LOGS', label: 'Cluster Logs' }
   ];
 
@@ -76,6 +105,33 @@ export const Infra: React.FC = () => {
     }
   }, [activeTab, fetchLogs, fetchLogsServices]);
 
+  const fetchMcpTools = useCallback(async () => {
+    setMcpLoading(true);
+    try {
+      const [toolsRes, statsRes] = await Promise.all([
+        fetch(`${API_BASE}/mcp-registry/tools`),
+        fetch(`${API_BASE}/mcp-registry/stats`)
+      ]);
+      if (toolsRes.ok) {
+        const data = await toolsRes.json();
+        setMcpTools(data.tools || data || []);
+      }
+      if (statsRes.ok) {
+        setMcpStats(await statsRes.json());
+      }
+    } catch (e) {
+      console.error('Failed to fetch MCP tools:', e);
+    } finally {
+      setMcpLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'MCP_TOOLS') {
+      fetchMcpTools();
+    }
+  }, [activeTab, fetchMcpTools]);
+
   const handleRefresh = async () => {
     if (activeTab === 'NODES') {
       await refreshNodes();
@@ -83,10 +139,12 @@ export const Infra: React.FC = () => {
       await refreshServices();
     } else if (activeTab === 'LOGS') {
       await fetchLogs();
+    } else if (activeTab === 'MCP_TOOLS') {
+      await fetchMcpTools();
     }
   };
 
-  const isLoading = activeTab === 'NODES' ? nodesLoading : activeTab === 'SERVICES' ? servicesLoading : activeTab === 'LOGS' ? logsLoading : false;
+  const isLoading = activeTab === 'NODES' ? nodesLoading : activeTab === 'SERVICES' ? servicesLoading : activeTab === 'LOGS' ? logsLoading : activeTab === 'MCP_TOOLS' ? mcpLoading : false;
 
   const getLevelIcon = (level: string) => {
     switch (level.toUpperCase()) {
@@ -285,6 +343,135 @@ export const Infra: React.FC = () => {
         {/* SERVICE GRID TAB */}
         {activeTab === 'SERVICE_GRID' && (
           <ServiceGrid />
+        )}
+
+        {/* MCP TOOLS TAB */}
+        {activeTab === 'MCP_TOOLS' && (
+          <div className="space-y-6">
+            {/* Stats Row */}
+            {mcpStats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-surface-dim border-neutral-800">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500"><Wrench size={20} /></div>
+                    <div>
+                      <p className="text-xs text-neutral-500 font-mono">TOTAL TOOLS</p>
+                      <p className="text-2xl font-mono font-bold text-neutral-200">{mcpStats.total_tools}</p>
+                    </div>
+                  </div>
+                </Card>
+                <Card className="bg-surface-dim border-neutral-800">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500"><Hash size={20} /></div>
+                    <div>
+                      <p className="text-xs text-neutral-500 font-mono">CATEGORIES</p>
+                      <p className="text-2xl font-mono font-bold text-neutral-200">{mcpStats.categories}</p>
+                    </div>
+                  </div>
+                </Card>
+                <Card className="bg-surface-dim border-neutral-800">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-cyan-500/10 rounded-lg text-cyan-500"><Zap size={20} /></div>
+                    <div>
+                      <p className="text-xs text-neutral-500 font-mono">TOTAL CALLS</p>
+                      <p className="text-2xl font-mono font-bold text-neutral-200">{mcpStats.total_calls}</p>
+                    </div>
+                  </div>
+                </Card>
+                <Card className="bg-surface-dim border-neutral-800">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500"><Activity size={20} /></div>
+                    <div>
+                      <p className="text-xs text-neutral-500 font-mono">TOP TOOL</p>
+                      <p className="text-lg font-mono font-bold text-neutral-200 truncate">
+                        {mcpStats.top_tools.length > 0 ? mcpStats.top_tools[0].name : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* Filters */}
+            <Card className="border-neutral-800">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Filter size={14} className="text-neutral-500" />
+                  <select
+                    value={mcpCategoryFilter}
+                    onChange={(e) => setMcpCategoryFilter(e.target.value)}
+                    className="bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-sm text-neutral-300 outline-none focus:border-purple-500"
+                  >
+                    <option value="">All Categories</option>
+                    {[...new Set(mcpTools.map(t => t.category))].sort().map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1 min-w-[200px] relative">
+                  <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500" />
+                  <input
+                    type="text"
+                    placeholder="Search tools..."
+                    value={mcpSearchFilter}
+                    onChange={(e) => setMcpSearchFilter(e.target.value)}
+                    className="w-full bg-neutral-900 border border-neutral-700 rounded pl-8 pr-3 py-1 text-sm text-neutral-300 outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+            </Card>
+
+            {/* Tools List */}
+            <Card className="border-neutral-800 overflow-hidden">
+              {mcpLoading && mcpTools.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Loader2 className="animate-spin mx-auto mb-2 text-neutral-500" />
+                  <p className="text-neutral-500">Loading MCP tools...</p>
+                </div>
+              ) : mcpTools.length === 0 ? (
+                <div className="p-8 text-center text-neutral-500">
+                  <Wrench size={32} className="mx-auto mb-2 opacity-50" />
+                  <p>No MCP tools registered</p>
+                </div>
+              ) : (
+                <div className="max-h-[500px] overflow-y-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="sticky top-0 bg-surface-dim">
+                      <tr className="text-xs font-mono text-neutral-500 border-b border-neutral-800">
+                        <th className="p-3 font-medium">TOOL NAME</th>
+                        <th className="p-3 font-medium">CATEGORY</th>
+                        <th className="p-3 font-medium">DESCRIPTION</th>
+                        <th className="p-3 font-medium text-right">CALLS</th>
+                        <th className="p-3 font-medium text-right">LATENCY</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-sm">
+                      {mcpTools
+                        .filter(tool =>
+                          (!mcpCategoryFilter || tool.category === mcpCategoryFilter) &&
+                          (!mcpSearchFilter || tool.name.toLowerCase().includes(mcpSearchFilter.toLowerCase()) || tool.description.toLowerCase().includes(mcpSearchFilter.toLowerCase()))
+                        )
+                        .map((tool, idx) => (
+                          <tr key={idx} className="border-b border-neutral-800/50 hover:bg-neutral-800/30 transition-colors">
+                            <td className="p-3 font-mono text-purple-400">{tool.name}</td>
+                            <td className="p-3">
+                              <Badge variant="neutral">{tool.category}</Badge>
+                            </td>
+                            <td className="p-3 text-neutral-400 max-w-[300px] truncate">{tool.description}</td>
+                            <td className="p-3 text-right font-mono text-neutral-500">
+                              {tool.call_count > 0 ? tool.call_count : '-'}
+                            </td>
+                            <td className="p-3 text-right font-mono text-neutral-500">
+                              {tool.avg_latency_ms > 0 ? `${tool.avg_latency_ms.toFixed(0)}ms` : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </div>
         )}
 
         {/* LOGS TAB */}

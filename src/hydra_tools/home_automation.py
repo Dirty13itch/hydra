@@ -9,14 +9,16 @@ Created: 2025-12-16
 """
 
 import asyncio
+import json
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 import logging
 
 import httpx
-from fastapi import APIRouter, HTTPException
+import websockets
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 
@@ -360,10 +362,299 @@ class HomeAssistantClient:
 
 
 # =============================================================================
-# Global Instance
+# Home Assistant WebSocket Client (Real-time Events)
+# =============================================================================
+
+class HAWebSocketClient:
+    """WebSocket client for real-time Home Assistant events."""
+
+    def __init__(
+        self,
+        url: str = None,
+        token: str = None,
+    ):
+        self.url = url or os.getenv("HA_URL", "http://192.168.1.244:8123")
+        self.ws_url = self.url.replace("http://", "ws://").replace("https://", "wss://") + "/api/websocket"
+        self.token = token or os.getenv("HA_TOKEN", "")
+        self._ws = None
+        self._message_id = 1
+        self._subscribers: Dict[str, List[Callable]] = {}
+        self._running = False
+        self._task = None
+
+    def _is_configured(self) -> bool:
+        return bool(self.token)
+
+    async def connect(self) -> bool:
+        """Connect to Home Assistant WebSocket API."""
+        if not self._is_configured():
+            logger.warning("HA WebSocket: No token configured")
+            return False
+
+        try:
+            self._ws = await websockets.connect(self.ws_url)
+
+            # Receive auth_required message
+            msg = await self._ws.recv()
+            data = json.loads(msg)
+
+            if data.get("type") != "auth_required":
+                logger.error(f"Unexpected HA WS message: {data}")
+                return False
+
+            # Send auth
+            await self._ws.send(json.dumps({
+                "type": "auth",
+                "access_token": self.token,
+            }))
+
+            # Receive auth_ok
+            msg = await self._ws.recv()
+            data = json.loads(msg)
+
+            if data.get("type") == "auth_ok":
+                logger.info("HA WebSocket: Connected and authenticated")
+                return True
+            else:
+                logger.error(f"HA WebSocket auth failed: {data}")
+                return False
+
+        except Exception as e:
+            logger.error(f"HA WebSocket connection error: {e}")
+            return False
+
+    async def disconnect(self):
+        """Disconnect from WebSocket."""
+        self._running = False
+        if self._task:
+            self._task.cancel()
+        if self._ws:
+            await self._ws.close()
+            self._ws = None
+
+    async def subscribe_events(self, event_type: str = None) -> int:
+        """Subscribe to Home Assistant events."""
+        if not self._ws:
+            return -1
+
+        msg_id = self._message_id
+        self._message_id += 1
+
+        payload = {
+            "id": msg_id,
+            "type": "subscribe_events",
+        }
+        if event_type:
+            payload["event_type"] = event_type
+
+        await self._ws.send(json.dumps(payload))
+        return msg_id
+
+    async def subscribe_state_changes(self, entity_id: str = None) -> int:
+        """Subscribe to state change events, optionally filtered by entity."""
+        if not self._ws:
+            return -1
+
+        msg_id = self._message_id
+        self._message_id += 1
+
+        if entity_id:
+            # Subscribe to specific entity trigger
+            payload = {
+                "id": msg_id,
+                "type": "subscribe_trigger",
+                "trigger": {
+                    "platform": "state",
+                    "entity_id": entity_id,
+                }
+            }
+        else:
+            # Subscribe to all state changes
+            payload = {
+                "id": msg_id,
+                "type": "subscribe_events",
+                "event_type": "state_changed",
+            }
+
+        await self._ws.send(json.dumps(payload))
+        return msg_id
+
+    def add_subscriber(self, event_type: str, callback: Callable):
+        """Add a callback for a specific event type."""
+        if event_type not in self._subscribers:
+            self._subscribers[event_type] = []
+        self._subscribers[event_type].append(callback)
+
+    async def _handle_message(self, msg: str):
+        """Handle incoming WebSocket message."""
+        try:
+            data = json.loads(msg)
+            msg_type = data.get("type", "")
+
+            if msg_type == "event":
+                event = data.get("event", {})
+                event_type = event.get("event_type", "")
+
+                # Call subscribers
+                for callback in self._subscribers.get(event_type, []):
+                    try:
+                        if asyncio.iscoroutinefunction(callback):
+                            await callback(event)
+                        else:
+                            callback(event)
+                    except Exception as e:
+                        logger.error(f"Subscriber error: {e}")
+
+                # Also call wildcard subscribers
+                for callback in self._subscribers.get("*", []):
+                    try:
+                        if asyncio.iscoroutinefunction(callback):
+                            await callback(event)
+                        else:
+                            callback(event)
+                    except Exception as e:
+                        logger.error(f"Subscriber error: {e}")
+
+        except json.JSONDecodeError:
+            logger.error(f"Invalid JSON from HA WS: {msg}")
+
+    async def listen(self):
+        """Listen for WebSocket messages."""
+        self._running = True
+        while self._running and self._ws:
+            try:
+                msg = await asyncio.wait_for(self._ws.recv(), timeout=60)
+                await self._handle_message(msg)
+            except asyncio.TimeoutError:
+                # Send ping to keep connection alive
+                if self._ws:
+                    await self._ws.ping()
+            except websockets.ConnectionClosed:
+                logger.warning("HA WebSocket connection closed")
+                self._running = False
+            except Exception as e:
+                logger.error(f"HA WebSocket error: {e}")
+                self._running = False
+
+    async def start_listening(self):
+        """Start listening in background."""
+        if self._task is not None:
+            return
+
+        if not await self.connect():
+            return False
+
+        # Subscribe to state changes
+        await self.subscribe_state_changes()
+
+        # Start listener task
+        self._task = asyncio.create_task(self.listen())
+        return True
+
+
+# =============================================================================
+# Entity State Tracker
+# =============================================================================
+
+class EntityStateTracker:
+    """Tracks entity states in real-time via WebSocket."""
+
+    def __init__(self):
+        self._states: Dict[str, Dict[str, Any]] = {}
+        self._ws_client: Optional[HAWebSocketClient] = None
+        self._last_update = datetime.utcnow()
+        self._connected_clients: List[WebSocket] = []
+
+    async def start(self):
+        """Start the entity state tracker."""
+        self._ws_client = HAWebSocketClient()
+
+        # Add state change handler
+        self._ws_client.add_subscriber("state_changed", self._on_state_change)
+
+        # Start WebSocket listener
+        if await self._ws_client.start_listening():
+            logger.info("Entity state tracker started")
+            return True
+        return False
+
+    async def stop(self):
+        """Stop the tracker."""
+        if self._ws_client:
+            await self._ws_client.disconnect()
+
+    async def _on_state_change(self, event: Dict[str, Any]):
+        """Handle state change event."""
+        data = event.get("data", {})
+        entity_id = data.get("entity_id", "")
+        new_state = data.get("new_state", {})
+
+        if entity_id and new_state:
+            self._states[entity_id] = {
+                "entity_id": entity_id,
+                "state": new_state.get("state"),
+                "attributes": new_state.get("attributes", {}),
+                "last_changed": new_state.get("last_changed"),
+                "last_updated": new_state.get("last_updated"),
+            }
+            self._last_update = datetime.utcnow()
+
+            # Broadcast to connected WebSocket clients
+            await self._broadcast_state_change(entity_id, self._states[entity_id])
+
+    async def _broadcast_state_change(self, entity_id: str, state: Dict[str, Any]):
+        """Broadcast state change to connected clients."""
+        message = json.dumps({
+            "type": "state_changed",
+            "entity_id": entity_id,
+            "state": state,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        })
+
+        disconnected = []
+        for client in self._connected_clients:
+            try:
+                await client.send_text(message)
+            except:
+                disconnected.append(client)
+
+        # Remove disconnected clients
+        for client in disconnected:
+            self._connected_clients.remove(client)
+
+    def add_client(self, websocket: WebSocket):
+        """Add a WebSocket client to receive updates."""
+        self._connected_clients.append(websocket)
+
+    def remove_client(self, websocket: WebSocket):
+        """Remove a WebSocket client."""
+        if websocket in self._connected_clients:
+            self._connected_clients.remove(websocket)
+
+    def get_state(self, entity_id: str) -> Optional[Dict[str, Any]]:
+        """Get cached state for an entity."""
+        return self._states.get(entity_id)
+
+    def get_all_states(self) -> Dict[str, Dict[str, Any]]:
+        """Get all cached states."""
+        return self._states.copy()
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get tracker status."""
+        return {
+            "connected": self._ws_client is not None and self._ws_client._running,
+            "entities_tracked": len(self._states),
+            "last_update": self._last_update.isoformat() + "Z",
+            "connected_clients": len(self._connected_clients),
+        }
+
+
+# =============================================================================
+# Global Instances
 # =============================================================================
 
 _ha_client: Optional[HomeAssistantClient] = None
+_entity_tracker: Optional[EntityStateTracker] = None
 
 
 def get_ha_client() -> HomeAssistantClient:
@@ -372,6 +663,32 @@ def get_ha_client() -> HomeAssistantClient:
     if _ha_client is None:
         _ha_client = HomeAssistantClient()
     return _ha_client
+
+
+def get_entity_tracker() -> EntityStateTracker:
+    """Get or create Entity State Tracker."""
+    global _entity_tracker
+    if _entity_tracker is None:
+        _entity_tracker = EntityStateTracker()
+    return _entity_tracker
+
+
+async def start_entity_tracker():
+    """Start the entity tracker if HA is configured."""
+    tracker = get_entity_tracker()
+    if await tracker.start():
+        logger.info("Entity state tracker started successfully")
+        return True
+    logger.warning("Entity state tracker failed to start (HA_TOKEN may not be configured)")
+    return False
+
+
+async def stop_entity_tracker():
+    """Stop the entity tracker."""
+    global _entity_tracker
+    if _entity_tracker:
+        await _entity_tracker.stop()
+        _entity_tracker = None
 
 
 # =============================================================================
@@ -447,6 +764,125 @@ def create_home_automation_router() -> APIRouter:
                 controlled.append({"entity_id": entity_id, "success": success})
 
         return {"room_id": room_id, "action": action, "controlled": controlled}
+
+    # =========================================================================
+    # Entity State Tracking Endpoints
+    # =========================================================================
+
+    @router.get("/tracker/status")
+    async def get_tracker_status():
+        """Get entity state tracker status."""
+        tracker = get_entity_tracker()
+        return tracker.get_status()
+
+    @router.post("/tracker/start")
+    async def start_tracker():
+        """Start the entity state tracker."""
+        success = await start_entity_tracker()
+        return {"success": success, "message": "Tracker started" if success else "Failed to start tracker"}
+
+    @router.post("/tracker/stop")
+    async def stop_tracker():
+        """Stop the entity state tracker."""
+        await stop_entity_tracker()
+        return {"success": True, "message": "Tracker stopped"}
+
+    @router.get("/entities")
+    async def get_tracked_entities():
+        """Get all tracked entity states from real-time cache."""
+        tracker = get_entity_tracker()
+        states = tracker.get_all_states()
+        return {
+            "entities": list(states.values()),
+            "count": len(states),
+            "tracker_status": tracker.get_status(),
+        }
+
+    @router.get("/entity/{entity_id:path}")
+    async def get_entity_state(entity_id: str):
+        """Get state for a specific entity from real-time cache."""
+        tracker = get_entity_tracker()
+        state = tracker.get_state(entity_id)
+        if state:
+            return state
+
+        # Fallback to REST API if not in cache
+        client = get_ha_client()
+        states = await client.get_states()
+        for entity in states:
+            if entity.get("entity_id") == entity_id:
+                return {
+                    "entity_id": entity_id,
+                    "state": entity.get("state"),
+                    "attributes": entity.get("attributes", {}),
+                    "last_changed": entity.get("last_changed"),
+                    "last_updated": entity.get("last_updated"),
+                    "source": "rest_api",
+                }
+
+        raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
+
+    # =========================================================================
+    # WebSocket Endpoint for Real-time Updates
+    # =========================================================================
+
+    @router.websocket("/ws/entities")
+    async def websocket_entity_updates(websocket: WebSocket):
+        """WebSocket endpoint for real-time entity state updates."""
+        await websocket.accept()
+
+        tracker = get_entity_tracker()
+        tracker.add_client(websocket)
+
+        # Send initial state dump
+        try:
+            initial_states = tracker.get_all_states()
+            await websocket.send_json({
+                "type": "initial_state",
+                "entities": list(initial_states.values()),
+                "count": len(initial_states),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+            })
+        except Exception as e:
+            logger.error(f"Failed to send initial state: {e}")
+
+        try:
+            # Keep connection alive and listen for client messages
+            while True:
+                try:
+                    data = await websocket.receive_text()
+                    msg = json.loads(data)
+
+                    # Handle client commands
+                    if msg.get("type") == "ping":
+                        await websocket.send_json({"type": "pong"})
+                    elif msg.get("type") == "get_entity":
+                        entity_id = msg.get("entity_id")
+                        state = tracker.get_state(entity_id)
+                        await websocket.send_json({
+                            "type": "entity_state",
+                            "entity_id": entity_id,
+                            "state": state,
+                        })
+                    elif msg.get("type") == "refresh":
+                        # Re-send all states
+                        states = tracker.get_all_states()
+                        await websocket.send_json({
+                            "type": "refresh_state",
+                            "entities": list(states.values()),
+                            "count": len(states),
+                            "timestamp": datetime.utcnow().isoformat() + "Z",
+                        })
+
+                except json.JSONDecodeError:
+                    await websocket.send_json({"type": "error", "message": "Invalid JSON"})
+
+        except WebSocketDisconnect:
+            logger.info("WebSocket client disconnected")
+        except Exception as e:
+            logger.error(f"WebSocket error: {e}")
+        finally:
+            tracker.remove_client(websocket)
 
     return router
 

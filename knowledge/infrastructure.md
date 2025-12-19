@@ -197,6 +197,7 @@ sudo nvidia-smi -pl 350  # For 4090
 | 3004 | Uptime Kuma | HTTP |
 | 3005 | Firecrawl | HTTP |
 | 3003 | Grafana | HTTP |
+| 3015 | OpenHands | HTTP |
 | 3030 | Perplexica | HTTP |
 | 3080 | LibreChat | HTTP |
 | 3100 | Loki | HTTP |
@@ -204,6 +205,7 @@ sudo nvidia-smi -pl 350  # For 4090
 | 3210 | Command Center | HTTP |
 | 4000 | LiteLLM | HTTP |
 | 5001 | Docling | HTTP |
+| 5050 | Local Deep Research | HTTP |
 | 5432 | PostgreSQL | TCP |
 | 5678 | n8n | HTTP |
 | 6333 | Qdrant HTTP | HTTP |
@@ -220,6 +222,7 @@ sudo nvidia-smi -pl 350  # For 4090
 | 8888 | SearXNG (hydra-stack) | HTTP |
 | 8082 | qBittorrent | HTTP |
 | 8085 | SABnzbd | HTTP |
+| 8090 | GPT Researcher | HTTP |
 | 8123 | Home Assistant | HTTP |
 | 8180 | Miniflux | HTTP |
 | 8283 | Letta | HTTP |
