@@ -2,7 +2,7 @@
 # Build: docker build -f docker/Dockerfile.hydra-tools -t hydra-tools-api .
 # Run: docker run -p 8700:8700 hydra-tools-api
 
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 LABEL maintainer="Hydra Cluster <hydra@local>"
 LABEL description="Self-improvement and optimization toolkit API"

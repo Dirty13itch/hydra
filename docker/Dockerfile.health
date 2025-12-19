@@ -3,7 +3,7 @@
 # Build: docker build -f docker/Dockerfile.health -t hydra-health .
 # Run: docker run -p 8600:8600 hydra-health
 
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 LABEL org.opencontainers.image.title="Hydra Health Aggregator"
 LABEL org.opencontainers.image.description="Unified health monitoring API for Hydra cluster"
