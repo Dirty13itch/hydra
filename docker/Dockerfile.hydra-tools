@@ -14,11 +14,18 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    openssh-client \
+    git \
+    && rm -rf /var/lib/apt/lists/* \
+    && git config --global --add safe.directory /mnt/user/appdata/hydra-dev \
+    && git config --global --add safe.directory /app
 
 # Copy requirements first for caching
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir docker
+
+# Install Aider for AI pair programming
+RUN pip install --no-cache-dir aider-chat
 
 # Copy source code
 COPY src/hydra_tools /app/hydra_tools

@@ -772,14 +772,18 @@ class GitOperatorAgent(AgentProtocol):
     async def health_check(self) -> bool:
         """Check if we're in a git repository."""
         try:
-            process = await asyncio.create_subprocess_exec(
-                "git", "rev-parse", "--is-inside-work-tree",
-                cwd="/mnt/user/appdata/hydra-dev",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, _ = await process.communicate()
-            return b"true" in stdout
+            # Try /app first (Docker), then /mnt/user/appdata/hydra-dev (host)
+            for cwd in ["/app", "/mnt/user/appdata/hydra-dev"]:
+                process = await asyncio.create_subprocess_exec(
+                    "git", "rev-parse", "--is-inside-work-tree",
+                    cwd=cwd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                stdout, _ = await process.communicate()
+                if b"true" in stdout:
+                    return True
+            return False
         except Exception:
             return False
 
