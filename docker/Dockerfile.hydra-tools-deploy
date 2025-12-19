@@ -1,7 +1,7 @@
 # Hydra Tools API - Self-Improvement Services
 # For deployment from /mnt/user/appdata/hydra-tools
 
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 LABEL maintainer="Hydra Cluster <hydra@local>"
 LABEL description="Self-improvement and optimization toolkit API"
