@@ -87,16 +87,26 @@ from hydra_tools.agent_scheduler import create_scheduler_router as create_agent_
 from hydra_tools.wake_word import create_wake_word_router
 from hydra_tools.discovery_archive import create_discovery_router
 from hydra_tools.character_consistency import create_character_router
+from hydra_tools.game_library import create_game_library_router
+from hydra_tools.agent_orchestrator import create_agent_orchestrator_router
 from hydra_tools.comfyui_client import create_comfyui_router
 from hydra_tools.scene_backgrounds import create_scene_backgrounds_router
 from hydra_tools.model_hotswap import create_model_hotswap_router
 from hydra_tools.human_feedback import create_human_feedback_router
 from hydra_tools.daily_digest import create_daily_digest_router
 from hydra_tools.dashboard_api import create_dashboard_router, get_dashboard_state
-from hydra_tools.home_automation import create_home_automation_router
+from hydra_tools.home_automation import (
+    create_home_automation_router,
+    get_entity_tracker,
+    start_entity_tracker,
+    stop_entity_tracker,
+)
+from hydra_tools.presence_automation import get_trigger_engine
 from hydra_tools.logs_api import create_logs_router
 from hydra_tools.autonomous_controller import create_autonomous_router, get_controller
-from hydra_tools.autonomous_queue import router as autonomous_queue_router
+from hydra_tools.autonomous_queue import router as autonomous_queue_router, scheduler as work_queue_scheduler
+from hydra_tools.cognitive_core import create_cognitive_router, get_cognitive_core
+from hydra_tools.hybrid_memory import create_hybrid_memory_router, get_hybrid_memory
 from hydra_tools.routers.unraid import router as unraid_router
 from hydra_tools.routers.events import router as events_router
 from hydra_tools.routers.services import create_services_router
@@ -121,6 +131,17 @@ from hydra_tools.autonomous_research import create_autonomous_research_router
 from hydra_tools.feedback_integration_loop import create_feedback_loop_router
 from hydra_tools.test_automation import create_test_automation_router
 from hydra_tools.disaster_recovery import create_disaster_recovery_router
+from hydra_tools.dgm_engine import create_dgm_router, get_dgm_engine
+from hydra_tools.comprehensive_benchmark import create_comprehensive_benchmark_router, get_benchmark_engine
+from hydra_tools.google_calendar import create_google_calendar_router
+from hydra_tools.gmail_integration import create_gmail_router
+from hydra_tools.morning_briefing import create_morning_briefing_router
+from hydra_tools.news_integration import create_news_router
+from hydra_tools.news_intelligence import create_news_intelligence_router
+from hydra_tools.financial_awareness import create_financial_router
+from hydra_tools.user_data import create_user_data_router
+from hydra_tools.intelligent_model_selector import create_model_intelligence_router, get_model_selector
+from hydra_tools.model_task_queue import create_task_queue_router, get_task_queue
 
 # Import core classes for direct endpoints
 from hydra_tools.routellm import RouteClassifier, ModelTier
@@ -163,6 +184,13 @@ EXEMPT_PREFIXES = (
     "/self-improvement",  # Benchmark/metrics for Command Center
     "/letta-bridge",      # LiteLLM health checks for Letta proxy
     "/autonomous",        # Autonomous scheduler and queue for Command Center
+    "/google",            # Google OAuth2 callback needs to work without auth
+    "/gmail",             # Gmail endpoints (uses shared Google OAuth)
+    "/briefing",          # Morning briefing endpoint
+    "/news",              # News/RSS integration
+    "/financial",         # Financial awareness endpoints
+    "/user-data",         # User profile and preferences
+    "/credentials",       # Credential status (not actual credentials)
 )
 
 
@@ -350,7 +378,7 @@ Self-improvement and optimization toolkit for the Hydra cluster.
 * **MCP Registry** - Model Context Protocol tool discovery and statistics
 * **Official MCP Mapping** - Migration path to standard MCP servers
 """
-APP_VERSION = "2.9.0"  # Unified ingest, Research queue, Vision, Agentic RAG
+APP_VERSION = "2.15.0"  # Phase 14: User Data Management (Settings view, credential status, profile management)
 
 
 # Startup/shutdown lifecycle
@@ -430,6 +458,11 @@ async def lifespan(app: FastAPI):
     app.state.autonomous_controller = autonomous_controller
     print(f"[{datetime.utcnow().isoformat()}] Autonomous controller started")
 
+    # Start the 24/7 autonomous work queue scheduler
+    work_queue_scheduler.start()
+    app.state.work_queue_scheduler = work_queue_scheduler
+    print(f"[{datetime.utcnow().isoformat()}] Work queue scheduler started (24/7 resource-aware)")
+
     # Start background container health checker
     import asyncio
     from hydra_tools.container_health import _monitor
@@ -447,6 +480,34 @@ async def lifespan(app: FastAPI):
     app.state.container_health_task = container_health_task
     print(f"[{datetime.utcnow().isoformat()}] Background container health checker started (60s interval)")
 
+    # Start Home Assistant entity tracker and wire to presence triggers
+    try:
+        tracker = get_entity_tracker()
+        trigger_engine = get_trigger_engine()
+
+        # Wire the tracker to call trigger engine on state changes
+        async def on_ha_state_change(event):
+            """Forward HA state changes to presence trigger engine."""
+            result = await trigger_engine.on_state_change(event)
+            if result:
+                logger.info(f"Presence triggered: {result.get('trigger_entity')} -> {result.get('new_presence')}")
+
+        # Add the handler to the tracker's WebSocket client (if it has one)
+        if hasattr(tracker, '_ws_client') and tracker._ws_client:
+            tracker._ws_client.add_subscriber("state_changed", on_ha_state_change)
+
+        # Try to start the entity tracker (will only work if HA_TOKEN is configured)
+        if await start_entity_tracker():
+            # Re-add subscriber after tracker starts
+            tracker._ws_client.add_subscriber("state_changed", on_ha_state_change)
+            app.state.entity_tracker = tracker
+            app.state.trigger_engine = trigger_engine
+            print(f"[{datetime.utcnow().isoformat()}] HA entity tracker and presence triggers connected")
+        else:
+            print(f"[{datetime.utcnow().isoformat()}] HA entity tracker disabled (no HA_TOKEN configured)")
+    except Exception as e:
+        print(f"[{datetime.utcnow().isoformat()}] HA integration setup failed: {e}")
+
     yield
 
     # Shutdown
@@ -454,13 +515,15 @@ async def lifespan(app: FastAPI):
     scheduler.stop()
     await agent_scheduler.stop()
     await autonomous_controller.stop()
+    work_queue_scheduler.stop()
+    await stop_entity_tracker()  # Stop HA entity tracker
     container_health_task.cancel()
     try:
         await container_health_task
     except asyncio.CancelledError:
         pass
     await close_unraid_client()
-    print(f"[{datetime.utcnow().isoformat()}] Schedulers, autonomous controller, and clients stopped")
+    print(f"[{datetime.utcnow().isoformat()}] All schedulers, autonomous systems, and clients stopped")
 
 
 # Create FastAPI app
@@ -586,6 +649,9 @@ app.include_router(create_discovery_router())
 # Include Character Consistency router (Phase 12: Empire of Broken Queens)
 app.include_router(create_character_router())
 
+# Include Game Library router (adult game collection management)
+app.include_router(create_game_library_router())
+
 # Include ComfyUI router (Phase 12: image generation orchestration)
 app.include_router(create_comfyui_router())
 
@@ -609,6 +675,15 @@ app.include_router(create_autonomous_router())
 
 # Include Autonomous Queue router (24/7 resource-aware work queue)
 app.include_router(autonomous_queue_router)
+
+# Include Agent Orchestrator router (multi-agent system - Aider, OpenHands, local LLMs)
+app.include_router(create_agent_orchestrator_router())
+
+# Include Cognitive Core router (LLM-powered autonomous reasoning)
+app.include_router(create_cognitive_router())
+
+# Include Hybrid Memory router (Qdrant + Neo4j + Meilisearch fusion)
+app.include_router(create_hybrid_memory_router())
 
 # Include Unraid router (Unified Control Plane - storage management)
 app.include_router(unraid_router)
@@ -679,6 +754,37 @@ app.include_router(create_test_automation_router())
 # Disaster Recovery (5.3)
 app.include_router(create_disaster_recovery_router())
 
+# Darwin Gödel Machine Self-Improvement
+app.include_router(create_dgm_router())
+
+# Comprehensive Benchmark Suite
+app.include_router(create_comprehensive_benchmark_router())
+
+# Google Calendar Integration (Phase 14: External Intelligence)
+app.include_router(create_google_calendar_router())
+
+# Gmail Integration (Phase 14: External Intelligence)
+app.include_router(create_gmail_router())
+
+# Morning Briefing (Phase 14: External Intelligence)
+app.include_router(create_morning_briefing_router())
+
+# News Integration (Phase 14: External Intelligence - Week 24)
+app.include_router(create_news_router())
+app.include_router(create_news_intelligence_router())
+
+# Financial Awareness (Phase 14: External Intelligence - Week 23)
+app.include_router(create_financial_router())
+
+# User Data Management (Phase 14: User Data Architecture)
+app.include_router(create_user_data_router())
+
+# Model Intelligence - Proactive model selection
+app.include_router(create_model_intelligence_router())
+
+# Task Queue - Batch tasks by optimal model
+app.include_router(create_task_queue_router())
+
 
 # Root endpoints
 @app.get("/", tags=["info"])
@@ -738,6 +844,10 @@ async def root():
             "feedback-loop": "/feedback-loop",
             "tests": "/tests",
             "disaster-recovery": "/disaster-recovery",
+            "google-calendar": "/google",
+            "gmail": "/gmail",
+            "briefing": "/briefing",
+            "news": "/news",
         },
     }
 
