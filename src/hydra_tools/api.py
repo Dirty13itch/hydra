@@ -888,6 +888,78 @@ async def circuit_breaker_status():
     }
 
 
+@app.post("/inference/route", tags=["inference"])
+async def intelligent_route(request: Request):
+    """
+    Get intelligent model routing recommendation for a request.
+
+    Analyzes the task type and returns the best available model
+    based on task classification, model capabilities, and availability.
+
+    Request body:
+    {
+        "messages": [{"role": "user", "content": "..."}],
+        "preferred_model": "tabby",  // optional
+        "allow_cloud": true          // optional, default true
+    }
+
+    Returns:
+    {
+        "recommended_model": "qwen-coder-32b",
+        "routing_info": {
+            "task_type": "coding",
+            "task_confidence": 0.8,
+            "needs_nsfw": false,
+            "selection_reason": "Best match for coding task",
+            "fallback_chain": ["qwen-coder-32b", "claude", "qwen2.5-7b"]
+        }
+    }
+    """
+    from hydra_tools.intelligent_router import get_intelligent_route
+
+    body = await request.json()
+    messages = body.get("messages", [])
+    preferred_model = body.get("preferred_model")
+    allow_cloud = body.get("allow_cloud", True)
+
+    model, routing_info = get_intelligent_route(
+        messages=messages,
+        preferred_model=preferred_model,
+        allow_cloud=allow_cloud,
+    )
+
+    return {
+        "recommended_model": model,
+        "routing_info": routing_info,
+    }
+
+
+@app.get("/inference/models", tags=["inference"])
+async def list_model_capabilities():
+    """
+    List all registered models and their capabilities.
+
+    Returns model registry with task strengths, NSFW support,
+    cost, and performance characteristics.
+    """
+    from hydra_tools.intelligent_router import MODEL_REGISTRY
+
+    return {
+        "models": {
+            name: {
+                "provider": cap.provider,
+                "size_class": cap.size_class,
+                "strengths": [t.value for t in cap.strengths],
+                "supports_nsfw": cap.supports_nsfw,
+                "cost_per_1k_tokens": cap.cost_per_1k_tokens,
+                "avg_latency_ms": cap.avg_latency_ms,
+                "context_length": cap.context_length,
+            }
+            for name, cap in MODEL_REGISTRY.items()
+        }
+    }
+
+
 @app.get("/auth/status", tags=["auth"])
 async def auth_status(request: Request):
     """
