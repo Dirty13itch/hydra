@@ -1,0 +1,95 @@
+# HYDRA WORKING MEMORY
+# Purpose: Current context, active tasks, recent focus
+# Last Updated: 2025-12-19
+# Update: At session start and end
+
+---
+current_session:
+  date: "2025-12-19"
+  session_id: "session_2025_12_19_intelligent_routing"
+  focus: "Intelligent Task-Aware Model Router + Resilience"
+  started_with: "Continuation from TabbyAPI stability fixes"
+
+active_priorities:
+  immediate:
+    - task: "Intelligent model routing"
+      status: "complete"
+      progress: "Deployed and tested - routes by task type and availability"
+
+  high:
+    - task: "LiteLLM fallback improvements"
+      status: "complete"
+      notes: "32B coder prioritized over 7B, fallback chain optimized"
+
+    - task: "Circuit breaker integration"
+      status: "complete"
+      notes: "Router excludes services with open circuit breakers"
+
+  medium:
+    - task: "Configure external credentials"
+      status: "blocked"
+      blockers: ["GOOGLE_CLIENT_ID", "HA_TOKEN", "PLAID keys", "MINIFLUX_API_KEY"]
+
+  low:
+    - task: "Documentation cleanup"
+      status: "partial"
+      notes: "Archived 8 docs on 2025-12-18"
+
+recent_accomplishments:
+  - date: "2025-12-19"
+    items:
+      - "Created intelligent_router.py with task classification"
+      - "Added NSFW-aware routing (adult content -> uncensored models only)"
+      - "Integrated circuit breaker status into model selection"
+      - "Updated LiteLLM fallbacks: qwen-coder-32b > claude > dolphin-70b > 7b"
+      - "Added /inference/route and /inference/models API endpoints"
+      - "Tested full failover chain with TabbyAPI stopped"
+      - "Cost-aware routing: prefers local models over cloud APIs"
+
+  - date: "2025-12-18"
+    items:
+      - "Created game library API (game_library.py)"
+      - "Created Games view in Command Center"
+      - "Deep research on AI coding assistants"
+      - "Archived 8 superseded documentation files"
+
+recent_context:
+  # Important context from recent sessions that should carry forward
+  - "Intelligent router at /inference/route classifies tasks automatically"
+  - "TaskTypes: coding, creative, analysis, conversation, summarization, translation, quick_query"
+  - "NSFW routing: only tabby, midnight-miqu-70b, dolphin-70b support NSFW"
+  - "qwen-coder-32b fits in 32GB VRAM (18GB), dolphin-70b spills to RAM (43GB = slow)"
+  - "Circuit breakers prevent routing to unavailable services"
+  - "Badge variants: emerald, cyan, amber, neutral, purple, red (NOT gray, blue)"
+
+in_progress_implementations:
+  intelligent_routing:
+    files_created:
+      - "src/hydra_tools/intelligent_router.py"
+      - "src/hydra_tools/circuit_breaker.py"
+    api_endpoints:
+      - "POST /inference/route - task-aware model selection"
+      - "GET /inference/models - model capabilities registry"
+    next_steps:
+      - "Integrate router into LiteLLM request flow"
+      - "Add model performance tracking over time"
+
+unresolved_questions:
+  - question: "Should we integrate intelligent router into LiteLLM proxy directly?"
+    likely_answer: "Yes - wrap the /chat/completions endpoint"
+
+  - question: "How to handle model loading time in routing decisions?"
+    notes: "TabbyAPI hot-swap has ~30s latency, should track"
+
+blockers:
+  external:
+    - "Need GOOGLE_CLIENT_ID/SECRET for Calendar/Gmail OAuth"
+    - "Need HA_TOKEN for Home Assistant WebSocket"
+    - "Need PLAID keys for banking integration"
+    - "Need MINIFLUX_API_KEY for news feeds"
+
+next_session_suggestions:
+  - "Integrate intelligent router with LiteLLM proxy"
+  - "Add model performance tracking metrics"
+  - "Complete memory files (decisions.yaml, patterns.yaml)"
+  - "Start Aider integration for multi-agent system"

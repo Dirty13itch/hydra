@@ -4,20 +4,23 @@
   "phase": "14-ACTIVE",
   "last_session": {
     "date": "2025-12-19",
-    "session_id": "session_2025_12_19_dynamic_model_switching",
-    "focus": "Dynamic Model Switching - Optimal Models for Every Task",
+    "session_id": "session_2025_12_19_intelligent_routing",
+    "focus": "Intelligent Task-Aware Model Router + Resilience",
     "accomplishments": [
-      "Fixed TabbyAPI stuck VRAM by restarting with proper process cleanup",
-      "Successfully loaded Midnight-Miqu-70B (quality 94) for creative writing",
-      "Verified 70B model generation: 45+ tokens/sec on RTX 5090+4090",
-      "Fixed TabbyAPI port conflict (5000 vs 5001) after restart",
-      "Added improved code detection patterns: def, class, import, const, let, function, =>",
-      "Added force_best parameter to always load optimal model regardless of what's loaded",
-      "Added quality_threshold parameter to control model switching aggressiveness",
-      "Successfully tested dynamic switching: Creative (70B Miqu) -> Coding (24B Devstral)",
-      "Devstral coding model verified: 81.55 tokens/sec, quality quicksort implementation",
-      "Model intelligence API fully operational at /model-intelligence/*",
-      "Task classification now correctly identifies code patterns (def, class, function, etc.)"
+      "Intelligent router: automatic task classification (coding, creative, analysis, etc.)",
+      "NSFW-aware routing: adult content routes only to uncensored models",
+      "Circuit breaker integration: excludes unavailable services automatically",
+      "LiteLLM fallback upgrade: qwen-coder-32b (18GB VRAM) prioritized over 7B",
+      "Model registry with capabilities, VRAM requirements, latency data",
+      "New API endpoints: POST /inference/route, GET /inference/models",
+      "Tested fallback chain: TabbyAPI -> 32B coder -> Claude -> 70B dolphin -> 7B",
+      "Cost-aware routing: prefers local models over cloud APIs"
+    ],
+    "remaining_tasks": [
+      "Add TabbyAPI cleanup before model load",
+      "Add VRAM pre-check for 70B loads",
+      "Integrate intelligent router with LiteLLM request flow",
+      "Add speculative decoding support"
     ],
     "api_version": "2.18.0",
     "phase_12_progress": "100% COMPLETE",
@@ -102,6 +105,11 @@
     }
   },
   "api_endpoints": {
+    "inference_routing": [
+      "POST /inference/route - Intelligent task-aware model selection",
+      "GET /inference/models - List model capabilities and strengths",
+      "GET /health/circuit-breakers - Circuit breaker status for all services"
+    ],
     "agent_orchestrator": [
       "GET /agents/ - List all registered coding agents",
       "GET /agents/health - Check health of all agents",
