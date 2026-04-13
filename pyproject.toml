@@ -47,7 +47,7 @@ agents = [
 # CrewAI multi-agent orchestration
 crews = [
     "crewai>=0.28.0",
-    "crewai-tools>=0.1.0",
+    "crewai-tools>=1.14.1",
 ]
 
 # Voice interface (STT, TTS, wake word)
