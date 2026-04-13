@@ -52,7 +52,7 @@ crews = [
 
 # Voice interface (STT, TTS, wake word)
 voice = [
-    "faster-whisper>=0.9.0",
+    "faster-whisper>=1.2.1",
     "openwakeword>=0.6.0",
     "pyaudio>=0.2.14",
     "numpy>=1.24.0",
