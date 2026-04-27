@@ -38,7 +38,7 @@ numpy>=1.24.0
 graphiti-core>=0.5.0
 
 # PDF Text Extraction
-PyMuPDF>=1.24.0
+PyMuPDF>=1.27.2.3
 
 # Optional: Agent integration
 # langchain>=0.1.0
